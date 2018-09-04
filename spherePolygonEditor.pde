@@ -2,11 +2,12 @@ import processing.pdf.*;
 
 
 // global variables that control what to show
-boolean showYellowSphere = true;
-boolean generateCH = true;
+boolean showYellowSphere = false;
+boolean generateCH = false;
 boolean showPolygon = false;
 boolean generateInput = false;
 boolean doTests = false;
+boolean showCircles = true;
 
 
 float dz=500; // distance to camera. Manipulated with wheel or when 
@@ -22,8 +23,13 @@ pt F = P(0,0,0);  // focus point:  the camera is looking at it (moved when 'f or
 pt Of=P(100,100,0), Ob=P(110,110,0); // red point controlled by the user via mouseDrag : used for inserting vertices ...
 pt Vf=P(0,0,0), Vb=P(0,0,0);
 pt Pick=P();
-float radius=100;
+float radius = 100;
 pt centerOfSphere = P(0, 0, 0);
+float rMax = 60;
+int nc = 4;
+int np = 6;
+pt[] centers;
+vec[] initDirs;
 
 void setup() {
   myFace = loadImage("data/pic.jpg");  // load image from file pic.jpg in folder data *** replace that file with your pic of your own face
@@ -48,6 +54,10 @@ void setup() {
     noLoop();
     debugCH = false;
   }
+  
+  //testIntersectionTwoDisks();
+  centers = generateTubeCentersInSphere(centerOfSphere, radius, rMax, nc);
+  initDirs = generateInitDirs(centerOfSphere, centers, nc);
 }
 
 void draw() {
@@ -78,12 +88,9 @@ void draw() {
     noStroke();
     //   pp=P.idOfVertexWithClosestScreenProjectionTo(Mouse()); // id of vertex of P with closest screen projection to mouse (us in keyPressed 'x'...
 
-    // SHOW YELLOW SPHERE
-    if (showYellowSphere) {
-      fill(yellow); show(P(),radius);  // center of sphere = (0, 0, 0)
-    }
-    fill(magenta); show(P(), 5);
-    Pick=pick(mouseX,mouseY); 
+    
+    fill(magenta); show(P(), 3); // show center of the sphere
+    Pick=pick(mouseX,mouseY);
 
     if(picking) { 
       P.setPickToIndexOfVertexClosestTo(Pick); // id of vertex of P with closest screen projection to mouse (us in keyPressed 'x'...
@@ -92,20 +99,18 @@ void draw() {
       
     // fill(red,100); show(Pick,5); // SHOWING THE PICK POINT ON SURFACE UNDER THE MOUSE
     // fill(green,100); show(P(),5); // SHOW PICKED VERTEX
-   
 
-    // DRAW POLYGON
+    // Show polygon (not used in Yaohong's project)
     if (showPolygon) {
-      //   fill(green); P.drawClosedCurve(4); P.drawBalls(5); // draw curve P as cones with ball ends
       fill(green);
       P.drawArcs(100,4);
       P.drawBalls(2); // draw curve P as cones with ball ends
       fill(red,100); P.showPicked(3); // shows currently picked vertex in red   
     } else {
       fill(green);
-      P.drawBalls(1);
+      //P.drawBalls(1);
       fill(red, 100);
-      P.showPicked(2);
+      //P.showPicked(2);
     }
 
     // 3D mouse demo
@@ -115,12 +120,20 @@ void draw() {
       testCH(numTests, numPointsPerTest, showResults);
     } else if (generateCH) {
       ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
-      if (showCH) {
-        fill(red); showTriangles(triangles, P.G);
-        //fill(cyan); showTriangleNormals(triangles, P.G);
-      }
+      fill(red); showTriangles(triangles, P.G);
     }
-  
+    
+    float r = rMax * 1.0;
+    if (showCircles) {
+      pt[][] points = generatePointsForCircles(centers, r, centerOfSphere, initDirs, nc, np);
+      showCircles(centers, points, nc, np);
+    }
+
+    // Show the big yellow sphere
+    if (showYellowSphere) {
+      fill(yellow, 100); show(P(),radius);  // center of sphere = (0, 0, 0)
+    }
+
     if(snappingPDF) {endRecord(); snappingPDF=false;}
     popMatrix(); // done with 3D drawing. Restore front view for writing text on canvas
     }
@@ -129,7 +142,7 @@ void draw() {
   if (animating) { t+=PI/180/2; if(t>=TWO_PI) t=0; s=(cos(t)+1.)/2; } // periodic change of time 
   if(filming && (animating || change)) saveFrame("FRAMES/F"+nf(frameCounter++,4)+".tif");  // save next frame to make a movie
   change=false; // to avoid capturing frames when nothing happens (change is set uppn action)
-  scribeHeader("pp="+pp,2);
+  //scribeHeader("pp="+pp,2);
   scribeHeader("number of faces = " + numFacesShown, 3);
   }
   

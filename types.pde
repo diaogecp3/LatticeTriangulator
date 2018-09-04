@@ -1,3 +1,8 @@
+/*********************************************************
+ * Geometric data structures used in this project.
+ *********************************************************/
+
+
 import java.util.HashMap;
 
 class Triangle {
@@ -25,12 +30,23 @@ class Vertex {
   int id;
   pt position;
   boolean isInner;
-  HashMap<Vertex, TaggedEdge> outEdges;  // front or border edges going from this vertex
+  HashMap<Vertex, TaggedEdge> outEdges;  // front or border edges going from this vertex  // seems that no need to use this if usinsk
   Vertex(){}
   Vertex(int _id, pt _position) {
     id = _id;
     position = _position;
     isInner = false;
     outEdges = new HashMap<Vertex, TaggedEdge>();
+  }
+}
+
+class Disk {
+  pt c;
+  vec d;
+  float r;
+  Disk(pt c_, vec d_, float r_) {
+    c = c_;
+    d = d_;
+    r = r_;
   }
 }

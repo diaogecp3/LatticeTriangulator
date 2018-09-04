@@ -1,11 +1,26 @@
+/*********************************************************
+ * Convex hull generation in a special case where all
+ * vertices are on a sphere.
+ *********************************************************/
+
+
 import java.util.Queue;
 import java.util.LinkedList;
 
-int numVerticesIgnored = 0;
-int numFacesShown = 150;
+int numFacesShown = 300;
 
-boolean debugCH = true;
-boolean showCH = true;
+boolean debugCH = false;
+boolean debugDisturbance = true;
+float disturbance = 0.001;
+
+class DebugInfo {
+  int a, b, d;
+  int numSteps;
+  DebugInfo() {
+    a = b = d = -1;
+    numSteps = 1;
+  }
+}
 
 /*
  * Initialize a vertex list given a point (position) array. A vertex may
@@ -13,8 +28,18 @@ boolean showCH = true;
  */
 ArrayList<Vertex> convertToVertexList(pt[] G, int nv) {
   ArrayList<Vertex> vertices = new ArrayList<Vertex>();
-  for (int i = 0; i < nv; ++i) {
-    vertices.add(new Vertex(i, G[i]));
+  if (debugDisturbance) {
+    for (int i = 0; i < nv; ++i) {
+      float x = G[i].x + random(-1.0, 1.0) * disturbance;
+      float y = G[i].y + random(-1.0, 1.0) * disturbance;
+      float z = G[i].z + random(-1.0, 1.0) * disturbance;
+      pt tmp = new pt(x, y, z);
+      vertices.add(new Vertex(i, tmp));
+    }
+  } else {
+    for (int i = 0; i < nv; ++i) {
+      vertices.add(new Vertex(i, G[i]));
+    }
   }
   return vertices;
 }
@@ -138,7 +163,6 @@ int pivot(TaggedEdge e, ArrayList<Vertex> vertices, boolean[][] manifoldMask) {
   for (int i = 0; i < nv; ++i) {
     if (i == a || i == b || i == c) continue;
     if (vertices.get(i).isInner) { // ignore inner vertices
-      numVerticesIgnored++;
       continue;  
     }
     if (manifoldMask[a][i] || manifoldMask[i][b]) continue;
@@ -155,46 +179,41 @@ int pivot(TaggedEdge e, ArrayList<Vertex> vertices, boolean[][] manifoldMask) {
   return d;
 }
 
-/*
- * Generate the convex hull for a given point array G whose size is nv. Assume
- * that all input points will be on the surface of the convex hull.
- */
-ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
-  if (nv < 4) {
-    print("Number of vertices less than 4!");
-    return null;
-  }
-  ArrayList<Triangle> triangles = new ArrayList<Triangle>();
-  Queue<TaggedEdge> frontEdges = new LinkedList<TaggedEdge>();
-  ArrayList<Vertex> vertices = convertToVertexList(G, nv);
-  boolean[][] manifoldMask = new boolean[nv][nv];  // initialize as false matrix
 
+/*
+ * Generate a convex hull from a list of vertices. Assume that all parameters
+ * except the first one, are initialized by default values (empty/zeros, etc).
+ * If no error or strange situation encountered, this function returns true,
+ * otherwise returns false.
+ */
+boolean generateConvexHullFromVertices(ArrayList<Vertex> vertices,
+                                       ArrayList<Triangle> triangles,
+                                       Queue<TaggedEdge> frontEdges,
+                                       boolean[][] manifoldMask,
+                                       DebugInfo debugInfo) {
   // Find the first valid triangle
   triangles.add(findFirstTriangle(vertices, frontEdges, manifoldMask));
-
-  int k = 1;
-  int ia = -1, ib = -1, id = -1;
+  debugInfo.numSteps = 1;
+  
   // Expand the triangle mesh until the end
   while(frontEdges.size() > 0) {
-    if (debugCH && k >= numFacesShown) break;  // stop when creating the first k faces 
+    // stop after creating the first numFacesShown faces
+    if (debugCH && debugInfo.numSteps >= numFacesShown) break;
 
     TaggedEdge e = frontEdges.poll();  // get and remove the first front edge
     if (e.tag != 0) continue;  // skip non-front edge
     int d = pivot(e, vertices, manifoldMask);
 
-    if (debugCH) {
-      ia = e.e.a;  // for debugging
-      ib = e.e.b;  // for debugging
-      id = d;  // for debugging
+    if (d < 0) {
+      //println("No hit found, number of steps = " + debugInfo.numSteps);
+      exceptionHandler();
+      return false;
     }
 
-    if (d < 0) {
-      print("No hit found, number of steps = " + k);
-      exceptionHandler();
-      if (debugCH) break;
-      else exit();
-      numVerticesIgnored = 0;
-      return triangles;
+    if (debugCH) {
+      debugInfo.a = e.e.a;  // for debugging
+      debugInfo.b = e.e.b;  // for debugging
+      debugInfo.d = d;  // for debugging
     }
 
     int a = e.e.a, b = e.e.b;
@@ -203,24 +222,22 @@ ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
     Vertex vd = vertices.get(d);
 
     triangles.add(new Triangle(a, d, b));  // create a new triangle facet
-    e.tag = 2;  // the front edge becomes an inner edge  // TODO: seems that no need to tag edge or vertex? if use manifold mask
-    manifoldMask[a][d] = manifoldMask[d][b] = manifoldMask[b][a] = true;
-
+    e.tag = 2;  // the front edge becomes an inner edge  // TODO: seems that no need to tag edge? if use manifold mask
     va.outEdges.remove(vb);  // remove edge ab
+    manifoldMask[a][d] = manifoldMask[d][b] = manifoldMask[b][a] = true;
 
     // Check if there is a front edge connecting va and vd
     TaggedEdge e0 = null;
     if (vd.outEdges.containsKey(va)) {
-      e0 = vd.outEdges.get(va); 
+      e0 = vd.outEdges.get(va);
       vd.outEdges.remove(va);
     }
-    else if (va.outEdges.containsKey(vd)) { // is this possible? not possible when no 4 points on a plane?
-      println("edge AD already exists, number of steps = " + k);
+    else if (va.outEdges.containsKey(vd)) { // Is this possible? not possible when no 4 or more points on a plane?
+      println("edge AD already exists, number of steps = " + debugInfo.numSteps);
       exceptionHandler();
-      if (debugCH) break;
-      else exit();
-      e0 = va.outEdges.get(vd);
-      va.outEdges.remove(vd);  // remove edge ad and then add it back?
+      return false;
+      //e0 = va.outEdges.get(vd);
+      //va.outEdges.remove(vd);  // remove edge AD and don't add it back
     }
 
     // Check if there is a front edge connecting vd and vb
@@ -229,59 +246,95 @@ ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
       e1 = vb.outEdges.get(vd);
       vb.outEdges.remove(vd);
     }
-    else if(vd.outEdges.containsKey(vb)) { // is this possible?
-      println("edge DB already exists, number of steps = " + k);
+    else if(vd.outEdges.containsKey(vb)) { // Is this possible?
+      println("edge DB already exists, number of steps = " + debugInfo.numSteps);
       exceptionHandler();
-      if (debugCH) break;
-      else exit();
-      e1 = vd.outEdges.get(vb); 
-      vd.outEdges.remove(vb);
+      return false;
+      //e1 = vd.outEdges.get(vb); 
+      //vd.outEdges.remove(vb); // remove edge DB and don't add it back
     }
 
-    if (e0 == null) { // mark e0 as front edge and push it to the front list
-      e0 = new TaggedEdge(a, d, b, 0);  // create an edge from a to d
-      va.outEdges.put(vd, e0);  // update the adjacent edges starting from a
+    if (e0 == null) { // create a new e0 and push it to the front list
+      e0 = new TaggedEdge(a, d, b, 0);
+      va.outEdges.put(vd, e0);
       frontEdges.add(e0);
-    } else {  // e0 already exists
-      e0.tag = 2;  // remove this edge from front edges
+    } else {  // e0 already exists, remove it from front list
+      e0.tag = 2;
     }
 
-    if (e1 == null) { // mark e1 as front edge and push it to the front list
-      e1 = new TaggedEdge(d, b, a, 0);  // create an edge from d to b
-      vd.outEdges.put(vb, e1);  // update the adjacent edges starting from d
+    if (e1 == null) { // create a new e1 and push it to the front list
+      e1 = new TaggedEdge(d, b, a, 0);
+      vd.outEdges.put(vb, e1);
       frontEdges.add(e1);
-    } else {  // e1 already exists
-      e1.tag = 2;  // remove this edge from front edges
+    } else {  // e1 already exists, remove it from front list
+      e1.tag = 2;
     }
 
     /*
-     * Check if vd becomes an inner vertex when e0 and e1 are inner.
-     * Check if va becomes an inner vertex when e0 is inner.
-     * Check if vb becomes an inner vertex when e1 is inner.
+     * Check if va becomes an inner vertex when e0 is removed from front list.
+     * Check if vb becomes an inner vertex when e1 is removed from front list.
+     * Check if vd becomes an inner vertex when e0 and e1 are removed from front list.
      */
-    if (e0.tag == 2 && e1.tag == 2) {
-      if (isInnerVertex(frontEdges, vd)) vd.isInner = true;
-    }
     if (e0.tag == 2) {
       if (isInnerVertex(frontEdges, va)) va.isInner = true;
     }
     if (e1.tag == 2) {
       if (isInnerVertex(frontEdges, vb)) vb.isInner = true;
     }
+    if (e0.tag == 2 && e1.tag == 2) {
+      if (isInnerVertex(frontEdges, vd)) vd.isInner = true;
+    }
+
+    if (debugCH) debugInfo.numSteps++;  // increase steps or number of faces to be shown
+  }  // end while
+  return true;
+}
+
+/*
+ * Generate the convex hull for a given point array G whose size is nv. Assume
+ * that all input points will be on the surface of the convex hull.
+ */
+ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
+  if (nv < 4) {
+    println("Number of vertices less than 4!");
+    return null;
+  }
+  
+  ArrayList<Triangle> triangles;
+  ArrayList<Vertex> vertices;
+  Queue<TaggedEdge> frontEdges; // maybe using an array would be better, since edge DA, BD would be prev/next to AB, and hence no need to use outEdges for each vertex on the front
+  boolean[][] manifoldMask;
+  DebugInfo debugInfo;
+  int k = 1;
+  while (true) {
+    vertices = convertToVertexList(G, nv);  // vertices may differ every time
+    triangles = new ArrayList<Triangle>();
+    frontEdges = new LinkedList<TaggedEdge>();
+    manifoldMask = new boolean[nv][nv];
+    debugInfo = new DebugInfo();
+
+    boolean success = generateConvexHullFromVertices(vertices, triangles,
+      frontEdges, manifoldMask, debugInfo);
     
+    boolean passQT = passQualityTest(triangles, G, nv);
+    if (success && !passQT) {
+      println("generate CH successfully but not pass quality test");
+    }
+    if (success && passQT) break;
+    //if (k % 10 == 0) println("number of times tried = ", k);
     k++;
-  } // end while
+  }
+  //System.out.format("number of times tried = %d, number of triangles = %d\n", k, triangles.size());
 
   if (debugCH) {
     fill(blue); showFrontEdges(frontEdges, G);
-    fill(black); showInnerVertices(vertices);
-    fill(#9AFF05); showManifoldEdges(manifoldMask, G, nv);
-    if (ia >= 0) { fill(#970EED, 100); show(G[ia], 3); }
-    if (ib >= 0) { fill(#21C2FA, 100); show(G[ib], 3); }
-    if (id >= 0) { fill(#FFF705, 100); show(G[id], 3); }
+    fill(black); showInnerVertices(vertices, G);
+    fill(#9AFF05); showManifoldEdges(manifoldMask, G, nv);  // light green
+    if (debugInfo.a >= 0) { fill(#970EED, 160); show(G[debugInfo.a], 3); }  // purple
+    if (debugInfo.b >= 0) { fill(#21C2FA, 160); show(G[debugInfo.b], 3); }  // light blue
+    if (debugInfo.d >= 0) { fill(#FFF705, 160); show(G[debugInfo.d], 3); }  // light yellow
   }
   
-  numVerticesIgnored = 0; // reset to 0
   return triangles;
 }
 
@@ -334,11 +387,11 @@ void showTriangleNormals(ArrayList<Triangle> triangles, pt[] G) {
 /*
  * Show inner vertices
  */
-void showInnerVertices(ArrayList<Vertex> vertices) {
+void showInnerVertices(ArrayList<Vertex> vertices, pt[] G) {
   int n = vertices.size();
   for (int i = 0; i < n; ++i) {
     if (vertices.get(i).isInner) {
-      show(vertices.get(i).position, 2);
+      show(G[vertices.get(i).id], 2);
     }
   }
 }
