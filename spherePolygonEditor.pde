@@ -10,7 +10,7 @@ boolean doTests = false;
 boolean showCircles = true;
 
 
-float dz=500; // distance to camera. Manipulated with wheel or when 
+float dz=500; // distance to camera. Manipulated with mouse wheel
 float rx=-0.06*TWO_PI, ry=-0.04*TWO_PI;    // view angles manipulated when space pressed but not mouse
 //float rx=0, ry=0;    // view angles manipulated when space pressed but not mouse
 boolean twistFree=false, animating=true, tracking=false, center=true,
@@ -23,22 +23,25 @@ pt F = P(0,0,0);  // focus point:  the camera is looking at it (moved when 'f or
 pt Of=P(100,100,0), Ob=P(110,110,0); // red point controlled by the user via mouseDrag : used for inserting vertices ...
 pt Vf=P(0,0,0), Vb=P(0,0,0);
 pt Pick=P();
-float radius = 100;
+float radiusOfSphere = 100;
 pt centerOfSphere = P(0, 0, 0);
-float rMax = 60;
-int nc = 4;
-int np = 6;
-pt[] centers;
+float rMax = 30;
+float attenuation = 0.5;
+int nc = 10;
+int np = 12;
+pt[] contacts;
 vec[] initDirs;
+int nTriangles = -1;
+float timeCH = 0.0;
+
 
 void setup() {
   myFace = loadImage("data/pic.jpg");  // load image from file pic.jpg in folder data *** replace that file with your pic of your own face
   textureMode(NORMAL);
-  size(900, 900, P3D); // p3D means that we will do 3D graphics
+  size(900, 900, P3D); // P3D means that we will do 3D graphics
   P.declare(); Q.declare(); // P is a polyloop in 3D: declared in pts
-  // PtQ.declare(); 
   // P.resetOnCircle(12,100); // used to get started if no model exists on file 
-  P.loadPts("data/pts");  // loads saved model from file
+  P.loadPts("data/pts_inner_vertex");  // loads saved model from file
   Q.loadPts("data/pts2");  // loads saved model from file
   noSmooth();  // LEAVE HERE FOR 3D PICK TO WORK!!!
   
@@ -47,7 +50,7 @@ void setup() {
   
   if (generateInput) {
     int n = 64;
-    generatePointsOnSphere(P, centerOfSphere, radius, n);
+    generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, n);
   }
   
   if (doTests) {
@@ -56,8 +59,8 @@ void setup() {
   }
   
   //testIntersectionTwoDisks();
-  centers = generateTubeCentersInSphere(centerOfSphere, radius, rMax, nc);
-  initDirs = generateInitDirs(centerOfSphere, centers, nc);
+  contacts = generateContactsOnSphere(centerOfSphere, radiusOfSphere, rMax, nc);
+  initDirs = generateInitDirs(centerOfSphere, contacts, nc);
 }
 
 void draw() {
@@ -116,22 +119,34 @@ void draw() {
     // 3D mouse demo
     fill(red); noStroke(); show(pick(mouseX,mouseY),5);
 
-    if (doTests) {
-      testCH(numTests, numPointsPerTest, showResults);
-    } else if (generateCH) {
-      ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
-      fill(red); showTriangles(triangles, P.G);
-    }
+    //if (doTests) {
+    //  testCH(numTests, numPointsPerTest, showResults);
+    //} else if (generateCH) {
+    //  ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
+    //  fill(red); showTriangles(triangles, P.G);
+    //}
     
-    float r = rMax * 1.0;
-    if (showCircles) {
-      pt[][] points = generatePointsForCircles(centers, r, centerOfSphere, initDirs, nc, np);
-      showCircles(centers, points, nc, np);
+    float r = rMax * attenuation;
+    pt[] centers = new pt[nc];
+    pt[][] points = generatePointsForCircles(contacts, r, centerOfSphere, radiusOfSphere, initDirs, nc, np, centers);
+    pt[] tmpG = convertTo1DArray(points, nc, np);
+    
+    if (showCircles) showCircles(centers, points, nc, np);
+    if (generateCH) {
+      long startTime = System.nanoTime();
+      ArrayList<Triangle> triangles = generateConvexHull(points, contacts, nc, np);
+      long endTime = System.nanoTime();
+      timeCH = (endTime - startTime) / 1000000.0;
+      fill(red); showTriangles(triangles, tmpG);
+      nTriangles = triangles.size();
+    } else {
+      nTriangles = -1;
     }
+     
 
     // Show the big yellow sphere
     if (showYellowSphere) {
-      fill(yellow, 100); show(P(),radius);  // center of sphere = (0, 0, 0)
+      fill(yellow, 100); show(P(), radiusOfSphere);  // center of sphere = (0, 0, 0)
     }
 
     if(snappingPDF) {endRecord(); snappingPDF=false;}
@@ -143,8 +158,11 @@ void draw() {
   if(filming && (animating || change)) saveFrame("FRAMES/F"+nf(frameCounter++,4)+".tif");  // save next frame to make a movie
   change=false; // to avoid capturing frames when nothing happens (change is set uppn action)
   //scribeHeader("pp="+pp,2);
-  scribeHeader("number of faces = " + numFacesShown, 3);
-  }
+  scribeHeader("debug convex hull = " + String.valueOf(debugCH), 2);
+  scribeHeader("number of steps I enter = " + numFacesShown, 3);
+  if (nTriangles != -1) scribeHeader("number of triangles = " + nTriangles, 4);
+  if (nTriangles != -1) scribeHeader("time to generate convex hull = " + timeCH + "ms", 5);
+}
   
 void keyPressed() {
   if(key=='2') twoD=!twoD; 
@@ -153,7 +171,7 @@ void keyPressed() {
   if(key=='!') snapPicture();
   if(key=='@') snappingPDF=true;
   if(key=='~') filming=!filming;
-  if(key==']') showControlPolygon=!showControlPolygon;
+  //if(key==']') showControlPolygon=!showControlPolygon;
   if(key=='|') showNormals=!showNormals;
   if(key=='G') gouraud=!gouraud;
   if(key=='q') Q.copyFrom(P);
@@ -180,10 +198,19 @@ void keyPressed() {
   if (key == '0') debugCH = !debugCH;
   if (key == 'o') showYellowSphere = !showYellowSphere;
   if (key == 'h') generateCH = !generateCH;
-  if (key == '+') numFacesShown++;
-  if (key == '-') numFacesShown--;
+  if (key == '+') if (nTriangles >= 0) numFacesShown = nTriangles + 1;
+  if (key == '-') if (numFacesShown > 0) numFacesShown--;
   if (key == '1') numFacesShown = 1;
+  if (key == '[') {
+    if (attenuation < 1.0) attenuation += 0.1;
   }
+  if (key == ']') {
+    if (attenuation > 0.2) attenuation -= 0.1;
+  }
+  if (key == '3') {
+    showCircles = !showCircles;
+  }
+}
 
 void mouseWheel(MouseEvent event) {dz -= event.getAmount(); change=true;}
 void mouseReleased() {picking=false;}

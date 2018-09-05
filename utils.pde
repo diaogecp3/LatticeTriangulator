@@ -40,3 +40,7 @@ boolean isZero(float x) {
   // assume that x >= 0
   return x < 0.00001;
 }
+
+vec random3(float n) {
+  return new vec(random(-n, n), random(-n, n), random(-n, n));
+}

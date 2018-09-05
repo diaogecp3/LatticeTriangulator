@@ -43,7 +43,7 @@ void generatePointsOnSphere(pts P, pt c, float r, int n) {
 }
 
 
-pt[] generateTubeCentersInSphere(pt C, float R, float rMax, int nc) {
+pt[] generateContactsOnSphere(pt C, float R, float rMax, int nc) {
   assert rMax < R;
   pt[] points = new pt[nc];
   Disk[] disks = new Disk[nc];
@@ -52,7 +52,7 @@ pt[] generateTubeCentersInSphere(pt C, float R, float rMax, int nc) {
     while (true) {
       pt p = generateOnePointOnSphere(C, R);
       vec normal = U(C, p);
-      pt c = P(C, distance, normal);
+      pt c = P(C, distance, normal);  // push p towards C
       Disk disk = new Disk(c, normal, rMax);
       boolean bad = false;
       for (int j = 0; j < i; ++j) {
@@ -62,7 +62,7 @@ pt[] generateTubeCentersInSphere(pt C, float R, float rMax, int nc) {
         }
       }
       if (!bad) {
-        points[i] = c;
+        points[i] = p;
         disks[i] = disk;
         break;
       }
@@ -79,19 +79,21 @@ vec constructNormal(vec v) {
   }
 }
 
-vec[] generateInitDirs(pt C, pt[] centers, int nc) {
+vec[] generateInitDirs(pt C, pt[] contacts, int nc) {
   vec[] initDirs = new vec[nc];
   for (int i = 0; i < nc; ++i) {
-    vec v = V(C, centers[i]);
+    vec v = V(C, contacts[i]);
     initDirs[i] = constructNormal(v);
   }
   return initDirs;
 }
 
-pt[] generatePointsForOneCircle(pt center, float r, vec normal, vec initDir, int np) {
+pt[] generatePointsForOneCircle(pt p, float r, pt C, float R, vec initDir, int np, pt center) {
   pt[] points = new pt[np];
+  vec normal = U(C, p);
   vec v = I = initDir;
-  vec J = N(I, normal);
+  vec J = N(normal, I);  // the order matters! make sure cross(I, J) same as normal
+  center.set(P(C, sqrt(R * R - r * r), normal));
   float da = TWO_PI / np;
   float a = 0;
   for (int i = 0; i < np; ++i) {
@@ -102,16 +104,19 @@ pt[] generatePointsForOneCircle(pt center, float r, vec normal, vec initDir, int
 }
 
 
-pt[][] generatePointsForCircles(pt[] centers, float r, pt C, vec[] initDirs, int nc, int np) {
+// a contact = the intersection point between the medial axis of a tube and the sphere
+// a center = the center of a circle
+pt[][] generatePointsForCircles(pt[] contacts, float r, pt C, float R, vec[] initDirs, int nc, int np, pt[] centers) {
   pt[][] points = new pt[nc][np];
   for (int i = 0; i < nc; ++i) {
-    vec normal = U(C, centers[i]);
-    points[i] = generatePointsForOneCircle(centers[i], r, normal, initDirs[i], np);
+    centers[i] = new pt();
+    points[i] = generatePointsForOneCircle(contacts[i], r, C, R, initDirs[i], np, centers[i]);
   }
   return points;
 }
 
 
+// a center = the center of a disk
 void showCircles(pt[] centers, pt[][] points, int nc, int np) {
   fill(red);
   for (int i = 0; i < nc; ++i) {

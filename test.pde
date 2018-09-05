@@ -15,7 +15,7 @@ float[] times = new float[numTests];  // in milliseconds
  */
 void testCH(int n, int m, boolean showResults) {
   for (int i = 0; i < n; ++i) {
-    generatePointsOnSphere(P, centerOfSphere, radius, m);
+    generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, m);
     
     long startTime = System.nanoTime(); 
     ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
@@ -49,8 +49,7 @@ boolean passConvexityTest(ArrayList<Triangle> triangles, pt[] G, int nv) {
       if (j == a || j == b || j == c) continue;
       pt D = G[j];
       vec AD = V(A, D);
-      if (dot(normal, AD) > 0.001) {
-        //println("Fail convexity test");
+      if (notZero(dot(normal, AD))) {
         return false;
       }
     }
