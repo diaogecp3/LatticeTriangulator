@@ -118,7 +118,7 @@ pt[][] generatePointsForCircles(pt[] contacts, float r, pt C, float R, vec[] ini
 
 // a center = the center of a disk
 void showCircles(pt[] centers, pt[][] points, int nc, int np) {
-  fill(red);
+  fill(orange);
   for (int i = 0; i < nc; ++i) {
     show(centers[i], 3);
   }

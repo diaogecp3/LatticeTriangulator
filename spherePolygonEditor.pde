@@ -12,7 +12,6 @@ boolean showCircles = true;
 
 float dz=500; // distance to camera. Manipulated with mouse wheel
 float rx=-0.06*TWO_PI, ry=-0.04*TWO_PI;    // view angles manipulated when space pressed but not mouse
-//float rx=0, ry=0;    // view angles manipulated when space pressed but not mouse
 boolean twistFree=false, animating=true, tracking=false, center=true,
   gouraud=true, showControlPolygon=true, showNormals=false, showFrame=false,
   snappingPDF=false, twoD=false;
@@ -23,12 +22,13 @@ pt F = P(0,0,0);  // focus point:  the camera is looking at it (moved when 'f or
 pt Of=P(100,100,0), Ob=P(110,110,0); // red point controlled by the user via mouseDrag : used for inserting vertices ...
 pt Vf=P(0,0,0), Vb=P(0,0,0);
 pt Pick=P();
+
 float radiusOfSphere = 100;
 pt centerOfSphere = P(0, 0, 0);
-float rMax = 30;
+float rMax = 40;
 float attenuation = 0.5;
-int nc = 10;
-int np = 12;
+int nc = 8;
+int np = 16;
 pt[] contacts;
 vec[] initDirs;
 int nTriangles = -1;
@@ -36,12 +36,13 @@ float timeCH = 0.0;
 
 
 void setup() {
-  myFace = loadImage("data/pic.jpg");  // load image from file pic.jpg in folder data *** replace that file with your pic of your own face
+  face0 = loadImage("data/Yaohong.jpg");  // load Yaohong's image
+  face1 = loadImage("data/Jarek.jpg");  // load Jarek's image
   textureMode(NORMAL);
   size(900, 900, P3D); // P3D means that we will do 3D graphics
   P.declare(); Q.declare(); // P is a polyloop in 3D: declared in pts
-  // P.resetOnCircle(12,100); // used to get started if no model exists on file 
-  P.loadPts("data/pts_inner_vertex");  // loads saved model from file
+  // P.resetOnCircle(12,100); // used to get started if no model exists on file
+  P.loadPts("data/pts_ad_exist");  // loads saved model from file
   Q.loadPts("data/pts2");  // loads saved model from file
   noSmooth();  // LEAVE HERE FOR 3D PICK TO WORK!!!
   
@@ -111,37 +112,46 @@ void draw() {
       fill(red,100); P.showPicked(3); // shows currently picked vertex in red   
     } else {
       fill(green);
-      //P.drawBalls(1);
+      P.drawBalls(2);
       fill(red, 100);
-      //P.showPicked(2);
+      //P.showPicked(3);
     }
 
     // 3D mouse demo
     fill(red); noStroke(); show(pick(mouseX,mouseY),5);
 
-    //if (doTests) {
-    //  testCH(numTests, numPointsPerTest, showResults);
-    //} else if (generateCH) {
-    //  ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
-    //  fill(red); showTriangles(triangles, P.G);
-    //}
-    
-    float r = rMax * attenuation;
-    pt[] centers = new pt[nc];
-    pt[][] points = generatePointsForCircles(contacts, r, centerOfSphere, radiusOfSphere, initDirs, nc, np, centers);
-    pt[] tmpG = convertTo1DArray(points, nc, np);
-    
-    if (showCircles) showCircles(centers, points, nc, np);
-    if (generateCH) {
+    if (doTests) {
+      testCH(numTests, numPointsPerTest, showResults);
+    } else if (generateCH) {
       long startTime = System.nanoTime();
-      ArrayList<Triangle> triangles = generateConvexHull(points, contacts, nc, np);
+      ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
       long endTime = System.nanoTime();
       timeCH = (endTime - startTime) / 1000000.0;
-      fill(red); showTriangles(triangles, tmpG);
+      fill(red);
+      stroke(0);
+      showTriangles(triangles, P.G);
       nTriangles = triangles.size();
     } else {
       nTriangles = -1;
     }
+    
+    //float r = rMax * attenuation;
+    //pt[] centers = new pt[nc];
+    //pt[][] points = generatePointsForCircles(contacts, r, centerOfSphere, radiusOfSphere, initDirs, nc, np, centers);
+    //pt[] tmpG = convertTo1DArray(points, nc, np);
+    //if (showCircles) showCircles(centers, points, nc, np);
+    //if (generateCH) {
+    //  long startTime = System.nanoTime();
+    //  ArrayList<Triangle> triangles = generateConvexHull(points, contacts, nc, np);
+    //  long endTime = System.nanoTime();
+    //  timeCH = (endTime - startTime) / 1000000.0;
+    //  fill(red);
+    //  stroke(0);
+    //  showTriangles(triangles, tmpG);
+    //  nTriangles = triangles.size();
+    //} else {
+    //  nTriangles = -1;
+    //}
      
 
     // Show the big yellow sphere
@@ -227,8 +237,7 @@ void mouseDragged() {
   if (!keyPressed) {Of.add(ToIJ(V((float)(mouseX-pmouseX),(float)(mouseY-pmouseY),0))); }
   if (keyPressed && key==CODED && keyCode==SHIFT) {Of.add(ToK(V((float)(mouseX-pmouseX),(float)(mouseY-pmouseY),0)));};
   if (keyPressed && key=='i') P.setPickedTo(Pick); 
-  if (keyPressed && key=='x') P.movePickedTo(Pick); 
-//  if (keyPressed && key=='x') P.movePicked(ToIJ(V((float)(mouseX-pmouseX),(float)(mouseY-pmouseY),0))); 
+  if (keyPressed && key=='x') P.movePickedTo(Pick);
   if (keyPressed && key=='z') P.movePicked(ToK(V((float)(mouseX-pmouseX),(float)(mouseY-pmouseY),0))); 
   if (keyPressed && key=='X') P.moveAll(ToIJ(V((float)(mouseX-pmouseX),(float)(mouseY-pmouseY),0))); 
   if (keyPressed && key=='Z') P.moveAll(ToK(V((float)(mouseX-pmouseX),(float)(mouseY-pmouseY),0))); 
@@ -245,13 +254,15 @@ void mouseDragged() {
 // **** Header, footer, help text on canvas
 void displayHeader() { // Displays title and authors face on screen
     scribeHeader(title,0); scribeHeaderRight(name); 
-    fill(white); image(myFace, width-myFace.width/2,25,myFace.width/2,myFace.height/2);
+    fill(white);
+    image(face0, width-face1.width/2-face0.width/2-10, 25, face0.width/2, face0.height/2+5);
+    image(face1, width-face1.width/2, 25, face1.width/2, face1.height/2-5);
     }
 void displayFooter() { // Displays help text at the bottom
     scribeFooter(guide,1); 
     scribeFooter(menu,0); 
     }
 
-String title ="FAN: Polyloop Editor on a sphere", name ="Yaohong Wu, Jarek Rossignac",
+String title ="Lattice Triangulator", name ="Yaohong Wu, Jarek Rossignac",
        menu="?:help, !:picture, ~:(start/stop)capture, space:rotate, s/wheel:closer, >:frame, #:quit",
        guide="x/z:select&edit, e:swap, q/p:copy, l/L: load, w/W:write to file"; // user's guide

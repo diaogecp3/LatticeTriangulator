@@ -3,10 +3,9 @@
  *********************************************************/
 
 
-int numTests = 10;
-int numPointsPerTest = 16;
+int numTests = 1000;
+int numPointsPerTest = 128;
 boolean showResults = false;
-float[] times = new float[numTests];  // in milliseconds
 
 /*
  * Test the performance of convex hull generation for points on a sphere.
@@ -14,6 +13,7 @@ float[] times = new float[numTests];  // in milliseconds
  * is true, 3D results will be shown on screen.
  */
 void testCH(int n, int m, boolean showResults) {
+  float[] times = new float[n];  // in millisecons
   for (int i = 0; i < n; ++i) {
     generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, m);
     
@@ -21,7 +21,7 @@ void testCH(int n, int m, boolean showResults) {
     ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
     long endTime = System.nanoTime();
     times[i] = (endTime - startTime) / 1000000.0;
-    System.out.format("i = %d, duration = %f ms. \n", i, times[i]);
+    if (i % 10 == 0) System.out.format("i = %d, duration = %f ms. \n", i, times[i]);
     if (showResults) {
       fill(red); showTriangles(triangles, P.G);
       fill(cyan); showTriangleNormals(triangles, P.G);
@@ -29,7 +29,7 @@ void testCH(int n, int m, boolean showResults) {
   }
   
   float avg = average(times, n, 1, n);
-  System.out.format("Generate a convex hull for %d point, %d tests in total, average time = %f ms. \n", m, n, avg);
+  System.out.format("Generate a convex hull for %d point, %d tests in total, average time (ignore the first one) = %f ms. \n", m, n, avg);
 }
 
 

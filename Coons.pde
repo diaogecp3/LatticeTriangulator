@@ -60,7 +60,7 @@ void shadeSurface(pt[] P, float e){
 void shadeSurfaceTextured(pt[] P, float e){ 
   fill(white);
   for(float s=0; s<1.001-e; s+=e) for(float t=0; t<1.001-e; t+=e) 
-  {beginShape(); texture(myFace); vTextured(coons(P,s,t),s,t); vTextured(coons(P,s+e,t),s+e,t); vTextured(coons(P,s+e,t+e),s+e,t+e); vTextured(coons(P,s,t+e),s,t+e); endShape(CLOSE);}
+  {beginShape(); texture(face0); vTextured(coons(P,s,t),s,t); vTextured(coons(P,s+e,t),s+e,t); vTextured(coons(P,s+e,t+e),s+e,t+e); vTextured(coons(P,s,t+e),s,t+e); endShape(CLOSE);}
   }
 
 void shadeSurfaceGouraud(pt[] P, float e, float ee){ 

@@ -1,7 +1,8 @@
 // ************************************ IMAGES & VIDEO 
 int pictureCounter=0, frameCounter=0;
 Boolean filming=false, change=false;
-PImage myFace; // picture of author's face, should be: data/pic.jpg in sketch folder
+PImage face0; // picture of first author's face, should be under data/ in sketch folder
+PImage face1; // picture of second author's face, should be under data/ in sketch folder
 void snapPicture() {saveFrame("PICTURES/P"+nf(pictureCounter++,3)+".jpg"); }
 
 // ******************************************COLORS 

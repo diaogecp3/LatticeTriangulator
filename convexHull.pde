@@ -5,36 +5,24 @@
 
 
 import java.util.LinkedList;
-import java.util.ListIterator;
 
 int numFacesShown = 0;
-
 boolean debugCH = true;
-boolean debugDisturbance = true;
 float disturbance = 0.0001;
 
-class DebugInfo {
-  int a, b, d;
-  int numSteps;
-  DebugInfo() {
-    a = b = d = -1;
-    numSteps = 1;
-  }
-}
+
 
 /*
  * Initialize a vertex list given a point (position) array. A vertex may
  * contain more info than a position.
  */
-ArrayList<Vertex> convertToVertexList(pt[] G, int nv) {
+ArrayList<Vertex> convertToVertexList(pt[] G, int nv, int k) {
   ArrayList<Vertex> vertices = new ArrayList<Vertex>();
-  if (debugDisturbance) {
+  if (k > 0) {
     for (int i = 0; i < nv; ++i) {
-      float x = G[i].x + random(-1.0, 1.0) * disturbance;
-      float y = G[i].y + random(-1.0, 1.0) * disturbance;
-      float z = G[i].z + random(-1.0, 1.0) * disturbance;
-      pt tmp = new pt(x, y, z);
-      vertices.add(new Vertex(i, tmp));
+      vec epsilon = random3(disturbance);
+      pt p = P(G[i], epsilon);
+      vertices.add(new Vertex(i, p));
     }
   } else {
     for (int i = 0; i < nv; ++i) {
@@ -195,14 +183,13 @@ boolean generateConvexHullFromVertices(ArrayList<Vertex> vertices,
                                        LinkedList<TaggedEdge> frontEdges,
                                        boolean[][] manifoldMask,
                                        DebugInfo debugInfo) {
-  // TODO: If starting with circles, we can skip finding the first triangle
   // Find the first valid triangle
   triangles.add(findFirstTriangle(vertices, frontEdges, manifoldMask));
   debugInfo.numSteps = 1;
   
   // Expand the triangle mesh until the end
   while(frontEdges.size() > 0) {
-    // stop after creating the first numFacesShown faces
+    // Break after creating the first numFacesShown faces
     if (debugCH && debugInfo.numSteps >= numFacesShown) break;
 
     TaggedEdge e = frontEdges.poll();  // get and remove the first front edge
@@ -210,15 +197,9 @@ boolean generateConvexHullFromVertices(ArrayList<Vertex> vertices,
     int d = pivot(e, vertices, manifoldMask, null);
 
     if (d < 0) {
-      //println("No hit found, number of steps = " + debugInfo.numSteps);
+      println("No hit found, number of steps = " + debugInfo.numSteps);
       exceptionHandler();
       return false;
-    }
-
-    if (debugCH) {
-      debugInfo.a = e.e.a;  // for debugging
-      debugInfo.b = e.e.b;  // for debugging
-      debugInfo.d = d;  // for debugging
     }
 
     int a = e.e.a, b = e.e.b;
@@ -231,19 +212,22 @@ boolean generateConvexHullFromVertices(ArrayList<Vertex> vertices,
     va.outEdges.remove(vb);  // remove edge ab
     manifoldMask[a][d] = manifoldMask[d][b] = manifoldMask[b][a] = true;
 
+    if (debugCH) {
+      debugInfo.a = a;  // for debugging
+      debugInfo.b = b;  // for debugging
+      debugInfo.d = d;  // for debugging
+    }
+
     // Check if there is a front edge connecting va and vd
-    TaggedEdge e0 = null;
-  
+    TaggedEdge e0 = null;  
     if (vd.outEdges.containsKey(va)) {  // can't just check next valid edge in front list
       e0 = vd.outEdges.get(va);
       vd.outEdges.remove(va);
     }
-    else if (va.outEdges.containsKey(vd)) { // Is this possible? not possible when no 4 or more points on a plane?
+    if (va.outEdges.containsKey(vd)) { // Is this possible? not possible when no 4 or more points on a plane?
       println("edge AD already exists, number of steps = " + debugInfo.numSteps);
       exceptionHandler();
       return false;
-      //e0 = va.outEdges.get(vd);
-      //va.outEdges.remove(vd);  // remove edge AD and don't add it back
     }
 
     // Check if there is a front edge connecting vd and vb
@@ -252,12 +236,10 @@ boolean generateConvexHullFromVertices(ArrayList<Vertex> vertices,
       e1 = vb.outEdges.get(vd);
       vb.outEdges.remove(vd);
     }
-    else if (vd.outEdges.containsKey(vb)) { // Is this possible?
+    if (vd.outEdges.containsKey(vb)) { // Is this possible?
       println("edge DB already exists, number of steps = " + debugInfo.numSteps);
       exceptionHandler();
       return false;
-      //e1 = vd.outEdges.get(vb); 
-      //vd.outEdges.remove(vb); // remove edge DB and don't add it back
     }
 
     if (e0 == null) { // create a new e0 and push it to the front list
@@ -267,9 +249,6 @@ boolean generateConvexHullFromVertices(ArrayList<Vertex> vertices,
     } else {  // e0 already exists, remove it from front list
       e0.tag = 2;
     }
-
-    // TODO: merge current list of front edges with another list of front edges
-
 
     if (e1 == null) { // create a new e1 and push it to the front list
       e1 = new TaggedEdge(d, b, a, 0);
@@ -310,9 +289,9 @@ ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
   LinkedList<TaggedEdge> frontEdges; // maybe using an array would be better, since edge DA, BD would be prev/next to AB, and hence no need to use outEdges for each vertex on the front
   boolean[][] manifoldMask;
   DebugInfo debugInfo;
-  int k = 1;
+  int k = 0;
   while (true) {
-    vertices = convertToVertexList(G, nv);  // vertices may differ every time
+    vertices = convertToVertexList(G, nv, k);  // vertices may differ every time
     triangles = new ArrayList<Triangle>();
     frontEdges = new LinkedList<TaggedEdge>();
     manifoldMask = new boolean[nv][nv];
@@ -325,11 +304,11 @@ ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
     if (success && !passQT) {
       println("generate CH successfully but not pass quality test");
     }
-    if (success && passQT) break;
     k++;
+    if (success && passQT) break;
   }
-  //System.out.format("number of times tried = %d, number of triangles = %d\n", k, triangles.size());
-
+  if (k > 1) System.out.format("number of times tried = %d\n", k);
+  
   if (debugCH) {
     fill(blue); showFrontEdges(frontEdges, G);
     fill(black); showInnerVertices(vertices, G);

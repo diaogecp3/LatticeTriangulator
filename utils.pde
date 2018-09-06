@@ -20,7 +20,7 @@ float average(float[] a, int n, int start, int end) {
  * Exception handler.
  */
 void exceptionHandler() {
-  P.savePts("data/pts");
+  P.savePts("data/pts_unnamed");
 }
 
 boolean notAbsZero(float x) {

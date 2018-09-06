@@ -6,6 +6,15 @@
 import java.util.HashMap;
 import java.util.HashSet;
 
+class DebugInfo {
+  int a, b, d;
+  int numSteps;
+  DebugInfo() {
+    a = b = d = -1;
+    numSteps = 1;
+  }
+}
+
 class Triangle {
   int a, b, c;  // index of vertex
   Triangle(int _a, int _b, int _c) { a = _a; b = _b; c = _c;}
