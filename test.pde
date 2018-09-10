@@ -3,7 +3,7 @@
  *********************************************************/
 
 
-int numTests = 1000;
+int numTests = 2000;
 int numPointsPerTest = 128;
 boolean showResults = false;
 
@@ -14,14 +14,14 @@ boolean showResults = false;
  */
 void testCH(int n, int m, boolean showResults) {
   float[] times = new float[n];  // in millisecons
+  int p = n / 10;
   for (int i = 0; i < n; ++i) {
     generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, m);
-    
     long startTime = System.nanoTime(); 
     ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
     long endTime = System.nanoTime();
     times[i] = (endTime - startTime) / 1000000.0;
-    if (i % 10 == 0) System.out.format("i = %d, duration = %f ms. \n", i, times[i]);
+    if (i % p == 0) System.out.format("duration of %d-th test = %f ms. \n", i, times[i]);
     if (showResults) {
       fill(red); showTriangles(triangles, P.G);
       fill(cyan); showTriangleNormals(triangles, P.G);

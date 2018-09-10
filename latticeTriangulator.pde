@@ -27,8 +27,8 @@ float radiusOfSphere = 100;
 pt centerOfSphere = P(0, 0, 0);
 float rMax = 40;
 float attenuation = 0.5;
-int nc = 8;
-int np = 16;
+int numGroups = 10;
+int numPointsPerGroup = 4;
 pt[] contacts;
 vec[] initDirs;
 int nTriangles = -1;
@@ -42,7 +42,8 @@ void setup() {
   size(900, 900, P3D); // P3D means that we will do 3D graphics
   P.declare(); Q.declare(); // P is a polyloop in 3D: declared in pts
   // P.resetOnCircle(12,100); // used to get started if no model exists on file
-  P.loadPts("data/pts_ad_exist");  // loads saved model from file
+  //P.loadPts("data/convex_hull/pts_hard_2");  // loads saved model from file
+  P.loadPts("data/convex_hull/pts_easy_0");
   Q.loadPts("data/pts2");  // loads saved model from file
   noSmooth();  // LEAVE HERE FOR 3D PICK TO WORK!!!
   
@@ -50,8 +51,8 @@ void setup() {
   P2.resetOnCircle(6,100);
   
   if (generateInput) {
-    int n = 64;
-    generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, n);
+    println("use generated input!");
+    generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, 10);
   }
   
   if (doTests) {
@@ -60,8 +61,8 @@ void setup() {
   }
   
   //testIntersectionTwoDisks();
-  contacts = generateContactsOnSphere(centerOfSphere, radiusOfSphere, rMax, nc);
-  initDirs = generateInitDirs(centerOfSphere, contacts, nc);
+  contacts = generateContactsOnSphere(centerOfSphere, radiusOfSphere, rMax, numGroups);
+  initDirs = generateInitDirs(centerOfSphere, contacts, numGroups);
 }
 
 void draw() {
@@ -112,7 +113,7 @@ void draw() {
       fill(red,100); P.showPicked(3); // shows currently picked vertex in red   
     } else {
       fill(green);
-      P.drawBalls(2);
+      //P.drawBalls(2);
       fill(red, 100);
       //P.showPicked(3);
     }
@@ -120,44 +121,44 @@ void draw() {
     // 3D mouse demo
     fill(red); noStroke(); show(pick(mouseX,mouseY),5);
 
-    if (doTests) {
-      testCH(numTests, numPointsPerTest, showResults);
-    } else if (generateCH) {
+    //if (doTests) {
+    //  testCH(numTests, numPointsPerTest, showResults);
+    //} else if (generateCH) {
+    //  long startTime = System.nanoTime();
+    //  ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
+    //  long endTime = System.nanoTime();
+    //  timeCH = (endTime - startTime) / 1000000.0;
+    //  fill(red); stroke(0);
+    //  nTriangles = triangles.size();
+    //  showTriangles(triangles, P.G);
+    //} else {
+    //  nTriangles = -1;
+    //}
+    
+    float r = rMax * attenuation;
+    pt[] centers = new pt[numGroups];
+    pt[][] points = generatePointsForCircles(contacts, r, centerOfSphere, radiusOfSphere, initDirs, numGroups, numPointsPerGroup, centers);
+    pt[] tmpG = convertTo1DArray(points, numGroups, numPointsPerGroup);
+    if (showCircles) showGroups(centers, points, numGroups, numPointsPerGroup);
+    if (generateCH) {
       long startTime = System.nanoTime();
-      ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
+      ArrayList<Triangle> triangles = generateConvexHull(points, numGroups, numPointsPerGroup);
       long endTime = System.nanoTime();
       timeCH = (endTime - startTime) / 1000000.0;
       fill(red);
       stroke(0);
-      showTriangles(triangles, P.G);
+      showTriangles(triangles, tmpG);
       nTriangles = triangles.size();
     } else {
       nTriangles = -1;
     }
-    
-    //float r = rMax * attenuation;
-    //pt[] centers = new pt[nc];
-    //pt[][] points = generatePointsForCircles(contacts, r, centerOfSphere, radiusOfSphere, initDirs, nc, np, centers);
-    //pt[] tmpG = convertTo1DArray(points, nc, np);
-    //if (showCircles) showCircles(centers, points, nc, np);
-    //if (generateCH) {
-    //  long startTime = System.nanoTime();
-    //  ArrayList<Triangle> triangles = generateConvexHull(points, contacts, nc, np);
-    //  long endTime = System.nanoTime();
-    //  timeCH = (endTime - startTime) / 1000000.0;
-    //  fill(red);
-    //  stroke(0);
-    //  showTriangles(triangles, tmpG);
-    //  nTriangles = triangles.size();
-    //} else {
-    //  nTriangles = -1;
-    //}
-     
 
     // Show the big yellow sphere
     if (showYellowSphere) {
       fill(yellow, 100); show(P(), radiusOfSphere);  // center of sphere = (0, 0, 0)
     }
+
+    if (exitDraw) noLoop();
 
     if(snappingPDF) {endRecord(); snappingPDF=false;}
     popMatrix(); // done with 3D drawing. Restore front view for writing text on canvas

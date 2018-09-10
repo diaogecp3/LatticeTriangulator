@@ -2,9 +2,10 @@
  * Geometric data structures used in this project.
  *********************************************************/
 
-
+import java.util.LinkedList;
 import java.util.HashMap;
 import java.util.HashSet;
+
 
 class DebugInfo {
   int a, b, d;
@@ -26,18 +27,23 @@ class Edge {
 }
 
 class TaggedEdge {
-  Edge e;
-  int c; // the id of opposite vertex w.r.t. edge e, it only makes senses when e is a front or border edge
-  int tag;  // 0:front, 1:border, 2:inner
-  TaggedEdge(int _a, int _b, int _c, int _tag) {
-    e = new Edge(_a,_b);
+  int a, b;  // the id of two ends of the edge
+  int c; // the id of opposite vertex w.r.t. edge e, it only makes senses when e is a front edge
+  boolean isFront;  // true:front, false: non-front 
+  vec N;  // the outward normal defined by vertices A, B, C
+  TaggedEdge(int _a, int _b, int _c, boolean _isFront, vec _N) {
+    a = _a;
+    b = _b;
     c = _c;
-    tag = _tag;
+    isFront = _isFront;
+    N = _N;
   }
-  TaggedEdge(int _a, int _b, int _c) {
-    e = new Edge(_a, _b);
+  TaggedEdge(int _a, int _b, int _c, vec _N) {
+    a = _a;
+    b = _b;
     c = _c;
-    tag = 0;
+    isFront = true;
+    N = _N;
   }
 }
 
@@ -48,6 +54,12 @@ class Front {
     edges = new LinkedList<TaggedEdge>();
     groupIDs = new HashSet<Integer>();
   }
+  
+  Front(LinkedList<TaggedEdge> _edges) {
+    edges = _edges;
+    groupIDs = new HashSet<Integer>();
+  }
+  
   Front(LinkedList<TaggedEdge> _edges, HashSet<Integer> _groupIDs) {
     edges = _edges;
     groupIDs = _groupIDs;
@@ -78,11 +90,7 @@ class Front {
   }
   
   void invalidate(TaggedEdge e) {
-    e.tag = 2;
-  }
-  
-  boolean remove(TaggedEdge e) {
-    return edges.remove(e);
+    e.isFront = false;
   }
   
   TaggedEdge get(int index) {
@@ -93,7 +101,7 @@ class Front {
     int n = edges.size();
     int i = 0;
     for (; i < n; ++i) {
-      if (edges.get(i).e.a == v.id) break;
+      if (edges.get(i).a == v.id) break;
     }
     return i;
   }
@@ -130,17 +138,17 @@ class Front {
   
   boolean isInnerVertex(Vertex v) {
     for (TaggedEdge edge : edges) {
-      if (edge.tag == 0 && (edge.e.a == v.id || edge.e.b == v.id)) return false;
+      if (edge.isFront && (edge.a == v.id || edge.b == v.id)) return false;
     }
     return true;
   }
   
   void showEdges(pt[] G) {
     for (TaggedEdge edge : edges) {
-      if (edge.tag != 0) continue;
+      if (!edge.isFront) continue;
       pt A, B;
-      A = G[edge.e.a];
-      B = G[edge.e.b];
+      A = G[edge.a];
+      B = G[edge.b];
       arrow(A, V(A, B), 2);
     }
   }

@@ -12,7 +12,6 @@ pt generateOnePointOnSphere(pt c, float r) {
   return new pt(c.x + dx, c.y + dy, c.z + dz);
 }
 
-
 pt[] generatePointsOnSphere(pt c, float r, int n) {
   pt[] points = new pt[n];
   for (int i = 0; i < n; ++i) {
@@ -117,7 +116,7 @@ pt[][] generatePointsForCircles(pt[] contacts, float r, pt C, float R, vec[] ini
 
 
 // a center = the center of a disk
-void showCircles(pt[] centers, pt[][] points, int nc, int np) {
+void showGroups(pt[] centers, pt[][] points, int nc, int np) {
   fill(orange);
   for (int i = 0; i < nc; ++i) {
     show(centers[i], 3);

@@ -35,18 +35,13 @@ void showNormalToTriangle(pt A, pt B, pt C, float d, float r) {
   arrow(D, V(d, N), r);
 }
 
-
-
 vec2 solveLinearEquationsInTwoVars(float a, float b, float c, float d, float e, float f) {
   float det = a * d - b * c;
-  //println("det = ", det);
   if (abs(det) < 0.000001) return null;
   float x =(d * e - b * f) / det;
   float y = (a * f - c * e) / det;
-  //System.out.format("x = %f, y = %f\n", x, y);
   return new vec2(x, y);
 }
-
 
 void constructAndSolveLE(vec A, vec B, vec C, vec D, vec2 yz0, vec2 yz1) {
   float dotAC = dot(A, C);
@@ -95,7 +90,6 @@ void intersectionTwoPlanes(pt A, vec C, pt B, vec D, pt p0, pt p1) {
   return;
 }
 
-
 float distanceToLine(pt P, pt A, pt B) {
   vec AP = V(A, P), AB = V(A, B);
   if (parallel(AP, AB)) return 0;
@@ -104,7 +98,6 @@ float distanceToLine(pt P, pt A, pt B) {
   //println("distance to line is ", d);
   return d;
 }
-
 
 boolean emptyIntersectionTwoDisks(pt ca, vec va, float ra, pt cb, vec vb, float rb) {
   if (parallel(va, vb)) {  // two planes are parallel
