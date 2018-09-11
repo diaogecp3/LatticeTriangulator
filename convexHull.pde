@@ -1,7 +1,6 @@
-/*********************************************************
- * Convex hull generation in a special case where all
- * vertices are on a sphere.
- *********************************************************/
+/******************************************************************************
+ * Convex hull generation in a special case where all vertices are on a sphere.
+ ******************************************************************************/
 
 
 boolean debugCH = true;
@@ -189,7 +188,7 @@ void initFronts(int nGroups,                                         // in
 /*
  * Pivot around edge e to find the next valid triangle face.
  */
-int pivot(FrontEdge e,                                              // in/out
+int pivot(FrontEdge e,                                               // in/out
           ArrayList<Vertex> vertices,                                // in/out
           boolean[][] manifoldMask,                                  // in/out
           vec N) {                                                   // out
