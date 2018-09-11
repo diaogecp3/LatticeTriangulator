@@ -1,0 +1,3 @@
+In rs_easy_0:
+edge flip occurs!
+only 3 groups involved

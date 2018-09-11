@@ -1,5 +1,4 @@
 int pp=1; // index of picked vertex
-pts P2 = new pts(); // polyloop in 3D
 pts P = new pts(); // polyloop in 3D
 pts Q = new pts(); // second polyloop in 3D
 pts PtQ = new pts(); // inbetweening polyloop L(P,t,Q);
@@ -95,10 +94,9 @@ void savePts(String fn) {
   };
   
 void loadPts(String fn) {
-  print("loading: "+fn+" "); 
+  print("loading: "+fn+" ");
   String [] ss = loadStrings(fn);
-  String subpts;
-  int s=0;   int comma, comma1, comma2;   float x, y;   int a, b, c;
+  int s=0;
   nv = int(ss[s++]); println("nv="+nv);
   for(int k=0; k<nv; k++) {int i=k+s; float [] xy = float(split(ss[i],",")); G[k].setTo(xy[0],xy[1],xy[2]);}
   pv=0;

@@ -129,10 +129,10 @@ boolean findFirstTriangle(ArrayList<Vertex> vertices,                // in/out
   vb = vertices.get(b);
   vc = vertices.get(c);
   vec normalABC = normalToTriangle(va.position, vb.position, vc.position);
-  TaggedEdge e0, e1, e2;
-  e0 = new TaggedEdge(a, b, c, normalABC);
-  e1 = new TaggedEdge(b, c, a, normalABC);
-  e2 = new TaggedEdge(c, a, b, normalABC);
+  FrontEdge e0, e1, e2;
+  e0 = new FrontEdge(a, b, c, normalABC);
+  e1 = new FrontEdge(b, c, a, normalABC);
+  e2 = new FrontEdge(c, a, b, normalABC);
   front.add(e0);
   front.add(e1);
   front.add(e2);
@@ -156,7 +156,7 @@ void initFronts(int nGroups,                                         // in
                 boolean[][] manifoldMask,                            // out
                 DebugInfo debugInfo) {                               // out
   for (int i = 0; i < nGroups; ++i) {
-    LinkedList<TaggedEdge> edges = new LinkedList<TaggedEdge>();
+    LinkedList<FrontEdge> edges = new LinkedList<FrontEdge>();
     HashSet<Integer> groupIDs = new HashSet<Integer>();
     groupIDs.add(new Integer(i));
     int head = i * nPointsPerGroup;
@@ -170,13 +170,13 @@ void initFronts(int nGroups,                                         // in
     for (int j = 0; j < nPointsPerGroup - 1; ++j) {
       int current = head + j;
       int next = current + 1;
-      TaggedEdge e = new TaggedEdge(current, next, -1, N);
+      FrontEdge e = new FrontEdge(current, next, -1, N);
       manifoldMask[current][next] = true;
       edges.add(e);
       vertices.get(current).outEdges.put(vertices.get(next), e);
     }
     int tail = head + nPointsPerGroup - 1;
-    TaggedEdge lastEdge = new TaggedEdge(tail, head, -1, N);
+    FrontEdge lastEdge = new FrontEdge(tail, head, -1, N);
     edges.add(lastEdge);
     vertices.get(tail).outEdges.put(vertices.get(head), lastEdge);
     manifoldMask[tail][head] = true;
@@ -189,7 +189,7 @@ void initFronts(int nGroups,                                         // in
 /*
  * Pivot around edge e to find the next valid triangle face.
  */
-int pivot(TaggedEdge e,                                              // in/out
+int pivot(FrontEdge e,                                              // in/out
           ArrayList<Vertex> vertices,                                // in/out
           boolean[][] manifoldMask,                                  // in/out
           vec N) {                                                   // out
@@ -234,8 +234,8 @@ boolean generateConvexHullWithFronts(ArrayList<Vertex> vertices,     // in/out
   assert curFront.size() > 0;
   while (curFront.size() > 0) {
     if (debugCH && debugInfo.numSteps >= numFacesShown) break;
-    TaggedEdge e = curFront.poll();
-    if (!e.isFront) continue;
+    FrontEdge e = curFront.poll();
+    if (!e.isValid) continue;
     vec normalADB = new vec();
     int d = pivot(e, vertices, manifoldMask, normalADB);
     
@@ -258,18 +258,18 @@ boolean generateConvexHullWithFronts(ArrayList<Vertex> vertices,     // in/out
     }
 
     triangles.add(new Triangle(a, d, b));  // create a new triangle face
-    e.isFront = false;
+    e.isValid = false;
     va.outEdges.remove(vb);  // remove edge ab
     manifoldMask[a][d] = manifoldMask[d][b] = manifoldMask[b][a] = true;
     
     // Check if there is a front edge connecting va and vd
-    TaggedEdge e0 = null;
+    FrontEdge e0 = null;
     if (vd.outEdges.containsKey(va)) {
       e0 = vd.outEdges.get(va);
       vd.outEdges.remove(va);
-      e0.isFront = false;
+      e0.isValid = false;
     } else {
-      e0 = new TaggedEdge(a, d, b, normalADB);
+      e0 = new FrontEdge(a, d, b, normalADB);
       va.outEdges.put(vd, e0);
       curFront.add(e0);
     }
@@ -280,24 +280,24 @@ boolean generateConvexHullWithFronts(ArrayList<Vertex> vertices,     // in/out
     }
 
     // Check if there is a front edge connecting vd and vb
-    TaggedEdge e1 = null;
+    FrontEdge e1 = null;
     if (vb.outEdges.containsKey(vd)) {
       e1 = vb.outEdges.get(vd);
       vb.outEdges.remove(vd);
-      e1.isFront = false;
+      e1.isValid = false;
     } else {
-      e1 = new TaggedEdge(d, b, a, normalADB);
+      e1 = new FrontEdge(d, b, a, normalADB);
       vd.outEdges.put(vb, e1);
       curFront.add(e1);
     }
 
-    if (!e0.isFront) {
+    if (!e0.isValid) {
       if (curFront.isInnerVertex(va)) va.isInner = true;
     }
-    if (!e1.isFront) {
+    if (!e1.isValid) {
       if (curFront.isInnerVertex(vb)) vb.isInner = true;
     }
-    if (!e0.isFront && !e1.isFront) {
+    if (!e0.isValid && !e1.isValid) {
       if (curFront.isInnerVertex(vd)) vd.isInner = true;
     }
     

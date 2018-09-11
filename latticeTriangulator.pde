@@ -1,20 +1,18 @@
 import processing.pdf.*;
 
 
-// global variables that control what to show
 boolean showYellowSphere = false;
 boolean generateCH = false;
-boolean showPolygon = false;
-boolean generateInput = false;
-boolean doTests = false;
-boolean showCircles = true;
-
+boolean showRingSet = true;
+boolean showPointSet = true;
+int inputMethodPointSet = 0;
+int inputMethodRingSet = 0;
+int test = 2;  // 0: convex hull 1: convex hull with holes 2: many convex-hull tests 3: many convex-hull-with-holes tests
 
 float dz=500; // distance to camera. Manipulated with mouse wheel
 float rx=-0.06*TWO_PI, ry=-0.04*TWO_PI;    // view angles manipulated when space pressed but not mouse
 boolean twistFree=false, animating=true, tracking=false, center=true,
-  gouraud=true, showControlPolygon=true, showNormals=false, showFrame=false,
-  snappingPDF=false, twoD=false;
+        gouraud=true, showNormals=false, showFrame=false, snappingPDF=false;
 float t=0, s=0;
 boolean viewpoint=false;
 pt Viewer = P();
@@ -24,14 +22,16 @@ pt Vf=P(0,0,0), Vb=P(0,0,0);
 pt Pick=P();
 
 float radiusOfSphere = 100;
-pt centerOfSphere = P(0, 0, 0);
+pt centerOfSphere = new pt();
+
 float rMax = 40;
-float attenuation = 0.5;
-int numGroups = 10;
-int numPointsPerGroup = 4;
-pt[] contacts;
-vec[] initDirs;
-int nTriangles = -1;
+float attenuation = 1.0;
+int numGroups = 6;
+int numPointsPerGroup = 8;
+
+RingSet rs;
+
+int numTriangles = -1;
 float timeCH = 0.0;
 
 
@@ -40,149 +40,125 @@ void setup() {
   face1 = loadImage("data/Jarek.jpg");  // load Jarek's image
   textureMode(NORMAL);
   size(900, 900, P3D); // P3D means that we will do 3D graphics
-  P.declare(); Q.declare(); // P is a polyloop in 3D: declared in pts
-  // P.resetOnCircle(12,100); // used to get started if no model exists on file
-  //P.loadPts("data/convex_hull/pts_hard_2");  // loads saved model from file
-  P.loadPts("data/convex_hull/pts_easy_0");
-  Q.loadPts("data/pts2");  // loads saved model from file
   noSmooth();  // LEAVE HERE FOR 3D PICK TO WORK!!!
+
+  P.declare();
   
-  P2.declare();
-  P2.resetOnCircle(6,100);
-  
-  if (generateInput) {
-    println("use generated input!");
-    generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, 10);
-  }
-  
-  if (doTests) {
+  if (test >= 2) {
     noLoop();
     debugCH = false;
   }
   
-  //testIntersectionTwoDisks();
-  contacts = generateContactsOnSphere(centerOfSphere, radiusOfSphere, rMax, numGroups);
-  initDirs = generateInitDirs(centerOfSphere, contacts, numGroups);
+  switch (inputMethodPointSet) {
+    case 0:  // read from file
+      P.loadPts("data/point_set/ps_easy_0");
+      break;
+    case 1:  // generate randomly
+      generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, 10);
+      break;
+    default:
+      println("Please use a valid input method for point set");
+      exit();
+  }
+  
+  switch (inputMethodRingSet) {
+    case 0:  // read from file
+      rs = new RingSet(centerOfSphere, radiusOfSphere);
+      rs.loadPointGroups("data/ring_set/rs_easy_0");
+      break;
+    case 1:  // generate randomly
+      rs = new RingSet(centerOfSphere, radiusOfSphere,
+                       numGroups, numPointsPerGroup);
+      rs.init();
+      break;
+    default:
+      println("Please use a valid input method for ring set");
+      exit();
+  }
 }
 
 void draw() {
   background(255);
-  if(twoD) {
-    fill(green); P2.drawArcs(100,4); P2.drawBalls(5);
-    }
-  else {
-    pushMatrix();   // to ensure that we can restore the standard view before writing on the canvas
-    if(snappingPDF) beginRecord(PDF, "PDFimages/P"+nf(pictureCounter++,3)+".pdf"); 
+  
+  {
+    pushMatrix();  // to ensure that we can restore the standard view before writing on the canvas
+    if (snappingPDF) beginRecord(PDF, "PDFimages/P" + nf(pictureCounter++,3) + ".pdf");
 
     // SET PERSPECTIVE
-    float fov = PI/3.0;
-    float cameraZ = (height/2.0) / tan(fov/2.0);
-    camera(0,0,cameraZ,0,0,0,0,1,0  );       // sets a standard perspective
+    float fov = PI / 3.0;
+    float cameraZ = (height / 2.0) / tan(fov / 2.0);
+    camera(0, 0, cameraZ, 0, 0, 0, 0, 1, 0);  // sets a standard perspective
     perspective(fov, 1.0, 1.0, 10000);
 
     // SET VIEW
-    translate(0,0,dz); // puts origin of model at screen center and moves forward/away by dz
+    translate(0, 0, dz);  // puts origin of model at screen center and moves forward/away by dz
     lights();  // turns on view-dependent lighting
-    rotateX(rx); rotateY(ry); // rotates the model around the new origin (center of screen)
-    rotateX(PI/2); // rotates frame around X to make X and Y basis vectors parallel to the floor
-    if(center) translate(-F.x,-F.y,-F.z);
-    if(viewpoint) {Viewer = viewPoint(); viewpoint=false;} // sets Viewer to the current viewpoint when ',' is pressed
+    rotateX(rx); rotateY(ry);  // rotates the model around the new origin (center of screen)
+    rotateX(PI / 2);  // rotates frame around X to make X and Y basis vectors parallel to the floor
+    if (center) translate(-F.x, -F.y, -F.z);
+    if (viewpoint) {Viewer = viewPoint(); viewpoint = false;} // sets Viewer to the current viewpoint when ',' is pressed
     computeProjectedVectors(); // computes screen projections I, J, K of basis vectors (see bottom of pv3D): used for dragging in viewer's frame    
-    if(showFrame) showFrame(150); // X-red, Y-green, Z-blue arrows
+    if (showFrame) showFrame(150); // X-red, Y-green, Z-blue arrows
 
     noStroke();
-    //   pp=P.idOfVertexWithClosestScreenProjectionTo(Mouse()); // id of vertex of P with closest screen projection to mouse (us in keyPressed 'x'...
-
     
-    fill(magenta); show(P(), 3); // show center of the sphere
-    Pick=pick(mouseX,mouseY);
+    fill(magenta); show(centerOfSphere, 4); // show center of the sphere
+    Pick = pick(mouseX,mouseY);
 
-    if(picking) { 
+    if (picking) {
       P.setPickToIndexOfVertexClosestTo(Pick); // id of vertex of P with closest screen projection to mouse (us in keyPressed 'x'...
-      picking=false;
-      }
-      
-    // fill(red,100); show(Pick,5); // SHOWING THE PICK POINT ON SURFACE UNDER THE MOUSE
-    // fill(green,100); show(P(),5); // SHOW PICKED VERTEX
-
-    // Show polygon (not used in Yaohong's project)
-    if (showPolygon) {
-      fill(green);
-      P.drawArcs(100,4);
-      P.drawBalls(2); // draw curve P as cones with ball ends
-      fill(red,100); P.showPicked(3); // shows currently picked vertex in red   
-    } else {
-      fill(green);
-      //P.drawBalls(2);
-      fill(red, 100);
-      //P.showPicked(3);
+      picking = false;
     }
 
-    // 3D mouse demo
-    fill(red); noStroke(); show(pick(mouseX,mouseY),5);
-
-    //if (doTests) {
-    //  testCH(numTests, numPointsPerTest, showResults);
-    //} else if (generateCH) {
-    //  long startTime = System.nanoTime();
-    //  ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
-    //  long endTime = System.nanoTime();
-    //  timeCH = (endTime - startTime) / 1000000.0;
-    //  fill(red); stroke(0);
-    //  nTriangles = triangles.size();
-    //  showTriangles(triangles, P.G);
-    //} else {
-    //  nTriangles = -1;
-    //}
-    
-    float r = rMax * attenuation;
-    pt[] centers = new pt[numGroups];
-    pt[][] points = generatePointsForCircles(contacts, r, centerOfSphere, radiusOfSphere, initDirs, numGroups, numPointsPerGroup, centers);
-    pt[] tmpG = convertTo1DArray(points, numGroups, numPointsPerGroup);
-    if (showCircles) showGroups(centers, points, numGroups, numPointsPerGroup);
-    if (generateCH) {
-      long startTime = System.nanoTime();
-      ArrayList<Triangle> triangles = generateConvexHull(points, numGroups, numPointsPerGroup);
-      long endTime = System.nanoTime();
-      timeCH = (endTime - startTime) / 1000000.0;
-      fill(red);
-      stroke(0);
-      showTriangles(triangles, tmpG);
-      nTriangles = triangles.size();
-    } else {
-      nTriangles = -1;
+    switch (test) {
+      case 0:  // one convex-hull test
+        oneConvexHullTest();
+        break;
+      case 1:  // one convex-hull-with-holes test
+        oneConvexHullWithHolesTest();
+        break;
+      case 2:  // many convex-hull tests
+        testCH(numTests, numPointsPerTest, showResults);
+        break;
+      case 3:  // many convex-hull-with-holes tests
+        println("Many convex-hull-with-holes tests coming soon");
+        exit();
+        break;
+      default:
+        println("Please enter a correct test number");
+        exit();
     }
 
     // Show the big yellow sphere
     if (showYellowSphere) {
-      fill(yellow, 100); show(P(), radiusOfSphere);  // center of sphere = (0, 0, 0)
+      fill(yellow, 100);
+      show(centerOfSphere, radiusOfSphere);
     }
 
     if (exitDraw) noLoop();
 
-    if(snappingPDF) {endRecord(); snappingPDF=false;}
+    if(snappingPDF) { endRecord(); snappingPDF = false; }
     popMatrix(); // done with 3D drawing. Restore front view for writing text on canvas
-    }
+  }
   if(scribeText) {fill(black); displayHeader();} // dispalys header on canvas, including my face
   if(scribeText && !filming) displayFooter(); // shows menu at bottom, only if not filming
   if (animating) { t+=PI/180/2; if(t>=TWO_PI) t=0; s=(cos(t)+1.)/2; } // periodic change of time 
   if(filming && (animating || change)) saveFrame("FRAMES/F"+nf(frameCounter++,4)+".tif");  // save next frame to make a movie
   change=false; // to avoid capturing frames when nothing happens (change is set uppn action)
-  //scribeHeader("pp="+pp,2);
   scribeHeader("debug convex hull = " + String.valueOf(debugCH), 2);
   scribeHeader("number of steps I enter = " + numFacesShown, 3);
-  if (nTriangles != -1) scribeHeader("number of triangles = " + nTriangles, 4);
-  if (nTriangles != -1) scribeHeader("time to generate convex hull = " + timeCH + "ms", 5);
+  if (numTriangles != -1) {
+    scribeHeader("number of triangles = " + numTriangles, 4);
+    scribeHeader("time to generate convex hull = " + timeCH + "ms", 5);
+  }
 }
-  
-void keyPressed() {
-  if(key=='2') twoD=!twoD; 
+
+void keyPressed() { 
   if(key=='`') picking=true; 
   if(key=='?') scribeText=!scribeText;
   if(key=='!') snapPicture();
   if(key=='@') snappingPDF=true;
   if(key=='~') filming=!filming;
-  //if(key==']') showControlPolygon=!showControlPolygon;
   if(key=='|') showNormals=!showNormals;
   if(key=='G') gouraud=!gouraud;
   if(key=='q') Q.copyFrom(P);
@@ -198,8 +174,8 @@ void keyPressed() {
   if(key=='i') P.insertClosestProjection(Pick); // Inserts new vertex in P that is the closeset projection of O
   if(key=='W') {P.savePts("data/pts"); Q.savePts("data/pts2");}  // save vertices to pts2
   if(key=='L') {P.loadPts("data/pts"); Q.loadPts("data/pts2");}   // loads saved model
-  if(key=='w') P.savePts("data/pts");   // save vertices to pts
-  if(key=='l') P.loadPts("data/pts"); 
+  if(key=='w') {P.savePts("data/pts"); rs.savePointGroups("data/rs_unnamed");}   // save vertices to pts
+  if(key=='l') {P.loadPts("data/pts"); rs.loadPointGroups("data/rs_unnamed");} 
 //  if(key=='a') animating=!animating; // toggle animation
   if(key==',') viewpoint=true;
   if(key=='>') showFrame=!showFrame;
@@ -209,18 +185,12 @@ void keyPressed() {
   if (key == '0') debugCH = !debugCH;
   if (key == 'o') showYellowSphere = !showYellowSphere;
   if (key == 'h') generateCH = !generateCH;
-  if (key == '+') if (nTriangles >= 0) numFacesShown = nTriangles + 1;
+  if (key == '+') if (numTriangles >= 0) numFacesShown = numTriangles + 1;
   if (key == '-') if (numFacesShown > 0) numFacesShown--;
   if (key == '1') numFacesShown = 1;
-  if (key == '[') {
-    if (attenuation < 1.0) attenuation += 0.1;
-  }
-  if (key == ']') {
-    if (attenuation > 0.2) attenuation -= 0.1;
-  }
-  if (key == '3') {
-    showCircles = !showCircles;
-  }
+  if (key == '[') attenuation = min(1.0, attenuation + 0.1);
+  if (key == ']') attenuation = max(0.1, attenuation - 0.1);
+  if (key == 'g') { showRingSet = !showRingSet; showPointSet = !showPointSet; }
 }
 
 void mouseWheel(MouseEvent event) {dz -= event.getAmount(); change=true;}

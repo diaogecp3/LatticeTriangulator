@@ -3,8 +3,8 @@
  *********************************************************/
 
 
-int numTests = 2000;
-int numPointsPerTest = 128;
+int numTests = 100;
+int numPointsPerTest = 64;
 boolean showResults = false;
 
 /*
@@ -81,4 +81,44 @@ void testIntersectionTwoDisks() {
   if (empty) println("empty intersection");
   else println("non-empty intersection");
   return;
+}
+
+
+void oneConvexHullTest() {
+  if (showPointSet) {
+    fill(green);
+    P.drawBalls(2);
+  }
+  if (generateCH) {
+    long startTime = System.nanoTime();
+    ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
+    long endTime = System.nanoTime();
+    timeCH = (endTime - startTime) / 1000000.0;
+    fill(red);
+    stroke(0);
+    numTriangles = triangles.size();
+    showTriangles(triangles, P.G);
+  } else {
+    numTriangles = -1;
+  }
+}
+
+void oneConvexHullWithHolesTest() {
+  rs.generatePoints(attenuation);
+  if (showRingSet) rs.showGroups();
+  if (generateCH) {
+    pt[] G = rs.get1DPointArray();
+    long startTime = System.nanoTime();
+    ArrayList<Triangle> triangles = generateConvexHull(rs.get2DPointArray(),
+                                                       rs.getNumGroups(),
+                                                       rs.getNumPointsPerGroup());
+    long endTime = System.nanoTime();
+    timeCH = (endTime - startTime) / 1000000.0;
+    fill(red);
+    stroke(0);
+    showTriangles(triangles, G);
+    numTriangles = triangles.size();
+  } else {
+    numTriangles = -1;
+  }
 }

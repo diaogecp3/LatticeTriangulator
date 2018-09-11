@@ -42,7 +42,7 @@ void generatePointsOnSphere(pts P, pt c, float r, int n) {
 }
 
 
-pt[] generateContactsOnSphere(pt C, float R, float rMax, int nc) {
+pt[] generateContactsOnSphere(pt C, float R, int nc, float rMax) {
   assert rMax < R;
   pt[] points = new pt[nc];
   Disk[] disks = new Disk[nc];
@@ -87,7 +87,13 @@ vec[] generateInitDirs(pt C, pt[] contacts, int nc) {
   return initDirs;
 }
 
-pt[] generatePointsForOneCircle(pt p, float r, pt C, float R, vec initDir, int np, pt center) {
+pt[] generatePointsForOneCircle(pt p,                                // in
+                                float r,                             // in
+                                pt C,                                // in
+                                float R,                             // in
+                                vec initDir,                         // in
+                                int np,                              // in
+                                pt center) {                         // out
   pt[] points = new pt[np];
   vec normal = U(C, p);
   vec v = I = initDir;
@@ -105,14 +111,41 @@ pt[] generatePointsForOneCircle(pt p, float r, pt C, float R, vec initDir, int n
 
 // a contact = the intersection point between the medial axis of a tube and the sphere
 // a center = the center of a circle
-pt[][] generatePointsForCircles(pt[] contacts, float r, pt C, float R, vec[] initDirs, int nc, int np, pt[] centers) {
+pt[][] generatePointsForCircles(pt[] contacts,                       // in
+                                float r,                             // in
+                                pt C,                                // in
+                                float R,                             // in
+                                vec[] initDirs,                      // in
+                                int nc,                              // in
+                                int np,                              // in
+                                pt[] centers) {                      // out
   pt[][] points = new pt[nc][np];
   for (int i = 0; i < nc; ++i) {
     centers[i] = new pt();
-    points[i] = generatePointsForOneCircle(contacts[i], r, C, R, initDirs[i], np, centers[i]);
+    points[i] = generatePointsForOneCircle(contacts[i], r, C, R, initDirs[i],
+                                           np, centers[i]);
   }
   return points;
 }
+
+pt[][] generatePointsForCircles(pt[] contacts,                       // in
+                                float[] radii,                       // in
+                                pt C,                                // in
+                                float R,                             // in
+                                vec[] initDirs,                      // in
+                                int nc,                              // in
+                                int np,                              // in
+                                pt[] centers) {                      // out
+  pt[][] points = new pt[nc][np];
+  for (int i = 0; i < nc; ++i) {
+    centers[i] = new pt();
+    points[i] = generatePointsForOneCircle(contacts[i], radii[i], C, R,
+                                           initDirs[i], np, centers[i]);
+  }
+  return points;
+}
+
+
 
 
 // a center = the center of a disk
@@ -138,4 +171,70 @@ void showGroups(pt[] centers, pt[][] points, int nc, int np) {
     }
   }
   return;
+}
+
+
+
+pt[] generateContactsAndRadii(pt center,                             // in
+                              float radius,                          // in
+                              int n,                                 // in
+                              float[] radii) {                       // out
+  pt[] contacts = new pt[n];
+  vec[] normals = new vec[n];
+  float[] alphas = new float[n];
+  for (int i = 0; i < n; ++i) {
+    while (true) {
+      pt p = generateOnePointOnSphere(center, radius);
+      vec normal = U(center, p);
+      float r = random(5, radius * 0.8);
+      float alpha = asin(r/radius);  // [0, PI/2]
+      boolean isValid = true;
+      for (int j = 0; j < i; ++j) {
+        float theta = acos(dot(normal, normals[j]));  // [0, PI]
+        if (theta <= alpha + alphas[j]) {
+          isValid = false;
+          break;
+        }
+      }
+      if (isValid) {
+        contacts[i] = p;
+        normals[i] = normal;
+        alphas[i] = alpha;
+        radii[i] = r;
+        break;
+      }
+    }
+  }
+  return contacts;
+}
+
+
+pt[] generateContacts(pt center,                                     // in
+                      float radius,                                  // in
+                      int n,                                         // in
+                      float rMax) {                                  // in
+  assert rMax > 0 && rMax < radius;
+  pt[] contacts = new pt[n];
+  vec[] normals = new vec[n];
+  float alpha = 2 * asin(rMax/radius);
+  for (int i = 0; i < n; ++i) {
+    while (true) {
+      pt p = generateOnePointOnSphere(center, radius);
+      vec normal = U(center, p);
+      boolean isValid = true;
+      for (int j = 0; j < i; ++j) {
+        float theta = acos(dot(normal, normals[j]));  // [0, PI]
+        if (theta <= alpha) {
+          isValid = false;
+          break;
+        }
+      }
+      if (isValid) {
+        contacts[i] = p;
+        normals[i] = normal;
+        break;
+      }
+    }
+  }
+  return contacts;
 }
