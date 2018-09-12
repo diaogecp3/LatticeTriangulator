@@ -8,6 +8,7 @@ boolean showPointSet = true;
 int subdivisionTimes = 0;
 int inputMethodPointSet = 0;
 int inputMethodRingSet = 1;
+int inputMethodHub = 1;
 
 
 /*
@@ -16,8 +17,9 @@ int inputMethodRingSet = 1;
  * 2: many convex-hull tests
  * 3: many convex-hull-with-holes tests
  * 4: one subdivision test
+ * 5: one hub test
  */
-int test = 4;
+int test = 5;
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
 float rx = -0.06 * TWO_PI, ry = -0.04 * TWO_PI;  // view angles manipulated when space pressed but not mouse
@@ -40,9 +42,14 @@ pt centerOfSphere = new pt();
 float rMax = 50;
 float attenuation = 1.0;
 int numGroups = 4;
-int numPointsPerGroup = 4;
+int numPointsPerGroup = 8;
 
 RingSet rs;
+
+float r0 = 30;
+float r1 = 100;
+int nNeighbors = 3;
+Hub hub;
 
 int numTriangles = -1;
 float timeCH = 0.0;
@@ -77,7 +84,7 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-      rs.loadPointGroups("data/ring_set/rs_medium_0");
+      rs.loadPointGroups("data/ring_set/rs_easy_2");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,
@@ -86,6 +93,18 @@ void setup() {
       break;
     default:
       println("Please use a valid input method for ring set");
+      exit();
+  }
+  
+  switch (inputMethodHub) {
+    case 0:  // read from file
+      println("Not implement yet");
+      break;
+    case 1:  // generate randomly
+      hub = generateHub(centerOfSphere, r0, r1, nNeighbors);
+      break;
+    default:
+      println("Please use a valid input method for hub");
       exit();
   }
 
@@ -139,6 +158,9 @@ void draw() {
         break;
       case 4:
         oneSubdivisionTest();
+        break;
+      case 5:
+        oneHubTest();
         break;
       default:
         println("Please enter a correct test number");

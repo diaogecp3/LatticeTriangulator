@@ -70,13 +70,7 @@ pt[] generateContactsOnSphere(pt C, float R, int nc, float rMax) {
   return points;
 }
 
-vec constructNormal(vec v) {
-  if (isAbsZero(v.y) && isAbsZero(v.z)) { // v is parallel to (1, 0, 0)
-    return U(new vec(-v.z, 0.0, v.x));  // cross product of v and (0, 1, 0)
-  } else {
-    return U(new vec(0.0, v.z, -v.y));  // cross product of v and (1, 0, 0)
-  }
-}
+
 
 vec[] generateInitDirs(pt C, pt[] contacts, int nc) {
   vec[] initDirs = new vec[nc];
@@ -238,3 +232,33 @@ pt[] generateContacts(pt center,                                     // in
   }
   return contacts;
 }
+
+Ball[] generateBallsOnSphere(pt c, float r, float rMax, int n) {
+  Ball[] balls = new Ball[n];
+  assert rMax >= 4.0;
+  for (int i = 0; i < n; ++i) {
+    while (true) {
+      pt px = generateOnePointOnSphere(c, r);
+      float rx = random(4, rMax);
+      boolean isValid = true;
+      for (int j = 0; j < i; ++j) {
+        if (d(px, balls[j].c) < rx + balls[j].r) {
+          isValid = false;
+          break;
+        }
+      }
+      if (isValid) {
+        Ball ball = new Ball(px, rx);
+        balls[i] = ball;
+        break;
+      }
+    }
+  }
+  return balls;
+}
+
+Hub generateHub(pt c, float r0, float r1, int n) {
+  Ball ball = new Ball(c, r0);
+  Ball[] neighbors = generateBallsOnSphere(c, r1, r1 - 1.3 * r0, n);
+  return new Hub(ball, neighbors, n);
+} 

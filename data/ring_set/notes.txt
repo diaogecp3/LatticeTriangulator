@@ -1,7 +1,11 @@
 In rs_easy_0:
-edge flip occurs!
-only 3 groups involved
+Edge flip occurs!
+Only 3 groups involved
 
 In rs_medium_0:
-edge flip occurs!
+Edge flip occurs!
 4 groups are involved
+
+In rs_easy_2:
+(0, 0, 0) is outside of the convex hull.
+Subdivision doesn't work well.

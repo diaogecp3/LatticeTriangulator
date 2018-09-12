@@ -150,3 +150,8 @@ void oneSubdivisionTest() {
     numTriangles = -1;
   }
 }
+
+void oneHubTest() {
+  hub.showHub(red, 150);
+  hub.showBoundingBall(blue, 100);
+}

@@ -35,6 +35,14 @@ void showNormalToTriangle(pt A, pt B, pt C, float d, float r) {
   arrow(D, V(d, N), r);
 }
 
+vec constructNormal(vec v) {
+  if (isAbsZero(v.y) && isAbsZero(v.z)) { // v is parallel to (1, 0, 0)
+    return U(new vec(-v.z, 0.0, v.x));  // cross product of v and (0, 1, 0)
+  } else {
+    return U(new vec(0.0, v.z, -v.y));  // cross product of v and (1, 0, 0)
+  }
+}
+
 vec2 solveLinearEquationsInTwoVars(float a, float b, float c, float d, float e, float f) {
   float det = a * d - b * c;
   if (abs(det) < 0.000001) return null;
@@ -121,4 +129,19 @@ boolean emptyIntersectionTwoDisks(pt ca, vec va, float ra, pt cb, vec vb, float 
 
 boolean emptyIntersectionTwoDisks(Disk d0, Disk d1) {
   return emptyIntersectionTwoDisks(d0.c, d0.d, d0.r, d1.c, d1.d, d1.r);
+}
+
+pt intersectionTwoLines(pt pa, pt pb, pt pc, pt pd) {
+  vec v0 = U(pa, pb);  // unit vector
+  vec v1 = U(pc, pd);  // unit vector
+  vec vac = V(pa, pc);
+  
+  vec c0 = N(v0, v1);
+  vec c1 = N(vac, v1);
+  float x = c1.norm() / c0.norm();
+
+  /* In case when cross(v0, v1) and cross(vac, v1) don't point in the same direction. */
+  if (c0.x * c1.x < 0 || c0.y * c1.y < 0 || c0.z * c1.z < 0) x = -x;
+
+  return P(pa, x, v0);
 }
