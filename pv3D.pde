@@ -2,9 +2,9 @@
 class vec { float x=0,y=0,z=0; 
    vec () {}; 
    vec (float px, float py, float pz) {x = px; y = py; z = pz;};
-      vec (float px, float py) {x = px; y = py;};
+   vec (float px, float py) {x = px; y = py;};
    vec set (float px, float py, float pz) {x = px; y = py; z = pz; return this;}; 
-     vec setTo(vec V) {x = V.x; y = V.y; z = V.z; return this;}; 
+   vec setTo(vec V) {x = V.x; y = V.y; z = V.z; return this;}; 
    vec set (vec V) {x = V.x; y = V.y; z = V.z; return this;}; 
    vec add(vec V) {x+=V.x; y+=V.y; z+=V.z; return this;};
    vec add(float s, vec V) {x+=s*V.x; y+=s*V.y; z+=s*V.z; return this;};
@@ -24,7 +24,7 @@ class vec { float x=0,y=0,z=0;
   
 class pt { float x=0,y=0,z=0; 
    pt () {}; 
-     pt (float px, float py) {x = px; y = py;};
+   pt (float px, float py) {x = px; y = py;};
    pt (float px, float py, float pz) {x = px; y = py; z = pz; };
    pt set (float px, float py, float pz) {x = px; y = py; z = pz; return this;}; 
    pt set (pt P) {x = P.x; y = P.y; z = P.z; return this;}; 

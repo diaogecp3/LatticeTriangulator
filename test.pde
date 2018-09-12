@@ -122,3 +122,29 @@ void oneConvexHullWithHolesTest() {
     numTriangles = -1;
   }
 }
+
+void oneSubdivisionTest() {
+  debugCH = false;
+  rs.generatePoints(attenuation);
+  if (showRingSet) rs.showGroups();
+  if (generateCH) {
+    ArrayList<pt> positions = rs.get1DPointArrayList();
+    long startTime = System.nanoTime();
+    ArrayList<Triangle> triangles = generateConvexHull(rs.get2DPointArray(),
+                                                       rs.getNumGroups(),
+                                                       rs.getNumPointsPerGroup());
+    long endTime = System.nanoTime();
+    timeCH = (endTime - startTime) / 1000000.0;
+    TriangleMesh triMesh = new TriangleMesh(positions, triangles);
+    triMesh.setupOppositeTable();
+    
+    //triMesh.showTriangleMesh(red, true);
+    triMesh.subdivide(subdivisionTimes, centerOfSphere, radiusOfSphere);
+    triMesh.showTriangleMesh(red, true);
+    triMesh.showCornerPairs(blue, 3);
+    triMesh.showVertices(green, 1);
+    numTriangles = triMesh.getNumTriangles();
+  } else {
+    numTriangles = -1;
+  }
+}

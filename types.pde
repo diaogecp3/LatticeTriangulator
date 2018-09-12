@@ -1,6 +1,6 @@
-/*********************************************************
- * Geometric data structures used in this project.
- *********************************************************/
+/******************************************************************************
+ * Geometric data structures used.
+ ******************************************************************************/
 
 import java.util.LinkedList;
 import java.util.HashMap;
@@ -18,32 +18,56 @@ class DebugInfo {
 
 class Triangle {
   int a, b, c;  // index of vertex
-  Triangle(int _a, int _b, int _c) { a = _a; b = _b; c = _c;}
+  Triangle(int a, int b, int c) {
+    this.a = a;
+    this.b = b;
+    this.c = c;
+  }
+  int get(int index) {
+    //println("index = " + index);
+    assert index >= 0 && index < 3;
+    int ret = -1;
+    switch (index) {
+      case 0:
+        ret = a;
+        break;
+      case 1:
+        ret = b;
+        break;
+      case 2:
+        ret = c;
+        break;
+    }
+    return ret;
+  }
 }
 
 class Edge {
   int a, b;  // index of vertex
-  Edge(int _a, int _b) { a = _a; b = _b;}
+  Edge(int a, int b) {
+    this.a = a;
+    this.b = b;
+  }
 }
 
 class FrontEdge {
   int a, b;  // the id of two ends of the edge
-  int c; // the id of opposite vertex w.r.t. edge e, it only makes senses when e is a front edge
+  int c; // the id of opposite vertex w.r.t. front edge [a, b]
   boolean isValid;  // true:front, false: non-front 
   vec N;  // the outward normal defined by vertices A, B, C
-  FrontEdge(int _a, int _b, int _c, boolean _isValid, vec _N) {
-    a = _a;
-    b = _b;
-    c = _c;
-    isValid = _isValid;
-    N = _N;
+  FrontEdge(int a, int b, int c, boolean isValid, vec N) {
+    this.a = a;
+    this.b = b;
+    this.c = c;
+    this.isValid = isValid;
+    this.N = N;
   }
-  FrontEdge(int _a, int _b, int _c, vec _N) {
-    a = _a;
-    b = _b;
-    c = _c;
-    isValid = true;
-    N = _N;
+  FrontEdge(int a, int b, int c, vec N) {
+    this.a = a;
+    this.b = b;
+    this.c = c;
+    this.isValid = true;
+    this.N = N;
   }
 }
 
@@ -55,14 +79,14 @@ class Front {
     groupIDs = new HashSet<Integer>();
   }
   
-  Front(LinkedList<FrontEdge> _edges) {
-    edges = _edges;
+  Front(LinkedList<FrontEdge> edges) {
+    this.edges = edges;
     groupIDs = new HashSet<Integer>();
   }
   
-  Front(LinkedList<FrontEdge> _edges, HashSet<Integer> _groupIDs) {
-    edges = _edges;
-    groupIDs = _groupIDs;
+  Front(LinkedList<FrontEdge> edges, HashSet<Integer> groupIDs) {
+    this.edges = edges;
+    this.groupIDs = groupIDs;
   }
   
   LinkedList<FrontEdge> getEdges() {
@@ -159,20 +183,20 @@ class Vertex {
   pt position;
   boolean isInner;
   int groupID;
-  HashMap<Vertex, FrontEdge> outEdges;  // front or border edges going from this vertex  // seems that no need to use this if usinsk
+  HashMap<Vertex, FrontEdge> outEdges;  // front edges going from this vertex
   Vertex(){}
-  Vertex(int _id, pt _position) {
-    id = _id;
-    position = _position;
+  Vertex(int id, pt position) {
+    this.id = id;
+    this.position = position;
     isInner = false;
     groupID = -1;
     outEdges = new HashMap<Vertex, FrontEdge>();
   }
-  Vertex(int _id, pt _position, int _groupID) {
-    id = _id;
-    position = _position;
+  Vertex(int id, pt position, int groupID) {
+    this.id = id;
+    this.position = position;
     isInner = false;
-    groupID = _groupID;
+    this.groupID = groupID;
     outEdges = new HashMap<Vertex, FrontEdge>();
   }
 }
@@ -181,10 +205,10 @@ class Disk {
   pt c;
   vec d;
   float r;
-  Disk(pt c_, vec d_, float r_) {
-    c = c_;
-    d = d_;
-    r = r_;
+  Disk(pt c, vec d, float r) {
+    this.c = c;
+    this.d = d;
+    this.r = r;
   }
 }
 
@@ -202,25 +226,25 @@ class RingSet {
   pt[][] points;
   pt[] centers;
   
-  RingSet(pt _c, float _r) {
-    c = _c;
-    r = _r;
+  RingSet(pt c, float r) {
+    this.c = c;
+    this.r = r;
     sameRadius = false;
   }
   
-  RingSet(pt _c, float _r, int _nc, int _np) {
-    c = _c;
-    r = _r;
-    nc = _nc;
-    np = _np;
+  RingSet(pt c, float r, int nc, int np) {
+    this.c = c;
+    this.r = r;
+    this.nc = nc;
+    this.np = np;
     sameRadius = false;
   }
   
-  RingSet(pt _c, float _r, int _nc, int _np, float rMax) {
-    c = _c;
-    r = _r;
-    nc = _nc;
-    np = _np;
+  RingSet(pt c, float r, int nc, int np, float rMax) {
+    this.c = c;
+    this.r = r;
+    this.nc = nc;
+    this.np = np;
     sameRadius = true;
     radii = new float[1];
     radii[0] = rMax;
@@ -241,10 +265,12 @@ class RingSet {
     if (!sameRadius) {
       float[] curRadii = new float[nc];
       for (int i = 0; i < nc; ++i) curRadii[i] = radii[i] * attenuation;
-      points = generatePointsForCircles(contacts, curRadii, c, r, initDirs, nc, np, centers);
+      points = generatePointsForCircles(contacts, curRadii, c, r, initDirs, nc,
+                                        np, centers);
     } else {
       float curRadius = radii[0] * attenuation;
-      points = generatePointsForCircles(contacts, curRadius, c, r, initDirs, nc, np, centers);
+      points = generatePointsForCircles(contacts, curRadius, c, r, initDirs, nc,
+                                        np, centers);
     }
   }
   
@@ -270,6 +296,17 @@ class RingSet {
       }
     }
     return G;
+  }
+  
+  ArrayList<pt> get1DPointArrayList() {
+    if (points == null) return null;
+    ArrayList<pt> positions = new ArrayList<pt>();
+    for (int i = 0; i < nc; ++i) {
+      for (int j = 0; j < np; ++j) {
+        positions.add(points[i][j]);
+      }
+    }
+    return positions;
   }
   
   void showGroups() {
@@ -302,9 +339,11 @@ class RingSet {
     lines[i++] = str(nc);
     lines[i++] = str(np);
     for (int j = 0; j < nc; ++j) {
-      lines[i++] = str(contacts[j].x) + "," + str(contacts[j].y) + "," + str(contacts[j].z);
+      lines[i++] = str(contacts[j].x) + "," + str(contacts[j].y) + "," +
+                   str(contacts[j].z);
       lines[i++] = str(radii[j]);
-      lines[i++] = str(initDirs[j].x) + "," + str(initDirs[j].y) + "," + str(initDirs[j].z);
+      lines[i++] = str(initDirs[j].x) + "," + str(initDirs[j].y) + "," +
+                   str(initDirs[j].z);
     }
     saveStrings(file, lines);
     return;

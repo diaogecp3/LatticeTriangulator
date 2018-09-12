@@ -3,6 +3,13 @@
  ******************************************************************************/
 
 
+/*
+ * TODO:
+ * 1). manifoldMask is a n by n sparse matrix. Use an array of hash map can
+ *     decrease space complexity without losing too much speed.
+ */
+
+
 boolean debugCH = true;
 int numFacesShown = 0;
 float disturbance = 0.0001;

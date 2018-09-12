@@ -5,8 +5,9 @@ boolean showYellowSphere = false;
 boolean generateCH = false;
 boolean showRingSet = true;
 boolean showPointSet = true;
+int subdivisionTimes = 0;
 int inputMethodPointSet = 0;
-int inputMethodRingSet = 0;
+int inputMethodRingSet = 1;
 
 
 /*
@@ -14,8 +15,9 @@ int inputMethodRingSet = 0;
  * 1: one convex-hull-with-holes test
  * 2: many convex-hull tests
  * 3: many convex-hull-with-holes tests
+ * 4: one subdivision test
  */
-int test = 1;
+int test = 4;
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
 float rx = -0.06 * TWO_PI, ry = -0.04 * TWO_PI;  // view angles manipulated when space pressed but not mouse
@@ -35,10 +37,10 @@ pt Pick=P();
 float radiusOfSphere = 100;
 pt centerOfSphere = new pt();
 
-float rMax = 40;
+float rMax = 50;
 float attenuation = 1.0;
-int numGroups = 6;
-int numPointsPerGroup = 8;
+int numGroups = 4;
+int numPointsPerGroup = 6;
 
 RingSet rs;
 
@@ -55,7 +57,7 @@ void setup() {
 
   P.declare();
   
-  if (test >= 2) {
+  if (test == 2 || test == 3) {
     noLoop();
     debugCH = false;
   }
@@ -135,6 +137,9 @@ void draw() {
         println("Many convex-hull-with-holes tests coming soon");
         exit();
         break;
+      case 4:
+        oneSubdivisionTest();
+        break;
       default:
         println("Please enter a correct test number");
         exit();
@@ -143,6 +148,7 @@ void draw() {
     // Show the big yellow sphere
     if (showYellowSphere) {
       fill(yellow, 100);
+      noStroke();
       show(centerOfSphere, radiusOfSphere);
     }
 
@@ -203,8 +209,14 @@ void keyPressed() {
   if (key == '0') debugCH = !debugCH;
   if (key == 'o') showYellowSphere = !showYellowSphere;
   if (key == 'h') generateCH = !generateCH;
-  if (key == '+') if (numTriangles >= 0) numFacesShown = numTriangles + 1;
-  if (key == '-') if (numFacesShown > 0) numFacesShown--;
+  if (key == '+') {
+    if (numTriangles >= 0) numFacesShown = numTriangles + 1;
+    subdivisionTimes++;
+  }
+  if (key == '-') {
+    if (numFacesShown > 0) numFacesShown--;
+    subdivisionTimes = max(0, subdivisionTimes - 1);
+  }
   if (key == '1') numFacesShown = 1;
   if (key == '[') attenuation = min(1.0, attenuation + 0.1);
   if (key == ']') attenuation = max(0.1, attenuation - 0.1);
