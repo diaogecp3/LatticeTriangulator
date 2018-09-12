@@ -7,7 +7,7 @@ boolean showRingSet = true;
 boolean showPointSet = true;
 int subdivisionTimes = 0;
 int inputMethodPointSet = 0;
-int inputMethodRingSet = 1;
+int inputMethodRingSet = 0;
 int inputMethodHub = 1;
 
 
@@ -19,7 +19,7 @@ int inputMethodHub = 1;
  * 4: one subdivision test
  * 5: one hub test
  */
-int test = 5;
+int test = 4;
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
 float rx = -0.06 * TWO_PI, ry = -0.04 * TWO_PI;  // view angles manipulated when space pressed but not mouse
@@ -84,7 +84,7 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-      rs.loadPointGroups("data/ring_set/rs_easy_2");
+      rs.loadPointGroups("data/ring_set/rs_medium_0");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,
