@@ -135,14 +135,16 @@ void oneSubdivisionTest() {
                                                        rs.getNumPointsPerGroup());
     long endTime = System.nanoTime();
     timeCH = (endTime - startTime) / 1000000.0;
+
+    startTime = System.nanoTime();
     TriangleMesh triMesh = new TriangleMesh(positions, triangles);
-    triMesh.setupOppositeTable();
-    
-    //triMesh.showTriangleMesh(red, true);
     triMesh.subdivide(subdivisionTimes, centerOfSphere, radiusOfSphere);
+    endTime = System.nanoTime();
+    timeSB = (endTime - startTime) / 1000000.0;
+
     triMesh.showTriangleMesh(red, true);
-    triMesh.showCornerPairs(blue, 3);
-    triMesh.showVertices(green, 1);
+    // triMesh.showCornerPairs(blue, 3);
+    // triMesh.showVertices(green, 1);
     numTriangles = triMesh.getNumTriangles();
   } else {
     numTriangles = -1;

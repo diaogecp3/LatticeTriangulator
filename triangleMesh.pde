@@ -15,6 +15,7 @@ class TriangleMesh {
     oppositeTable = new ArrayList<Integer>();
     nv = this.positions.size();
     nt = this.triangles.size();
+    setupOppositeTable();
   }
 
   TriangleMesh(ArrayList<pt> positions, ArrayList<Triangle> triangles,
@@ -24,6 +25,7 @@ class TriangleMesh {
     this.oppositeTable = oppositeTable;
     nv = this.positions.size();
     nt = this.triangles.size();
+    setupOppositeTable();
   }
 
   int getNumTriangles() {
@@ -32,14 +34,15 @@ class TriangleMesh {
 
   void setupOppositeTable() {
     assert nv > 0 && nt > 0;
-    oppositeTable.ensureCapacity(3 * nt);
+    int nc = 3 * nt;
+
+    /* Make sure opposite table is filled with -1 and has proper size. */
+    for (int i = 0; i < oppositeTable.size(); ++i) oppositeTable.set(i, -1);
+    for (int i = oppositeTable.size(); i < nc; ++i) oppositeTable.add(-1);
+
     ArrayList<HashMap<Integer, int[]>> maps = new ArrayList<HashMap<Integer, int[]>>();
     for (int i = 0; i < nv; ++i) {
       maps.add(new HashMap<Integer, int[]>());
-    }
-    int nc = 3 * nt;
-    for (int i = 0; i < nc; ++i) {
-      oppositeTable.add(-1);
     }
     for (int i = 0; i < nt; ++i) {  // for each triangle
       Triangle triangle = triangles.get(i);
@@ -52,7 +55,7 @@ class TriangleMesh {
           eb = tmp;
         }
         if (maps.get(ea).get(eb) == null) {
-          maps.get(ea).put(eb, new int[]{-1, -1});
+          maps.get(ea).put(eb, new int[2]);
           maps.get(ea).get(eb)[0] = 3 * i + j;  // store first corner
         } else {
           maps.get(ea).get(eb)[1] = 3 * i + j;  // store second corner
@@ -133,7 +136,7 @@ class TriangleMesh {
           pt pa = positions.get(a);
           pt pb = positions.get(b);
           pt mid = P(pa, pb);
-          //mid = P(center, r, U(center, mid));  // lift to surface of sphere
+          mid = P(center, r, U(center, mid));  // lift to surface of sphere
           positions.add(mid);
           midpointIDs[c] = midpointIDs[o] = vid++;
         }

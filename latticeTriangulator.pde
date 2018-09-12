@@ -40,13 +40,13 @@ pt centerOfSphere = new pt();
 float rMax = 50;
 float attenuation = 1.0;
 int numGroups = 4;
-int numPointsPerGroup = 6;
+int numPointsPerGroup = 4;
 
 RingSet rs;
 
 int numTriangles = -1;
 float timeCH = 0.0;
-
+float timeSB = 0.0;
 
 void setup() {
   face0 = loadImage("data/Yaohong.jpg");  // load Yaohong's image
@@ -164,7 +164,10 @@ void draw() {
   scribeHeader("number of steps I enter = " + numFacesShown, 3);
   if (numTriangles != -1) {
     scribeHeader("number of triangles = " + numTriangles, 4);
-    scribeHeader("time to generate convex hull = " + timeCH + "ms", 5);
+    scribeHeader("time for convex hull generation = " + timeCH + "ms", 5);
+  }
+  if (subdivisionTimes > 0) {
+    scribeHeader("time for subdivision = " + timeSB + "ms", 6);
   }
   // show menu at bottom, only if not filming
   if (scribeText && !filming) displayFooter();
