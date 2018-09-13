@@ -2,19 +2,14 @@
  * Hub (a ball and tangential cones) processing.
  ******************************************************************************/
 
-class Ball {
-  pt c;
-  float r;
-  Ball(pt c, float r) {
-    this.c = c;
-    this.r = r;
-  }
-  void showBall() {
-    show(c, r);
-  }
-}
 
 
+
+/*
+ * A tangential cone touches ball ba and bb, and another tangential cone touches
+ * ball ba and bc. Find the minimum radius such that, if ball ba has a radius
+ * bigger than that, the two cones with be disjoint outside of ball ba.
+ */
 float intersectionDistance(Ball ba, Ball bb, Ball bc) {
   pt pa = ba.c;
   pt pb = bb.c;
@@ -46,8 +41,10 @@ float intersectionDistance(Ball ba, Ball bb, Ball bc) {
   return d(pa, px);
 }
 
-
-void showTangentCone(Ball ba, Ball bb) {
+/*
+ * Show the tangential cone touching ball ba and bb.
+ */
+void showTangentialCone(Ball ba, Ball bb) {
   int n = 36;
   pt[] points0 = new pt[n];
   pt[] points1 = new pt[n];
@@ -86,6 +83,13 @@ void showTangentCone(Ball ba, Ball bb) {
   return;
 }
 
+
+/*
+ * Hub class.
+ *
+ * A hub is the union of a ball and a set of tangential cones
+ * defined by it and each of its neighboring balls.
+ */
 class Hub {
   Ball ball;
   Ball[] neighbors;
@@ -115,12 +119,11 @@ class Hub {
   }
 
   void showHub(color c, int a) {
-    /* TODO: use collars now, compute tangential cones later. */
     fill(c, a);
     noStroke();
     ball.showBall();
     for (int i = 0; i < nNeighbors; ++i) {
-      showTangentCone(ball, neighbors[i]);
+      showTangentialCone(ball, neighbors[i]);
       neighbors[i].showBall();
     }
     return;

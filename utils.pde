@@ -1,6 +1,7 @@
-/*********************************************************
+/******************************************************************************
  * Utility functions.
- *********************************************************/
+ ******************************************************************************/
+
 
 boolean exitDraw = false;
 
@@ -16,7 +17,6 @@ float average(float[] a, int n, int start, int end) {
   return sum / (end - start);
 }
 
-
 /*
  * Exception handler.
  */
@@ -25,28 +25,46 @@ void exceptionHandler() {
   exitDraw = true;
 }
 
+/*
+ * Return true iff |x| is not close to 0.
+ */
 boolean notAbsZero(float x) {
   return x <= -0.00001 || x >= 0.00001;
 }
 
+/*
+ * Return true iff |x| is close to 0.
+ */
 boolean isAbsZero(float x) {
   return x > -0.00001 && x < 0.00001;
 }
 
+/*
+ * Return true iff x is not 0, assuming that x is non-negative.
+ */
 boolean notZero(float x) {
-  // assume that x >= 0
   return x >= 0.00001;
 }
 
+/*
+ * Return true iff x is close to 0, assuming that x is non-negative.
+ */
 boolean isZero(float x) {
   // assume that x >= 0
   return x < 0.00001;
 }
 
+/*
+ * Generate a random vector, with each element sampled from [-n, n).
+ */
 vec random3(float n) {
   return new vec(random(-n, n), random(-n, n), random(-n, n));
 }
 
+/*
+ * Convert a 2D point array into a 1D point array. This is used for ring set
+ * processing.
+ */
 pt[] convertTo1DArray(pt[][] points, int nr, int nc) {
   pt[] G = new pt[nr * nc];
   int k = 0;
@@ -58,6 +76,19 @@ pt[] convertTo1DArray(pt[][] points, int nr, int nc) {
   return G;
 }
 
+/*
+ * Solve the following linear equations in two variables.
+ *
+ * ax + by = e
+ * cx + dy = f
+ */
+vec2 solveLinearEquationsInTwoVars(float a, float b, float c, float d, float e, float f) {
+  float det = a * d - b * c;
+  if (isAbsZero(det)) return null;
+  float x =(d * e - b * f) / det;
+  float y = (a * f - c * e) / det;
+  return new vec2(x, y);
+}
 
 /*
  * Show triangles.
@@ -66,18 +97,15 @@ void showTriangles(ArrayList<Triangle> triangles, pt[] G) {
   int n = triangles.size();
   beginShape(TRIANGLES);
   for (int i = 0; i < n; ++i) {
-    pt A = G[triangles.get(i).a];
-    pt B = G[triangles.get(i).b];
-    pt C = G[triangles.get(i).c];
-    vertex(A);
-    vertex(B);
-    vertex(C);
+    vertex(G[triangles.get(i).a]);
+    vertex(G[triangles.get(i).b]);
+    vertex(G[triangles.get(i).c]);
   }
   endShape();
 }
 
 /*
- * Show normals of triangles, one normal per triangle face.
+ * Show normals of triangles, one normal per triangle face starting at its center.
  */
 void showTriangleNormals(ArrayList<Triangle> triangles, pt[] G) {
   int n = triangles.size();

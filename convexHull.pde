@@ -369,7 +369,7 @@ ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
  * is nGroup by nPointsPerGroup. Assume that all input points will be
  * on the surface of the convex hull.
  */
-ArrayList<Triangle> generateConvexHull(pt[][] points,                // in
+ArrayList<Triangle> generateConvexHull(pt[][] points,                // in      
                                        int nGroup,                   // in
                                        int nPointsPerGroup) {        // in
   ArrayList<Vertex> vertices;

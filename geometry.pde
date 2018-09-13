@@ -1,32 +1,13 @@
-/*********************************************************
- * Geometry utility functions.
- *********************************************************/
+/******************************************************************************
+ * Geometric utility functions.
+ *
+ * Intersection tests/computation between geometric primitives.
+ * Construction of basic geometric primitives.
+ ******************************************************************************/
 
-class vec2 {
-  float x, y;
-  vec2() {
-    x = y = 0.0;
-  }
-  vec2(float x_, float y_) {
-    x = x_;
-    y = y_;
-  }
-  vec2 set(vec2 v) {
-    x = v.x;
-    y = v.y;
-    return this;
-  }
-  vec2 set(float x_, float y_) {
-    x = x_;
-    y = y_;
-    return this;
-  }
-}
 
 vec normalToTriangle(pt A, pt B, pt C) {
-  vec N = N(A, B, C);
-  N = U(N);
-  return N;
+  return U(N(A, B, C));
 }
 
 void showNormalToTriangle(pt A, pt B, pt C, float d, float r) {
@@ -35,23 +16,29 @@ void showNormalToTriangle(pt A, pt B, pt C, float d, float r) {
   arrow(D, V(d, N), r);
 }
 
+/*
+ * Construct a vector normal to given vector v. v is not necessarily a unit
+ * vector. A unit vector will be returned.
+ */
 vec constructNormal(vec v) {
-  if (isAbsZero(v.y) && isAbsZero(v.z)) { // v is parallel to (1, 0, 0)
+  if (isAbsZero(v.y) && isAbsZero(v.z)) {  // v is parallel to (1, 0, 0)
     return U(new vec(-v.z, 0.0, v.x));  // cross product of v and (0, 1, 0)
   } else {
     return U(new vec(0.0, v.z, -v.y));  // cross product of v and (1, 0, 0)
   }
 }
 
-vec2 solveLinearEquationsInTwoVars(float a, float b, float c, float d, float e, float f) {
-  float det = a * d - b * c;
-  if (abs(det) < 0.000001) return null;
-  float x =(d * e - b * f) / det;
-  float y = (a * f - c * e) / det;
-  return new vec2(x, y);
-}
 
-void constructAndSolveLE(vec A, vec B, vec C, vec D, vec2 yz0, vec2 yz1) {
+
+/*
+ * This is a helper function to find the two intersection points of two planes.
+ */
+void constructAndSolveLE(vec A,                                      // in
+                         vec B,                                      // in
+                         vec C,                                      // in
+                         vec D,                                      // in
+                         vec2 yz0,                                   // out
+                         vec2 yz1) {                                 // out
   float dotAC = dot(A, C);
   float dotBD = dot(B, D);
   vec2 t0 = solveLinearEquationsInTwoVars(C.y, C.z, D.y, D.z, dotAC, dotBD);
@@ -61,8 +48,16 @@ void constructAndSolveLE(vec A, vec B, vec C, vec D, vec2 yz0, vec2 yz1) {
   return;
 }
 
-void intersectionTwoPlanes(pt A, vec C, pt B, vec D, pt p0, pt p1) {
-  // assume that two planes are not parallel
+
+/*
+ * Compute the intersection line of two planes, given that they are not parallel.
+ */
+void intersectionTwoPlanes(pt A,                                     // in
+                           vec C,                                    // in
+                           pt B,                                     // in
+                           vec D,                                    // in
+                           pt p0,                                    // out
+                           pt p1) {                                  // out
   vec a, b, c, d;
   if (notAbsZero(C.y * D.z - D.y * C.z)) {
     vec2 yz0 = new vec2(), yz1 = new vec2();
@@ -103,7 +98,6 @@ float distanceToLine(pt P, pt A, pt B) {
   if (parallel(AP, AB)) return 0;
   vec UAB = U(AB);
   float d = n(A(AP, -dot(AP, UAB), UAB));
-  //println("distance to line is ", d);
   return d;
 }
 

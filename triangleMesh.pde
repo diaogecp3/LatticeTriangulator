@@ -2,7 +2,12 @@
  * Triangle mesh processing.
  ******************************************************************************/
 
-
+/*
+ * Triangle Mesh class.
+ *
+ * A triangle mesh is a set of triangles. Another data structures may used to
+ * simplify processing, e.g. opposite corner table.
+ */
 class TriangleMesh {
   ArrayList<pt> positions;
   ArrayList<Triangle> triangles;

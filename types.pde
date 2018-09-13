@@ -1,6 +1,7 @@
 /******************************************************************************
- * Geometric data structures used.
+ * Self-defined classes used in this project.
  ******************************************************************************/
+
 
 import java.util.LinkedList;
 import java.util.HashMap;
@@ -23,22 +24,18 @@ class Triangle {
     this.b = b;
     this.c = c;
   }
+
   int get(int index) {
-    //println("index = " + index);
     assert index >= 0 && index < 3;
-    int ret = -1;
     switch (index) {
       case 0:
-        ret = a;
-        break;
+        return a;
       case 1:
-        ret = b;
-        break;
+        return b;
       case 2:
-        ret = c;
-        break;
+        return c;
     }
-    return ret;
+    return -1;
   }
 }
 
@@ -212,7 +209,6 @@ class Disk {
   }
 }
 
-
 class RingSet {
   pt c;
   float r;
@@ -365,5 +361,41 @@ class RingSet {
       initDirs[j] = new vec(initDir[0], initDir[1], initDir[2]);
     }
     return;
+  }
+}
+
+/*
+ * Ball class.
+ */
+class Ball {
+  pt c;
+  float r;
+  Ball(pt c, float r) {
+    this.c = c;
+    this.r = r;
+  }
+  void showBall() {
+    show(c, r);
+  }
+}
+
+class vec2 {
+  float x, y;
+  vec2() {
+    x = y = 0.0;
+  }
+  vec2(float x_, float y_) {
+    x = x_;
+    y = y_;
+  }
+  vec2 set(vec2 v) {
+    x = v.x;
+    y = v.y;
+    return this;
+  }
+  vec2 set(float x_, float y_) {
+    x = x_;
+    y = y_;
+    return this;
   }
 }

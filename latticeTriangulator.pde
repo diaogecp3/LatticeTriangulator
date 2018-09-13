@@ -19,7 +19,7 @@ int inputMethodHub = 1;
  * 4: one subdivision test
  * 5: one hub test
  */
-int test = 4;
+int test = 5;
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
 float rx = -0.06 * TWO_PI, ry = -0.04 * TWO_PI;  // view angles manipulated when space pressed but not mouse
