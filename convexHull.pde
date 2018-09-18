@@ -10,7 +10,7 @@
  */
 
 
-boolean debugCH = true;
+boolean debugCH = false;
 int numFacesShown = 0;
 float disturbance = 0.0001;
 
@@ -70,7 +70,7 @@ boolean findFirstTriangle(ArrayList<Vertex> vertices,                // in/out
                           ArrayList<Triangle> triangles,             // out
                           Front front,                               // out
                           boolean[][] manifoldMask,                  // out
-                          DebugInfo debugInfo) {                     // out
+                          DebugCHInfo debugInfo) {                     // out
   assert front.size() == 0 && triangles.size() == 0 && vertices.size() > 3;
   int a = 0, b = 1, n = vertices.size();
   if (vertices.get(a).position.z > vertices.get(b).position.z) {
@@ -160,7 +160,7 @@ void initFronts(int nGroups,                                         // in
                 ArrayList<Vertex> vertices,                          // in/out
                 Front[] fronts,                                      // out
                 boolean[][] manifoldMask,                            // out
-                DebugInfo debugInfo) {                               // out
+                DebugCHInfo debugInfo) {                               // out
   for (int i = 0; i < nGroups; ++i) {
     LinkedList<FrontEdge> edges = new LinkedList<FrontEdge>();
     HashSet<Integer> groupIDs = new HashSet<Integer>();
@@ -235,7 +235,7 @@ boolean generateConvexHullWithFronts(ArrayList<Vertex> vertices,     // in/out
                                      ArrayList<Triangle> triangles,  // out
                                      Front[] fronts,                 // out
                                      boolean[][] manifoldMask,       // out
-                                     DebugInfo debugInfo) {          // out
+                                     DebugCHInfo debugInfo) {          // out
   Front curFront = fronts[0];
   assert curFront.size() > 0;
   while (curFront.size() > 0) {
@@ -323,7 +323,7 @@ ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
   ArrayList<Triangle> triangles;
   Front[] fronts;
   boolean[][] manifoldMask;
-  DebugInfo debugInfo;
+  DebugCHInfo debugInfo;
   int k = 0;
   while (true) {
     vertices = convertToVertexList(G, nv, k);  // vertices may differ every time
@@ -331,7 +331,7 @@ ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
     fronts = new Front[1];
     fronts[0] = new Front();
     manifoldMask = new boolean[nv][nv];
-    debugInfo = new DebugInfo();
+    debugInfo = new DebugCHInfo();
     boolean successInit = findFirstTriangle(vertices, triangles, fronts[0],
                                             manifoldMask, debugInfo);
     if (!successInit) { k++; continue; }
@@ -376,7 +376,7 @@ ArrayList<Triangle> generateConvexHull(pt[][] points,                // in
   ArrayList<Triangle> triangles;
   Front[] fronts;
   boolean[][] manifoldMask;
-  DebugInfo debugInfo;
+  DebugCHInfo debugInfo;
   int nv = nGroup * nPointsPerGroup;
   int k = 0;
   pt[] G = convertTo1DArray(points, nGroup, nPointsPerGroup);
@@ -385,7 +385,7 @@ ArrayList<Triangle> generateConvexHull(pt[][] points,                // in
     triangles = new ArrayList<Triangle>();
     fronts = new Front[nGroup];
     manifoldMask = new boolean[nv][nv];
-    debugInfo = new DebugInfo();
+    debugInfo = new DebugCHInfo();
     initFronts(nGroup, nPointsPerGroup, vertices, fronts, manifoldMask,
                debugInfo);    
     boolean successCH = generateConvexHullWithFronts(vertices, triangles,

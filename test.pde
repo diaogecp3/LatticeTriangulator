@@ -107,16 +107,37 @@ void oneConvexHullWithHolesTest() {
   rs.generatePoints(attenuation);
   if (showRingSet) rs.showGroups();
   if (generateCH) {
-    pt[] G = rs.get1DPointArray();
+    pt[] pointArray = rs.get1DPointArray();
+    if (regenerateCH) {  // regenerate a convex hull
+      long startTime = System.nanoTime();
+      rs.generateTriangleMesh();
+      long endTime = System.nanoTime();
+      timeCH = (endTime - startTime) / 1000000.0; 
+    }
+    fill(red);
+    stroke(0);
+    showTriangles(rs.triangles, pointArray);
+    numTriangles = rs.triangles.size();
+  } else {
+    numTriangles = -1;
+  }
+}
+
+void oneFastConvexHullWithHolesTest() {
+  rs.generatePoints(attenuation);
+  if (showRingSet) rs.showGroups();
+  if (generateCH) {
+    pt[] pointArray = rs.get1DPointArray();
     long startTime = System.nanoTime();
-    ArrayList<Triangle> triangles = generateConvexHull(rs.get2DPointArray(),
-                                                       rs.getNumGroups(),
-                                                       rs.getNumPointsPerGroup());
+    ArrayList<Triangle> triangles = rs.generateThreeRingTriangles();
     long endTime = System.nanoTime();
     timeCH = (endTime - startTime) / 1000000.0;
     fill(red);
     stroke(0);
-    showTriangles(triangles, G);
+    showTriangles(triangles, pointArray);
+    fill(green);
+    noStroke();
+    showTriangleNormals(triangles, pointArray);
     numTriangles = triangles.size();
   } else {
     numTriangles = -1;

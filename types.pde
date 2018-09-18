@@ -1,5 +1,5 @@
 /******************************************************************************
- * Self-defined classes used in this project.
+ * Simple self-defined classes used in this project.
  ******************************************************************************/
 
 
@@ -8,10 +8,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 
-class DebugInfo {
+class DebugCHInfo {
   int a, b, d;
   int numSteps;
-  DebugInfo() {
+  DebugCHInfo() {
     a = b = d = -1;
     numSteps = 1;
   }
@@ -206,161 +206,6 @@ class Disk {
     this.c = c;
     this.d = d;
     this.r = r;
-  }
-}
-
-class RingSet {
-  pt c;
-  float r;
-  int nc, np;
-  boolean sameRadius;
-  
-  pt[] contacts;
-  float[] radii;
-  vec[] initDirs;
-  
-  pt[][] points;
-  pt[] centers;
-  
-  RingSet(pt c, float r) {
-    this.c = c;
-    this.r = r;
-    sameRadius = false;
-  }
-  
-  RingSet(pt c, float r, int nc, int np) {
-    this.c = c;
-    this.r = r;
-    this.nc = nc;
-    this.np = np;
-    sameRadius = false;
-  }
-  
-  RingSet(pt c, float r, int nc, int np, float rMax) {
-    this.c = c;
-    this.r = r;
-    this.nc = nc;
-    this.np = np;
-    sameRadius = true;
-    radii = new float[1];
-    radii[0] = rMax;
-  }
-  
-  void init() {
-    if (!sameRadius) {
-      radii = new float[nc];
-      contacts = generateContactsAndRadii(c, r, nc, radii);
-    } else {
-      contacts = generateContacts(c, r, nc, radii[0]);
-    }
-    initDirs = generateInitDirs(c, contacts, nc);
-  }
-  
-  void generatePoints(float attenuation) {
-    centers = new pt[nc];
-    if (!sameRadius) {
-      float[] curRadii = new float[nc];
-      for (int i = 0; i < nc; ++i) curRadii[i] = radii[i] * attenuation;
-      points = generatePointsForCircles(contacts, curRadii, c, r, initDirs, nc,
-                                        np, centers);
-    } else {
-      float curRadius = radii[0] * attenuation;
-      points = generatePointsForCircles(contacts, curRadius, c, r, initDirs, nc,
-                                        np, centers);
-    }
-  }
-  
-  pt[][] get2DPointArray() {
-    return points;
-  }
-  
-  int getNumGroups() {
-    return nc;
-  }
-  
-  int getNumPointsPerGroup() {
-    return np;
-  }
-  
-  pt[] get1DPointArray() {
-    if (points == null) return null;
-    pt[] G = new pt[nc * np];
-    int k = 0;
-    for (int i = 0; i < nc; ++i) {
-      for (int j = 0; j < np; ++j) {
-        G[k++] = points[i][j];
-      }
-    }
-    return G;
-  }
-  
-  ArrayList<pt> get1DPointArrayList() {
-    if (points == null) return null;
-    ArrayList<pt> positions = new ArrayList<pt>();
-    for (int i = 0; i < nc; ++i) {
-      for (int j = 0; j < np; ++j) {
-        positions.add(points[i][j]);
-      }
-    }
-    return positions;
-  }
-  
-  void showGroups() {
-    fill(orange);
-    for (int i = 0; i < nc; ++i) {
-      show(centers[i], 3);
-    }
-    fill(green);
-    for (int i = 0; i < nc; ++i) {
-      arrow(centers[i], V(centers[i], points[i][0]), 3);
-    }
-    fill(blue);
-    for (int i = 0; i < nc; ++i) {
-      for (int j = 0; j < np; ++j) {
-        show(points[i][j], 3);
-      }
-    }
-    fill(cyan);
-    for (int i = 0; i < nc; ++i) {
-      for (int j = 0; j < np; ++j) {
-        collar(points[i][j], V(points[i][j], points[i][(j + 1) % np]), 1, 1);
-      }
-    }
-    return;
-  }
-  
-  void savePointGroups(String file) {
-    String[] lines = new String[2 + 3 * nc];
-    int i = 0;
-    lines[i++] = str(nc);
-    lines[i++] = str(np);
-    for (int j = 0; j < nc; ++j) {
-      lines[i++] = str(contacts[j].x) + "," + str(contacts[j].y) + "," +
-                   str(contacts[j].z);
-      lines[i++] = str(radii[j]);
-      lines[i++] = str(initDirs[j].x) + "," + str(initDirs[j].y) + "," +
-                   str(initDirs[j].z);
-    }
-    saveStrings(file, lines);
-    return;
-  }
-
-  void loadPointGroups(String file) {
-    String[] lines = loadStrings(file);
-    int i = 0;
-    nc = int(lines[i++]);
-    np = int(lines[i++]);
-    contacts = new pt[nc];
-    radii = new float[nc];
-    initDirs = new vec[nc];
-    for (int j = 0; j < nc; ++j) {
-      float[] contact = float(split(lines[i++], ","));
-      contacts[j] = new pt(contact[0], contact[1], contact[2]);
-      radii[j] = float(lines[i++]);
-      float[] initDir = float(split(lines[i++], ","));
-      initDirs[j] = new vec(initDir[0], initDir[1], initDir[2]);
-    }
-    return;
   }
 }
 

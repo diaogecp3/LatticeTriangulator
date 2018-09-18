@@ -3,6 +3,7 @@ import processing.pdf.*;
 
 boolean showYellowSphere = false;
 boolean generateCH = false;
+boolean regenerateCH = true;  // for ring set, test shrink/grow
 boolean showRingSet = true;
 boolean showPointSet = true;
 int subdivisionTimes = 0;
@@ -14,12 +15,14 @@ int inputMethodHub = 1;
 /*
  * 0: one convex-hull test
  * 1: one convex-hull-with-holes test
- * 2: many convex-hull tests
- * 3: many convex-hull-with-holes tests
- * 4: one subdivision test
- * 5: one hub test
+ * 2: one fast-convex-hull-with-holes test
+ * 3: one subdivision test
+ * 4: one hub test
+
+ * 9: many convex-hull tests
+ * 10: many convex-hull-with-holes tests
  */
-int test = 5;
+int test = 2;
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
 float rx = -0.06 * TWO_PI, ry = -0.04 * TWO_PI;  // view angles manipulated when space pressed but not mouse
@@ -40,9 +43,9 @@ float radiusOfSphere = 100;
 pt centerOfSphere = new pt();
 
 float rMax = 50;
-float attenuation = 1.0;
-int numGroups = 4;
-int numPointsPerGroup = 8;
+float attenuation = 0.5;
+int numGroups = 8;
+int numPointsPerGroup = 6;
 
 RingSet rs;
 
@@ -64,7 +67,7 @@ void setup() {
 
   P.declare();
   
-  if (test == 2 || test == 3) {
+  if (test == 9 || test == 10) {
     noLoop();
     debugCH = false;
   }
@@ -95,6 +98,17 @@ void setup() {
       println("Please use a valid input method for ring set");
       exit();
   }
+
+  if (regenerateCH == false) {
+    debugCH = false;
+    attenuation = 0.1;
+    rs.generatePoints(attenuation);  // shrink all rings
+    rs.generateTriangleMesh();  // generate a triangle mesh and store it
+  }
+
+  if (test == 2) {
+    rs.generateConvexHullUsingContacts();
+  }
   
   switch (inputMethodHub) {
     case 0:  // read from file
@@ -107,7 +121,6 @@ void setup() {
       println("Please use a valid input method for hub");
       exit();
   }
-
 }
 
 void draw() {
@@ -149,18 +162,22 @@ void draw() {
       case 1:  // one convex-hull-with-holes test
         oneConvexHullWithHolesTest();
         break;
-      case 2:  // many convex-hull tests
-        testCH(numTests, numPointsPerTest, showResults);
+      case 2:  // one fast-convex-hull-with-holes test
+        oneFastConvexHullWithHolesTest();
         break;
-      case 3:  // many convex-hull-with-holes tests
-        println("Many convex-hull-with-holes tests coming soon");
-        exit();
-        break;
-      case 4:
+      case 3:
         oneSubdivisionTest();
         break;
-      case 5:
+      case 4:
         oneHubTest();
+        break;
+      
+      case 9:  // many convex-hull tests
+        testCH(numTests, numPointsPerTest, showResults);
+        break;
+      case 10:  // many convex-hull-with-holes tests
+        println("Many convex-hull-with-holes tests coming soon");
+        exit();
         break;
       default:
         println("Please enter a correct test number");
@@ -191,6 +208,9 @@ void draw() {
   if (subdivisionTimes > 0) {
     scribeHeader("time for subdivision = " + timeSB + "ms", 6);
   }
+  if (test == 2) {
+    scribeHeader("number of steps for a three-ring triangle = " + numUpdateStepsFastCH, 7);
+  }
   // show menu at bottom, only if not filming
   if (scribeText && !filming) displayFooter();
   if (animating) {  // periodic change of time 
@@ -205,7 +225,7 @@ void draw() {
 }
 
 void keyPressed() {
-  if(key == '`') picking = true; 
+  if(key == '`') picking = true;
   if(key == '?') scribeText = !scribeText;
   if(key == '!') snapPicture();
   if(key == '@') snappingPDF = true;
@@ -235,12 +255,24 @@ void keyPressed() {
   if (key == 'o') showYellowSphere = !showYellowSphere;
   if (key == 'h') generateCH = !generateCH;
   if (key == '+') {
-    if (numTriangles >= 0) numFacesShown = numTriangles + 1;
+    if (numTriangles >= 0) {
+      numFacesShown = numTriangles + 1;
+      numFacesShownFastCH = numTriangles + 1;
+    }
     subdivisionTimes++;
   }
   if (key == '-') {
-    if (numFacesShown > 0) numFacesShown--;
+    if (numFacesShown > 0) {
+      numFacesShown--;
+      numFacesShownFastCH--;
+    }
     subdivisionTimes = max(0, subdivisionTimes - 1);
+  }
+  if (key == '*') {
+    numUpdateStepsFastCH++;
+  }
+  if (key == '/') {
+    numUpdateStepsFastCH = max(1, numUpdateStepsFastCH - 1);
   }
   if (key == '1') numFacesShown = 1;
   if (key == '[') attenuation = min(1.0, attenuation + 0.1);

@@ -3,7 +3,7 @@
  ******************************************************************************/
 
 /*
- * Triangle Mesh class.
+ * TriangleMesh class.
  *
  * A triangle mesh is a set of triangles. Another data structures may used to
  * simplify processing, e.g. opposite corner table.

@@ -9,3 +9,6 @@ Edge flip occurs!
 In rs_easy_2:
 (0, 0, 0) is outside of the convex hull.
 Subdivision doesn't work well.
+
+In rs_easy_3:
+three ring triangle is wrong
