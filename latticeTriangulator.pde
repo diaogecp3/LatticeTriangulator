@@ -18,7 +18,8 @@ int inputMethodHub = 1;
  * 2: one fast-convex-hull-with-holes test
  * 3: one subdivision test
  * 4: one hub test
-
+ * 5-7: to be determined
+ * 8: many three-ring-triangle tests
  * 9: many convex-hull tests
  * 10: many convex-hull-with-holes tests
  */
@@ -43,9 +44,9 @@ float radiusOfSphere = 100;
 pt centerOfSphere = new pt();
 
 float rMax = 50;
-float attenuation = 0.5;
-int numGroups = 8;
-int numPointsPerGroup = 6;
+float attenuation = 1.0;
+int numRings = 4;
+int numPointsPerRing = 4;
 
 RingSet rs;
 
@@ -67,9 +68,10 @@ void setup() {
 
   P.declare();
   
-  if (test == 9 || test == 10) {
+  if (test >= 8) {
     noLoop();
     debugCH = false;
+    debugFastCH = false;
   }
   
   switch (inputMethodPointSet) {
@@ -87,11 +89,11 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-      rs.loadPointGroups("data/ring_set/rs_medium_0");
+      rs.loadRings("data/ring_set/rs_fail_1");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,
-                       numGroups, numPointsPerGroup);
+                       numRings, numPointsPerRing);
       rs.init();
       break;
     default:
@@ -107,7 +109,7 @@ void setup() {
   }
 
   if (test == 2) {
-    rs.generateConvexHullUsingContacts();
+    rs.generateConvexHullRef();
   }
   
   switch (inputMethodHub) {
@@ -172,6 +174,9 @@ void draw() {
         oneHubTest();
         break;
       
+      case 8:
+        testThreeRingTriangle(numTests, numPointsPerRing);
+        break;
       case 9:  // many convex-hull tests
         testCH(numTests, numPointsPerTest, showResults);
         break;
@@ -200,16 +205,16 @@ void draw() {
   if (scribeText) { fill(black); displayHeader(); }
   // display anything related to my project
   scribeHeader("debug convex hull = " + str(debugCH), 2);
-  scribeHeader("number of steps I enter = " + numFacesShown, 3);
+  scribeHeader("number of faces I enter = " + numFaces, 3);
   if (numTriangles != -1) {
     scribeHeader("number of triangles = " + numTriangles, 4);
     scribeHeader("time for convex hull generation = " + timeCH + "ms", 5);
   }
-  if (subdivisionTimes > 0) {
+  if (test == 3 && subdivisionTimes > 0) {
     scribeHeader("time for subdivision = " + timeSB + "ms", 6);
   }
   if (test == 2) {
-    scribeHeader("number of steps for a three-ring triangle = " + numUpdateStepsFastCH, 7);
+    scribeHeader("number of steps for a three-ring triangle = " + numStepsFastCH, 7);
   }
   // show menu at bottom, only if not filming
   if (scribeText && !filming) displayFooter();
@@ -243,38 +248,44 @@ void keyPressed() {
   if(key == 'i') P.insertClosestProjection(Pick);  // Inserts new vertex in P that is the closeset projection of O
   if(key == 'W') { P.savePts("data/pts"); Q.savePts("data/pts2"); }  // save vertices to pts2
   if(key == 'L') { P.loadPts("data/pts"); Q.loadPts("data/pts2"); }  // loads saved model
-  if(key == 'w') { P.savePts("data/pts"); rs.savePointGroups("data/rs_unnamed"); }  // save vertices to pts
-  if(key == 'l') { P.loadPts("data/pts"); rs.loadPointGroups("data/rs_unnamed"); }
+  if(key == 'w') { P.savePts("data/pts"); rs.saveRings("data/rs_unnamed"); }  // save vertices to pts
+  if(key == 'l') { P.loadPts("data/pts"); rs.loadRings("data/rs_unnamed"); }
   // if(key == 'a') animating = !animating; // toggle animation
   if(key == ',') viewpoint = true;
   if(key == '>') showFrame = !showFrame;
   if(key == '#') exit();
 
   /* Following are Yaohong's keys. */
-  if (key == '0') debugCH = !debugCH;
+  if (key == '0') {
+    debugCH = !debugCH;
+    debugFastCH = !debugFastCH;
+  }
   if (key == 'o') showYellowSphere = !showYellowSphere;
   if (key == 'h') generateCH = !generateCH;
   if (key == '+') {
     if (numTriangles >= 0) {
-      numFacesShown = numTriangles + 1;
-      numFacesShownFastCH = numTriangles + 1;
+      numFaces = numTriangles + 1;
+      numFacesFastCH = numTriangles + 1;
     }
     subdivisionTimes++;
   }
   if (key == '-') {
-    if (numFacesShown > 0) {
-      numFacesShown--;
-      numFacesShownFastCH--;
+    if (numFaces > 0) {
+      numFaces--;
+      numFacesFastCH--;
     }
     subdivisionTimes = max(0, subdivisionTimes - 1);
   }
   if (key == '*') {
-    numUpdateStepsFastCH++;
+    numStepsFastCH++;
   }
   if (key == '/') {
-    numUpdateStepsFastCH = max(1, numUpdateStepsFastCH - 1);
+    numStepsFastCH = max(1, numStepsFastCH - 1);
   }
-  if (key == '1') numFacesShown = 1;
+  if (key == '1') {
+    numFaces = 1;
+    numStepsFastCH = 1;
+  }
   if (key == '[') attenuation = min(1.0, attenuation + 0.1);
   if (key == ']') attenuation = max(0.1, attenuation - 0.1);
   if (key == 'g') { showRingSet = !showRingSet; showPointSet = !showPointSet; }

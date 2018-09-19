@@ -17,11 +17,22 @@ float average(float[] a, int n, int start, int end) {
   return sum / (end - start);
 }
 
+
+float accuracy(boolean[] a, int n, int start, int end) {
+  assert start >= 0 && end <= n && end > start;
+  float sum = 0.0;
+  for (int i = start; i < end; ++i) {
+    sum += (a[i] ? 1 : 0);
+  }
+  return sum / n;
+}
+
 /*
  * Exception handler.
  */
 void exceptionHandler() {
   P.savePts("data/pts_unnamed");
+  rs.saveRings("data/rs_unnamed");
   exitDraw = true;
 }
 
@@ -97,6 +108,7 @@ void showTriangles(ArrayList<Triangle> triangles, pt[] G) {
   int n = triangles.size();
   beginShape(TRIANGLES);
   for (int i = 0; i < n; ++i) {
+    if (triangles.get(i) == null) continue;
     vertex(G[triangles.get(i).a]);
     vertex(G[triangles.get(i).b]);
     vertex(G[triangles.get(i).c]);
@@ -110,6 +122,7 @@ void showTriangles(ArrayList<Triangle> triangles, pt[] G) {
 void showTriangleNormals(ArrayList<Triangle> triangles, pt[] G) {
   int n = triangles.size();
   for (int i = 0; i < n; ++i) {
+    if (triangles.get(i) == null) continue;
     pt A = G[triangles.get(i).a];
     pt B = G[triangles.get(i).b];
     pt C = G[triangles.get(i).c];

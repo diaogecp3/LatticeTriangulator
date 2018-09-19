@@ -1,14 +1,26 @@
 In rs_easy_0:
 Edge flip occurs!
-Only 3 groups involved
+Only 3 groups involved.
 
-In rs_medium_0:
-Edge flip occurs!
-4 groups are involved
+In rs_easy_1:
+7 rings, but the result is pretty good.
 
 In rs_easy_2:
 (0, 0, 0) is outside of the convex hull.
 Subdivision doesn't work well.
 
 In rs_easy_3:
-three ring triangle is wrong
+Three-ring triangles fail convexity test (now succeed)
+
+In rs_medium_0:
+Edge flip occurs!
+4 groups are involved.
+
+In rs_medium_1:
+Three-ring triangles fail convexity test.
+
+In rs_medium_2:
+Two three-ring triangles intersect. Because the connectivity is no longer correct after we grow rings.
+
+In rs_fail_0:
+When attenuation = 1, three-ring-triangle generation doesn't converge.

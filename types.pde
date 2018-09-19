@@ -10,10 +10,10 @@ import java.util.HashSet;
 
 class DebugCHInfo {
   int a, b, d;
-  int numSteps;
+  int numFaces;
   DebugCHInfo() {
     a = b = d = -1;
-    numSteps = 1;
+    numFaces = 1;
   }
 }
 

@@ -3,7 +3,7 @@
  *********************************************************/
 
 
-int numTests = 100;
+int numTests = 1000;
 int numPointsPerTest = 64;
 boolean showResults = false;
 
@@ -29,7 +29,39 @@ void testCH(int n, int m, boolean showResults) {
   }
   
   float avg = average(times, n, 1, n);
-  System.out.format("Generate a convex hull for %d point, %d tests in total, average time (ignore the first one) = %f ms. \n", m, n, avg);
+  System.out.format("Generate a convex hull for %d point, %d tests in total," +
+    " average time (ignore the first one) = %f ms. \n", m, n, avg);
+}
+
+
+void testThreeRingTriangle(int n, int np) {
+  boolean[] successes = new boolean[n];
+  float[] times = new float[n];
+  for (int i = 0; i < n; ++i) {
+    //int numPointsPerGroup = int(random(3, np+1));
+    RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere, 3, np);
+    ringSet.init();
+    ringSet.generatePoints(1.0);
+    ringSet.convexHullRef = new ArrayList<Triangle>();
+    ringSet.convexHullRef.add(new Triangle(0, 1, 2));
+    long st = System.nanoTime();
+    ArrayList<Triangle> tris = ringSet.generateThreeRingTriangles();
+    long ed = System.nanoTime();
+    times[i] = (ed - st) / 1000000.0;
+    pt[] points = ringSet.get1DPointArray();
+    if (tris.get(0) == null) successes[i] = false;
+    else {
+      boolean success = passQualityTest(tris, points, points.length);
+      successes[i] = success;
+    }
+    if (successes[i] == false) {
+      ringSet.saveRings("data/rs_fail_" + i);
+    }
+  }
+  float avgTime = average(times, n, 0, n);
+  float succRate = accuracy(successes, n, 0, n);
+  System.out.format("Three-ring triangle generation (np = %d, n = %d):" +
+    " success rate = %f, average time = %f ms.", np, n, succRate, avgTime);
 }
 
 
@@ -38,6 +70,7 @@ void testCH(int n, int m, boolean showResults) {
 boolean passConvexityTest(ArrayList<Triangle> triangles, pt[] G, int nv) {
   int n = triangles.size();
   for (int i = 0; i < n; ++i) {
+    if (triangles.get(i) == null) continue;
     int a = triangles.get(i).a;
     int b = triangles.get(i).b;
     int c = triangles.get(i).c;
@@ -105,7 +138,7 @@ void oneConvexHullTest() {
 
 void oneConvexHullWithHolesTest() {
   rs.generatePoints(attenuation);
-  if (showRingSet) rs.showGroups();
+  if (showRingSet) rs.showRings();
   if (generateCH) {
     pt[] pointArray = rs.get1DPointArray();
     if (regenerateCH) {  // regenerate a convex hull
@@ -125,7 +158,7 @@ void oneConvexHullWithHolesTest() {
 
 void oneFastConvexHullWithHolesTest() {
   rs.generatePoints(attenuation);
-  if (showRingSet) rs.showGroups();
+  if (showRingSet) rs.showRings();
   if (generateCH) {
     pt[] pointArray = rs.get1DPointArray();
     long startTime = System.nanoTime();
@@ -139,6 +172,14 @@ void oneFastConvexHullWithHolesTest() {
     noStroke();
     showTriangleNormals(triangles, pointArray);
     numTriangles = triangles.size();
+    if (debugFastCH) {
+      rs.showDebug3RTriInfo();
+    } else {
+      boolean success = passQualityTest(triangles, pointArray, pointArray.length);
+      if (!success) {
+        println("not pass quality (convexity) test!");
+      }
+    }
   } else {
     numTriangles = -1;
   }
@@ -147,13 +188,13 @@ void oneFastConvexHullWithHolesTest() {
 void oneSubdivisionTest() {
   debugCH = false;
   rs.generatePoints(attenuation);
-  if (showRingSet) rs.showGroups();
+  if (showRingSet) rs.showRings();
   if (generateCH) {
     ArrayList<pt> positions = rs.get1DPointArrayList();
     long startTime = System.nanoTime();
     ArrayList<Triangle> triangles = generateConvexHull(rs.get2DPointArray(),
-                                                       rs.getNumGroups(),
-                                                       rs.getNumPointsPerGroup());
+                                                       rs.getNumRings(),
+                                                       rs.getNumPointsPerRing());
     long endTime = System.nanoTime();
     timeCH = (endTime - startTime) / 1000000.0;
 

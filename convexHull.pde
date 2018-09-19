@@ -11,7 +11,7 @@
 
 
 boolean debugCH = false;
-int numFacesShown = 0;
+int numFaces = 0;
 float disturbance = 0.0001;
 
 /*
@@ -147,7 +147,7 @@ boolean findFirstTriangle(ArrayList<Vertex> vertices,                // in/out
   vc.outEdges.put(va, e2);
   manifoldMask[a][b] = manifoldMask[b][c] = manifoldMask[c][a] = true;
   triangles.add(new Triangle(a, b, c));
-  debugInfo.numSteps = 1;
+  debugInfo.numFaces = 1;
   return true;
 }
 
@@ -188,7 +188,7 @@ void initFronts(int nGroups,                                         // in
     manifoldMask[tail][head] = true;
     fronts[i] = new Front(edges, groupIDs);
   }
-  debugInfo.numSteps = 0;
+  debugInfo.numFaces = 0;
   return;
 }
 
@@ -239,14 +239,14 @@ boolean generateConvexHullWithFronts(ArrayList<Vertex> vertices,     // in/out
   Front curFront = fronts[0];
   assert curFront.size() > 0;
   while (curFront.size() > 0) {
-    if (debugCH && debugInfo.numSteps >= numFacesShown) break;
+    if (debugCH && debugInfo.numFaces >= numFaces) break;
     FrontEdge e = curFront.poll();
     if (!e.isValid) continue;
     vec normalADB = new vec();
     int d = pivot(e, vertices, manifoldMask, normalADB);
     
     if (d < 0) {
-      if (debugCH) println("No hit found, number of steps = " + debugInfo.numSteps);
+      if (debugCH) println("No hit found, number of steps = " + debugInfo.numFaces);
       else println("No hit found");
       exceptionHandler();
       return false;
@@ -307,7 +307,7 @@ boolean generateConvexHullWithFronts(ArrayList<Vertex> vertices,     // in/out
       if (curFront.isInnerVertex(vd)) vd.isInner = true;
     }
     
-    if (debugCH) debugInfo.numSteps++;
+    if (debugCH) debugInfo.numFaces++;
   }
   
   return true;
@@ -318,7 +318,15 @@ boolean generateConvexHullWithFronts(ArrayList<Vertex> vertices,     // in/out
  * that all input points will be on the surface of the convex hull.
  */
 ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
-  assert nv >= 4;
+  assert nv >= 3;
+  if (nv == 3) {
+    Triangle t0 = new Triangle(0, 1, 2);
+    Triangle t1 = new Triangle(0, 2, 1);
+    ArrayList<Triangle> ch = new ArrayList<Triangle>();
+    ch.add(t0);
+    ch.add(t1);
+    return ch;
+  }
   ArrayList<Vertex> vertices;
   ArrayList<Triangle> triangles;
   Front[] fronts;
