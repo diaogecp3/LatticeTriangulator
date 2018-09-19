@@ -1,17 +1,6 @@
 import processing.pdf.*;
 
 
-boolean showYellowSphere = false;
-boolean generateCH = false;
-boolean regenerateCH = true;  // for ring set, test shrink/grow
-boolean showRingSet = true;
-boolean showPointSet = true;
-int subdivisionTimes = 0;
-int inputMethodPointSet = 0;
-int inputMethodRingSet = 0;
-int inputMethodHub = 1;
-
-
 /*
  * 0: one convex-hull test
  * 1: one convex-hull-with-holes test
@@ -25,15 +14,25 @@ int inputMethodHub = 1;
  */
 int test = 2;
 
+boolean showYellowSphere = false;
+boolean generateCH = false;
+boolean regenerateCH = true;  // for ring set, test shrink/grow
+boolean showRingSet = true;
+boolean showPointSet = true;
+int subdivisionTimes = 0;
+int inputMethodPointSet = 0;
+int inputMethodRingSet = 0;
+int inputMethodHub = 1;
+
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
 float rx = -0.06 * TWO_PI, ry = -0.04 * TWO_PI;  // view angles manipulated when space pressed but not mouse
 boolean animating = true,
         tracking = false,
         center = true,
         showFrame = false,
-        snappingPDF = false;
+        snappingPDF = false,
+        viewpoint = false;
 float t = 0, s = 0;
-boolean viewpoint = false;
 pt Viewer = P();
 pt F = P(0,0,0);  // focus point: the camera is looking at it (moved when 'f or 'F' are pressed)
 pt Of = P(100,100,0), Ob = P(110,110,0);  // red point controlled by the user via mouseDrag: used for inserting vertices ...
@@ -44,10 +43,11 @@ float radiusOfSphere = 100;
 pt centerOfSphere = new pt();
 
 float rMax = 50;
-float attenuation = 1.0;
-int numRings = 4;
-int numPointsPerRing = 4;
-
+float attenuationMin = 0.05;
+float attenuationDelta = 0.05;
+float attenuation = attenuationMin;
+int numRings = 5;
+int numPointsPerRing = 6;
 RingSet rs;
 
 float r0 = 30;
@@ -67,7 +67,7 @@ void setup() {
   noSmooth();  // LEAVE HERE FOR 3D PICK TO WORK!!!
 
   P.declare();
-  
+
   if (test >= 8) {
     noLoop();
     debugCH = false;
@@ -89,7 +89,7 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-      rs.loadRings("data/ring_set/rs_fail_1");
+      rs.loadRings("data/ring_set/rs_medium_3");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,
@@ -101,17 +101,23 @@ void setup() {
       exit();
   }
 
-  if (regenerateCH == false) {
-    debugCH = false;
-    attenuation = 0.1;
-    rs.generatePoints(attenuation);  // shrink all rings
-    rs.generateTriangleMesh();  // generate a triangle mesh and store it
-  }
-
   if (test == 2) {
     rs.generateConvexHullRef();
   }
-  
+
+  if (regenerateCH == false) {
+    attenuation = attenuationMin;
+    rs.generatePoints(attenuation);  // shrink all rings
+    if (test == 1) {
+      debugCH = false;
+      rs.generateTriangleMesh();  // generate a triangle mesh and store it
+    }
+    if (test == 2) {
+      debugFastCH = false;
+      rs.generateThreeRingTriangles();  // generate three-ring triangles and store them
+    }
+  }
+
   switch (inputMethodHub) {
     case 0:  // read from file
       println("Not implement yet");
@@ -175,10 +181,10 @@ void draw() {
         break;
       
       case 8:
-        testThreeRingTriangle(numTests, numPointsPerRing);
+        testThreeRingTriangle(numTests, numPointsPerRing, attenuation);
         break;
       case 9:  // many convex-hull tests
-        testCH(numTests, numPointsPerTest, showResults);
+        testConvexHull(numTests, numPointsPerTest, showResults);
         break;
       case 10:  // many convex-hull-with-holes tests
         println("Many convex-hull-with-holes tests coming soon");
@@ -204,7 +210,7 @@ void draw() {
   // display header, including my face
   if (scribeText) { fill(black); displayHeader(); }
   // display anything related to my project
-  scribeHeader("debug convex hull = " + str(debugCH), 2);
+  scribeHeader("debug = " + str(debugCH), 2);
   scribeHeader("number of faces I enter = " + numFaces, 3);
   if (numTriangles != -1) {
     scribeHeader("number of triangles = " + numTriangles, 4);
@@ -216,6 +222,7 @@ void draw() {
   if (test == 2) {
     scribeHeader("number of steps for a three-ring triangle = " + numStepsFastCH, 7);
   }
+  scribeHeader("regenerate = " + str(regenerateCH), 8);
   // show menu at bottom, only if not filming
   if (scribeText && !filming) displayFooter();
   if (animating) {  // periodic change of time 
@@ -262,6 +269,20 @@ void keyPressed() {
   }
   if (key == 'o') showYellowSphere = !showYellowSphere;
   if (key == 'h') generateCH = !generateCH;
+  if (key == 'r') {
+    regenerateCH = !regenerateCH;
+    if (regenerateCH == false) {
+      rs.generatePoints(attenuationMin);  // shrink all rings
+      if (test == 1) {
+        debugCH = false;
+        rs.generateTriangleMesh();  // generate a triangle mesh and store it
+      }
+      if (test == 2) {
+        debugFastCH = false;
+        rs.generateThreeRingTriangles();  // generate three-ring triangles and store them
+      }
+    }
+  }
   if (key == '+') {
     if (numTriangles >= 0) {
       numFaces = numTriangles + 1;
@@ -286,8 +307,8 @@ void keyPressed() {
     numFaces = 1;
     numStepsFastCH = 1;
   }
-  if (key == '[') attenuation = min(1.0, attenuation + 0.1);
-  if (key == ']') attenuation = max(0.1, attenuation - 0.1);
+  if (key == '[') attenuation = min(1.0, attenuation + attenuationDelta);
+  if (key == ']') attenuation = max(attenuationMin, attenuation - attenuationDelta);
   if (key == 'g') { showRingSet = !showRingSet; showPointSet = !showPointSet; }
   change = true;
 }

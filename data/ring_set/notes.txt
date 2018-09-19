@@ -22,5 +22,8 @@ Three-ring triangles fail convexity test.
 In rs_medium_2:
 Two three-ring triangles intersect. Because the connectivity is no longer correct after we grow rings.
 
+In rs_medium_3:
+Two three-ring triangles intersect.
+
 In rs_fail_0:
 When attenuation = 1, three-ring-triangle generation doesn't converge.

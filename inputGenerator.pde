@@ -19,7 +19,7 @@ pt[] generatePointsOnSphere(pt c, float r, int n) {
       pt p = generateOnePointOnSphere(c, r);
       boolean bad = false;
       for (int j = 0; j < i; ++j) {
-        if (isZero(d(points[j], p))) {
+        if (isNonPositive(d(points[j], p))) {
           bad = true;
           break;
         }

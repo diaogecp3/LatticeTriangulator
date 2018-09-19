@@ -97,7 +97,7 @@ void loadPts(String fn) {
   print("loading: "+fn+" ");
   String [] ss = loadStrings(fn);
   int s=0;
-  nv = int(ss[s++]); println("nv="+nv);
+  nv = int(ss[s++]); println("nv =", nv);
   for(int k=0; k<nv; k++) {int i=k+s; float [] xy = float(split(ss[i],",")); G[k].setTo(xy[0],xy[1],xy[2]);}
   pv=0;
   }; 

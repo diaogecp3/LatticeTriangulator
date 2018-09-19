@@ -3,7 +3,8 @@
  *********************************************************/
 
 
-int numTests = 1000;
+int numTests = 10000;
+int numNaive3RT = 0;
 int numPointsPerTest = 64;
 boolean showResults = false;
 
@@ -12,7 +13,7 @@ boolean showResults = false;
  * The number of tests done is n. For each test, input size is m. If showResult
  * is true, 3D results will be shown on screen.
  */
-void testCH(int n, int m, boolean showResults) {
+void testConvexHull(int n, int m, boolean showResults) {
   float[] times = new float[n];  // in millisecons
   int p = n / 10;
   for (int i = 0; i < n; ++i) {
@@ -34,37 +35,42 @@ void testCH(int n, int m, boolean showResults) {
 }
 
 
-void testThreeRingTriangle(int n, int np) {
+void testThreeRingTriangle(int n, int np, float attenuation) {
   boolean[] successes = new boolean[n];
+  boolean[] valids = new boolean[n];
   float[] times = new float[n];
   for (int i = 0; i < n; ++i) {
-    //int numPointsPerGroup = int(random(3, np+1));
     RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere, 3, np);
     ringSet.init();
-    ringSet.generatePoints(1.0);
+    ringSet.generatePoints(attenuation);
     ringSet.convexHullRef = new ArrayList<Triangle>();
     ringSet.convexHullRef.add(new Triangle(0, 1, 2));
     long st = System.nanoTime();
-    ArrayList<Triangle> tris = ringSet.generateThreeRingTriangles();
+    ringSet.generateThreeRingTriangles();
     long ed = System.nanoTime();
     times[i] = (ed - st) / 1000000.0;
     pt[] points = ringSet.get1DPointArray();
-    if (tris.get(0) == null) successes[i] = false;
-    else {
-      boolean success = passQualityTest(tris, points, points.length);
+    if (rs.threeRingTriangles.get(0) == null) {
+      successes[i] = false;
+    } else {
+      valids[i] = true;
+      boolean success = passQualityTest(rs.threeRingTriangles, points, points.length);
       successes[i] = success;
     }
     if (successes[i] == false) {
-      ringSet.saveRings("data/rs_fail_" + i);
+      if (valids[i]) ringSet.saveRings("data/tmp/rs_3rt_low_quality_" + i);
+      else ringSet.saveRings("data/tmp/rs_3rt_null_" + i);
     }
   }
   float avgTime = average(times, n, 0, n);
-  float succRate = accuracy(successes, n, 0, n);
-  System.out.format("Three-ring triangle generation (np = %d, n = %d):" +
-    " success rate = %f, average time = %f ms.", np, n, succRate, avgTime);
+  float succRate = accuracy(successes, n, 0, n, null);
+  float succRateValid = accuracy(successes, n, 0, n, valids);
+  System.out.format("Three-ring triangle generation " +
+                    "(n = %d, np = %d, attenuation = %f): " +
+                    "success rate = %f, success rate (valid) = %f, " +
+                    "average time = %f ms, times to use naive method = %d.\n",
+                    n, np, attenuation, succRate, succRateValid, avgTime, numNaive3RT);
 }
-
-
 
 
 boolean passConvexityTest(ArrayList<Triangle> triangles, pt[] G, int nv) {
@@ -82,7 +88,11 @@ boolean passConvexityTest(ArrayList<Triangle> triangles, pt[] G, int nv) {
       if (j == a || j == b || j == c) continue;
       pt D = G[j];
       vec AD = V(A, D);
-      if (notZero(dot(normal, AD))) {
+      if (isPositive(dot(normal, AD)) && isPositive(dot(U(normal), U(AD)))) {
+        System.out.format("dot(normal, AD) = %f, dot(U(normal), U(AD)) = %f " +
+                          "norm(normal) = %f, norm(AD) = %f\n",
+                          dot(normal, AD), dot(U(normal), U(AD)),
+                          normal.norm(), AD.norm());
         return false;
       }
     }
@@ -161,21 +171,20 @@ void oneFastConvexHullWithHolesTest() {
   if (showRingSet) rs.showRings();
   if (generateCH) {
     pt[] pointArray = rs.get1DPointArray();
-    long startTime = System.nanoTime();
-    ArrayList<Triangle> triangles = rs.generateThreeRingTriangles();
-    long endTime = System.nanoTime();
-    timeCH = (endTime - startTime) / 1000000.0;
+    if (regenerateCH) {
+      long startTime = System.nanoTime();
+      rs.generateThreeRingTriangles();
+      long endTime = System.nanoTime();
+      timeCH = (endTime - startTime) / 1000000.0;
+    }
     fill(red);
     stroke(0);
-    showTriangles(triangles, pointArray);
-    fill(green);
-    noStroke();
-    showTriangleNormals(triangles, pointArray);
-    numTriangles = triangles.size();
+    showTriangles(rs.threeRingTriangles, pointArray);
+    numTriangles = rs.threeRingTriangles.size();
     if (debugFastCH) {
       rs.showDebug3RTriInfo();
     } else {
-      boolean success = passQualityTest(triangles, pointArray, pointArray.length);
+      boolean success = passQualityTest(rs.threeRingTriangles, pointArray, pointArray.length);
       if (!success) {
         println("not pass quality (convexity) test!");
       }

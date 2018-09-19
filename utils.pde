@@ -17,14 +17,26 @@ float average(float[] a, int n, int start, int end) {
   return sum / (end - start);
 }
 
-
-float accuracy(boolean[] a, int n, int start, int end) {
+float accuracy(boolean[] a, int n, int start, int end, boolean[] valids) {
   assert start >= 0 && end <= n && end > start;
   float sum = 0.0;
-  for (int i = start; i < end; ++i) {
-    sum += (a[i] ? 1 : 0);
+  float ret = 0.0;
+  if (valids == null) {
+    for (int i = start; i < end; ++i) {
+      sum += (a[i] ? 1 : 0);
+    }
+    ret = sum / n;
+  } else {
+    int k = 0;
+    for (int i = start; i < end; ++i) {
+      if (valids[i]) {
+        sum += (a[i] ? 1 : 0);
+        k++;
+      }
+    }
+    ret = sum / k;
   }
-  return sum / n;
+  return ret;
 }
 
 /*
@@ -51,16 +63,16 @@ boolean isAbsZero(float x) {
 }
 
 /*
- * Return true iff x is not 0, assuming that x is non-negative.
+ * Return true iff x is positive.
  */
-boolean notZero(float x) {
+boolean isPositive(float x) {
   return x >= 0.00001;
 }
 
 /*
- * Return true iff x is close to 0, assuming that x is non-negative.
+ * Return true iff x is non-positive.
  */
-boolean isZero(float x) {
+boolean isNonPositive(float x) {
   // assume that x >= 0
   return x < 0.00001;
 }
