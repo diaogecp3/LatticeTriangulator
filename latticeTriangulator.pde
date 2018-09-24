@@ -47,7 +47,7 @@ float attenuationMin = 0.05;
 float attenuationDelta = 0.05;
 float attenuation = 1.0;
 int numRings = 5;
-int numPointsPerRing = 10;
+int numPointsPerRing = 20;
 RingSet rs;
 
 float r0 = 30;
@@ -73,7 +73,7 @@ void setup() {
     debugCH = false;
     debugFastCH = false;
   }
-  
+
   switch (inputMethodPointSet) {
     case 0:  // read from file
       P.loadPts("data/point_set/ps_easy_0");
@@ -85,11 +85,12 @@ void setup() {
       println("Please use a valid input method for point set");
       exit();
   }
-  
+
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-      rs.loadRings("data/ring_set/rs_fail_0");
+      rs.loadRings("data/ring_set/rs_easy_1");
+      //rs.loadRings("data/tmp/rs_3rt_null_2324");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,
@@ -129,6 +130,8 @@ void setup() {
       println("Please use a valid input method for hub");
       exit();
   }
+
+  //testHashSetContains();
 }
 
 void draw() {
@@ -150,11 +153,11 @@ void draw() {
     rotateX(HALF_PI);  // rotates frame around X to make X and Y basis vectors parallel to the floor
     if (center) translate(-F.x, -F.y, -F.z);
     if (viewpoint) {Viewer = viewPoint(); viewpoint = false;} // sets Viewer to the current viewpoint when ',' is pressed
-    computeProjectedVectors(); // computes screen projections I, J, K of basis vectors (see bottom of pv3D): used for dragging in viewer's frame    
+    computeProjectedVectors(); // computes screen projections I, J, K of basis vectors (see bottom of pv3D): used for dragging in viewer's frame
     if (showFrame) showFrame(150); // X-red, Y-green, Z-blue arrows
 
     noStroke();
-    
+
     fill(magenta); show(centerOfSphere, 4); // show center of the sphere
     Pick = pick(mouseX,mouseY);
 
@@ -179,7 +182,7 @@ void draw() {
       case 4:
         oneHubTest();
         break;
-      
+
       case 8:
         testThreeRingTriangle(numTests, numPointsPerRing, attenuation);
         break;
@@ -225,7 +228,7 @@ void draw() {
   scribeHeader("regenerate = " + str(regenerateCH), 8);
   // show menu at bottom, only if not filming
   if (scribeText && !filming) displayFooter();
-  if (animating) {  // periodic change of time 
+  if (animating) {  // periodic change of time
     t += PI/360;
     if (t >= TWO_PI) t = 0;
     s = (cos(t) + 1.0) / 2;
@@ -335,11 +338,11 @@ void mouseDragged() {
   if (keyPressed && key == CODED && keyCode == SHIFT) {
     Of.add(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   }
-  if (keyPressed && key == 'i') P.setPickedTo(Pick); 
+  if (keyPressed && key == 'i') P.setPickedTo(Pick);
   if (keyPressed && key == 'x') P.movePickedTo(Pick);
-  if (keyPressed && key == 'z') P.movePicked(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0))); 
-  if (keyPressed && key == 'X') P.moveAll(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0))); 
-  if (keyPressed && key == 'Z') P.moveAll(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0))); 
+  if (keyPressed && key == 'z') P.movePicked(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
+  if (keyPressed && key == 'X') P.moveAll(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
+  if (keyPressed && key == 'Z') P.moveAll(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   if (keyPressed && key == 'f') { // move focus point on plane
     if(center) F.sub(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
     else F.add(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));

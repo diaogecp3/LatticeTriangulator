@@ -25,5 +25,11 @@ Two three-ring triangles intersect. Because the connectivity is no longer correc
 In rs_medium_3:
 Two three-ring triangles intersect.
 
+In rs_medium_4 & rs_medium_5:
+BFS can find two (all) optimal planes but heuristic search can only find one.
+
+In rs_medium_5:
+BFS's explored set is larger than np^3. Why?
+
 In rs_fail_0:
 When attenuation = 1, three-ring-triangle generation doesn't converge.

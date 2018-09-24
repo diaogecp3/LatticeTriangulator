@@ -3,8 +3,8 @@
  *********************************************************/
 
 
-int numTests = 1000;
-int numNaive3RT = 0;
+int numTests = 10000;
+int numBackup3RT = 0;
 int numPointsPerTest = 64;
 boolean showResults = false;
 
@@ -18,7 +18,7 @@ void testConvexHull(int n, int m, boolean showResults) {
   int p = n / 10;
   for (int i = 0; i < n; ++i) {
     generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, m);
-    long startTime = System.nanoTime(); 
+    long startTime = System.nanoTime();
     ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
     long endTime = System.nanoTime();
     times[i] = (endTime - startTime) / 1000000.0;
@@ -28,7 +28,7 @@ void testConvexHull(int n, int m, boolean showResults) {
       fill(cyan); showTriangleNormals(triangles, P.G);
     }
   }
-  
+
   float avg = average(times, n, 1, n);
   System.out.format("Generate a convex hull for %d point, %d tests in total," +
     " average time (ignore the first one) = %f ms. \n", m, n, avg);
@@ -65,11 +65,25 @@ void testThreeRingTriangle(int n, int np, float attenuation) {
   float avgTime = average(times, n, 0, n);
   float succRate = accuracy(successes, n, 0, n, null);
   float succRateValid = accuracy(successes, n, 0, n, valids);
+  switch (method3RT) {
+    case 0:
+      System.out.format("Naive method:\n");
+      break;
+    case 1:
+      System.out.format("Heuristic Search method:\n");
+      break;
+    case 2:
+      System.out.format("Breadth First Search method:\n");
+      break;
+    default:
+      System.out.format("Naive method: ");
+      break;
+  }
   System.out.format("Three-ring triangle generation " +
                     "(n = %d, np = %d, attenuation = %f): " +
                     "success rate = %f, success rate (valid) = %f, " +
-                    "average time = %f ms, times to use naive method = %d.\n",
-                    n, np, attenuation, succRate, succRateValid, avgTime, numNaive3RT);
+                    "average time = %f ms, times to use backup method = %d.\n",
+                    n, np, attenuation, succRate, succRateValid, avgTime, numBackup3RT);
 }
 
 
@@ -111,15 +125,15 @@ void testIntersectionTwoDisks() {
   pt ca = new pt(0.5, 0, 0);
   vec va = new vec(0, 0, 1);
   float ra = 1.0;
-  
+
   pt cb = new pt(0.2, 0, 1.2);
   vec vb = new vec(1, 0, 0);
   float rb = 1.0;
-  
+
   pt p0 = new pt(), p1 = new pt();
   intersectionTwoPlanes(ca, va, cb, vb, p0, p1);
   System.out.format("p0 = (%f, %f, %f), p1 = (%f, %f, %f) \n", p0.x, p0.y, p0.z, p1.x, p1.y, p1.z);
-  
+
   boolean empty = emptyIntersectionTwoDisks(ca, va, ra, cb, vb, rb);
   if (empty) println("empty intersection");
   else println("non-empty intersection");
@@ -155,7 +169,7 @@ void oneConvexHullWithHolesTest() {
       long startTime = System.nanoTime();
       rs.generateTriangleMesh();
       long endTime = System.nanoTime();
-      timeCH = (endTime - startTime) / 1000000.0; 
+      timeCH = (endTime - startTime) / 1000000.0;
     }
     fill(red);
     stroke(0);
@@ -184,7 +198,7 @@ void oneFastConvexHullWithHolesTest() {
     fill(#0AED62);  // light green
     noStroke();
     showTriangleNormals(rs.threeRingTriangles, pointArray);
-    if (debugFastCH && !useBFS) {
+    if (debugFastCH && method3RT == 1) {
       rs.showDebug3RTriInfo();
     } else {
       boolean success = passQualityTest(rs.threeRingTriangles, pointArray, pointArray.length);

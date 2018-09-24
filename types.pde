@@ -37,6 +37,19 @@ class Triangle {
     }
     return -1;
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (o == this) return true;
+    if (!(o instanceof Triangle)) return false;
+    Triangle t = (Triangle)o;
+    return a == t.a && b == t.b && c == t.c;
+  }
+
+  @Override
+  public int hashCode() {
+    return 31 * (31 * (31 + a) + b) + c;
+  }
 }
 
 class Edge {
@@ -50,7 +63,7 @@ class Edge {
 class FrontEdge {
   int a, b;  // the id of two ends of the edge
   int c; // the id of opposite vertex w.r.t. front edge [a, b]
-  boolean isValid;  // true:front, false: non-front 
+  boolean isValid;  // true:front, false: non-front
   vec N;  // the outward normal defined by vertices A, B, C
   FrontEdge(int a, int b, int c, boolean isValid, vec N) {
     this.a = a;
@@ -75,49 +88,49 @@ class Front {
     edges = new LinkedList<FrontEdge>();
     groupIDs = new HashSet<Integer>();
   }
-  
+
   Front(LinkedList<FrontEdge> edges) {
     this.edges = edges;
     groupIDs = new HashSet<Integer>();
   }
-  
+
   Front(LinkedList<FrontEdge> edges, HashSet<Integer> groupIDs) {
     this.edges = edges;
     this.groupIDs = groupIDs;
   }
-  
+
   LinkedList<FrontEdge> getEdges() {
     return edges;
   }
-  
+
   HashSet<Integer> getGroupIDs() {
     return groupIDs;
   }
-  
+
   int size() {
     return edges.size();
   }
-  
+
   boolean empty() {
     return edges.size() == 0;
   }
-  
+
   FrontEdge poll() {
     return edges.poll();
   }
-  
+
   boolean add(FrontEdge e) {
     return edges.add(e);
   }
-  
+
   void invalidate(FrontEdge e) {
     e.isValid = false;
   }
-  
+
   FrontEdge get(int index) {
     return edges.get(index);
   }
-  
+
   int indexOf(Vertex v) {
     int n = edges.size();
     int i = 0;
@@ -126,7 +139,7 @@ class Front {
     }
     return i;
   }
-  
+
   void shiftK(int k) {
     while (k > 0) {
       FrontEdge e = edges.poll();
@@ -135,11 +148,11 @@ class Front {
     }
     return;
   }
-  
+
   boolean containGroupID(Integer gid) {
     return groupIDs.contains(gid);
   }
-  
+
   void mergeWithFront(Front front) {
     edges.addAll(front.getEdges());
     front.getEdges().clear();
@@ -148,7 +161,7 @@ class Front {
     }
     front.getGroupIDs().clear();
   }
-  
+
   void mergeWithFront(Vertex v, Front[] fronts) {
     int groupID = v.groupID;
     Front anotherFront = fronts[groupID];
@@ -156,14 +169,14 @@ class Front {
     anotherFront.shiftK(k);
     this.mergeWithFront(anotherFront);
   }
-  
+
   boolean isInnerVertex(Vertex v) {
     for (FrontEdge edge : edges) {
       if (edge.isValid && (edge.a == v.id || edge.b == v.id)) return false;
     }
     return true;
   }
-  
+
   void showEdges(pt[] G) {
     for (FrontEdge edge : edges) {
       if (!edge.isValid) continue;

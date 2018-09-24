@@ -7,9 +7,9 @@
  * TODO:
  *
  * 1. Use BFS to generate three-ring triangles.
- *    Update: Implemented.
- *            But why explored set can be greater than np^3?
- *            It is slower than naive method?
+ *    It is slower than naive method? Yes when n is small. No when n is large.
+ *    How to make it fast? Combine BFS and heuristics, i.e. finding a good
+      initial triangle.
  */
 
 
@@ -20,7 +20,15 @@ int numFacesFastCH = 1;
 int numStepsFastCH = 1;
 int maxIterThreeRings = 100;
 int maxIterOneRing = 100;
-boolean useBFS = true;
+
+/*
+ * 0: Naive method. Time: O(n^3). Space: O(1)
+ * 1: Heuristic search. Time: O(n). Space: O(1)
+ * 2: Breadth first search. Time: roughly O(min(3^d, n^3)) where d is the length
+      from initial state to optimal state. Space: O(min(3^d, n^3))
+ * 3: Breadth first search with heuristics. Time and space should be less than 2.
+ */
+int method3RT = 0;
 
 class Debug3RTriInfo {  // debug info about three-ring-triangle generation
   int idr0, idr1, idr2;
@@ -202,24 +210,23 @@ class RingSet {
                                                   pt[] points1,
                                                   pt[] points2) {
     int i = 0, j = 0, k = 0;
-    pt[][] pointsArray = new pt[3][np];
-    pointsArray[0] = points0;
-    pointsArray[1] = points1;
-    pointsArray[2] = points2;
+    vec[] vs = new vec[6];
     for (i = 0; i < np; ++i) {
       pt pa = points0[i];
+      vs[0] = V(pa, points0[(i-1+np)%np]);
+      vs[1] = V(pa, points0[(i+1)%np]);
       for (j = 0; j < np; ++j) {
         pt pb = points1[j];
+        vs[2] = V(pb, points1[(j-1+np)%np]);
+        vs[3] = V(pb, points1[(j+1)%np]);
         for (k = 0; k < np; ++k) {
           pt pc = points2[k];
+          vs[4] = V(pc, points2[(k-1+np)%np]);
+          vs[5] = V(pc, points2[(k+1)%np]);
           vec normal = N(pa, pb, pc);
           boolean isValid = true;
-          int np3 = 3 * np;
-          for (int t = 0; t < np3; ++t) {
-            pt pd = pointsArray[t / np][t % np];
-            if (pd == pa || pd == pb || pd == pc) continue;
-            vec vad = V(pa, pd);
-            if (isPositive(dot(normal, vad)) && isPositive(dot(U(normal), U(vad)))) {
+          for (vec v : vs) {
+            if (dot(normal, v) > 0) {
               isValid = false;
               break;
             }
@@ -233,14 +240,14 @@ class RingSet {
   }
 
   /*
-   * Generate a three-ring triangle given 3 rings.
+   * Generate a three-ring triangle given 3 rings using heuristic search.
    *
    * It may not converge when rings are large, rings have just a few points.
    *
    */
-  private Triangle generateThreeRingTriangle(pt[] points0,
-                                             pt[] points1,
-                                             pt[] points2) {
+  private Triangle generateThreeRingTriangleHS(pt[] points0,
+                                               pt[] points1,
+                                               pt[] points2) {
     int i = 0, j = 0, k = 0;
     vec normal = N(points0[i], points1[j], points2[k]);
     if (debugFastCH) {
@@ -283,15 +290,23 @@ class RingSet {
 
     if (iter < maxIterThreeRings) {
       return new Triangle(i, j, k);
-    } else {  // use naive method
-      numNaive3RT++;
+    } else {  // use backup method (could be naive or BFS)
+      numBackup3RT++;
       //return generateThreeRingTriangleNaive(points0, points1, points2);
       return null;
     }
   }
 
-  private Triangle generateThreeRingTriangleBFS(pt[][] rings) {
-    assert rings.length == 3;
+  /*
+   * Generate a three-ring triangle given 3 rings using BFS method.
+   */
+  private Triangle generateThreeRingTriangleBFS(pt[] points0,
+                                                pt[] points1,
+                                                pt[] points2) {
+    pt[][] rings = new pt[3][];
+    rings[0] = points0;
+    rings[1] = points1;
+    rings[2] = points2;
     Triangle tri = new Triangle(0, 0, 0);
     TriangleNode triNode = new TriangleNode(tri);
     Queue<TriangleNode> queue = new LinkedList<TriangleNode>();
@@ -308,7 +323,9 @@ class RingSet {
         TriangleNode child = children.get(i);
         stable = child.computeChildren(rings, set);
         if (stable) {
-          println("size of explored set = ", set.size());
+          if (set.size() > np * np * np) {
+            println("size of explored set (bigger than np^3) = ", set.size());
+          }
           return child.tri;
         }
         queue.add(child);
@@ -327,14 +344,19 @@ class RingSet {
       Triangle face = convexHullRef.get(i);
 
       Triangle t = null;
-      if (!useBFS) {
-        t = generateThreeRingTriangle(points[face.a], points[face.b], points[face.c]);
-      } else {
-        pt[][] rings = new pt[3][np];
-        rings[0] = points[face.a];
-        rings[1] = points[face.b];
-        rings[2] = points[face.c];
-        t = generateThreeRingTriangleBFS(rings);
+      switch (method3RT) {
+        case 0:
+          t = generateThreeRingTriangleNaive(points[face.a], points[face.b], points[face.c]);
+          break;
+        case 1:
+          t = generateThreeRingTriangleHS(points[face.a], points[face.b], points[face.c]);
+          break;
+        case 2:
+          t = generateThreeRingTriangleBFS(points[face.a], points[face.b], points[face.c]);
+          break;
+        default:
+          t = generateThreeRingTriangleNaive(points[face.a], points[face.b], points[face.c]);
+          break;
       }
       Triangle triangle = (t == null) ?
                           null :
