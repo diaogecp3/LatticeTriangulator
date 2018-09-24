@@ -3,7 +3,7 @@
  *********************************************************/
 
 
-int numTests = 10000;
+int numTests = 1000;
 int numNaive3RT = 0;
 int numPointsPerTest = 64;
 boolean showResults = false;
@@ -50,11 +50,11 @@ void testThreeRingTriangle(int n, int np, float attenuation) {
     long ed = System.nanoTime();
     times[i] = (ed - st) / 1000000.0;
     pt[] points = ringSet.get1DPointArray();
-    if (rs.threeRingTriangles.get(0) == null) {
+    if (ringSet.threeRingTriangles.get(0) == null) {
       successes[i] = false;
     } else {
       valids[i] = true;
-      boolean success = passQualityTest(rs.threeRingTriangles, points, points.length);
+      boolean success = passQualityTest(ringSet.threeRingTriangles, points, points.length);
       successes[i] = success;
     }
     if (successes[i] == false) {
@@ -181,7 +181,10 @@ void oneFastConvexHullWithHolesTest() {
     stroke(0);
     showTriangles(rs.threeRingTriangles, pointArray);
     numTriangles = rs.threeRingTriangles.size();
-    if (debugFastCH) {
+    fill(#0AED62);  // light green
+    noStroke();
+    showTriangleNormals(rs.threeRingTriangles, pointArray);
+    if (debugFastCH && !useBFS) {
       rs.showDebug3RTriInfo();
     } else {
       boolean success = passQualityTest(rs.threeRingTriangles, pointArray, pointArray.length);

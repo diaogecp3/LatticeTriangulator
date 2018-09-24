@@ -3,11 +3,24 @@
  ******************************************************************************/
 
 
+/*
+ * TODO:
+ *
+ * 1. Use BFS to generate three-ring triangles.
+ *    Update: Implemented.
+ *            But why explored set can be greater than np^3?
+ *            It is slower than naive method?
+ */
+
+
+import java.util.Queue;
+
 boolean debugFastCH = false;
 int numFacesFastCH = 1;
 int numStepsFastCH = 1;
 int maxIterThreeRings = 100;
 int maxIterOneRing = 100;
+boolean useBFS = true;
 
 class Debug3RTriInfo {  // debug info about three-ring-triangle generation
   int idr0, idr1, idr2;
@@ -21,6 +34,61 @@ class Debug3RTriInfo {  // debug info about three-ring-triangle generation
     numFaces = 0;
   }
 }
+
+
+class TriangleNode {
+  Triangle tri;
+  ArrayList<TriangleNode> children = null;
+  TriangleNode(Triangle tri) {
+    this.tri = tri;
+  }
+
+  boolean computeChildren(pt[][] rings, HashSet<Triangle> exploredSet) {
+    assert rings.length == 3;
+    int np = rings[0].length;
+    pt[] ps = new pt[3];
+    ps[0] = rings[0][tri.get(0)];
+    ps[1] = rings[1][tri.get(1)];
+    ps[2] = rings[2][tri.get(2)];
+    vec normal = N(ps[0], ps[1], ps[2]);  // not necessarily unit vector
+    boolean stable = true;
+    pt p;
+    vec v;
+    children = new ArrayList<TriangleNode>();
+    for (int r = 0; r < 3; ++r) {
+      int[] idxs = new int[3];
+      idxs[1] = tri.get((r + 1) % 3);
+      idxs[2] = tri.get((r + 2) % 3);
+
+      idxs[0] = (tri.get(r) - 1 + np) % np;
+      p = rings[r][idxs[0]];
+      v = V(ps[r], p);
+      if (dot(normal, v) > 0) {
+        if (stable == true) stable = false;
+        Triangle tri = new Triangle(idxs[(3 - r) % 3], idxs[(4 - r) % 3], idxs[(5 - r) % 3]);
+        if (!exploredSet.contains(tri)) {
+          children.add(new TriangleNode(tri));
+          exploredSet.add(tri);
+        }
+      }
+
+      idxs[0] = (tri.get(r) + 1) % np;
+      p = rings[r][idxs[0]];
+      v = V(ps[r], p);
+      if (dot(normal, v) > 0) {
+        if (stable == true) stable = false;
+        Triangle tri = new Triangle(idxs[(3 - r) % 3], idxs[(4 - r) % 3], idxs[(5 - r) % 3]);
+        if (!exploredSet.contains(tri)) {
+          children.add(new TriangleNode(tri));
+          exploredSet.add(tri);
+        }
+      }
+    }
+
+    return stable;
+  }
+}
+
 
 
 /*
@@ -52,7 +120,7 @@ class RingSet {
     this.r = r;
     sameRadius = false;
   }
-  
+
   RingSet(pt c, float r, int nc, int np) {
     this.c = c;
     this.r = r;
@@ -70,7 +138,7 @@ class RingSet {
     radii = new float[1];
     radii[0] = rMax;
   }
-  
+
   void init() {
     if (!sameRadius) {
       radii = new float[nc];
@@ -80,7 +148,7 @@ class RingSet {
     }
     initDirs = generateInitDirs(c, contacts, nc);
   }
-  
+
   void generatePoints(float attenuation) {
     centers = new pt[nc];
     if (!sameRadius) {
@@ -173,7 +241,7 @@ class RingSet {
   private Triangle generateThreeRingTriangle(pt[] points0,
                                              pt[] points1,
                                              pt[] points2) {
-    int i = 1, j = 1, k = 1;
+    int i = 0, j = 0, k = 0;
     vec normal = N(points0[i], points1[j], points2[k]);
     if (debugFastCH) {
       debug3RTriInfo.idp0 = i;
@@ -217,8 +285,37 @@ class RingSet {
       return new Triangle(i, j, k);
     } else {  // use naive method
       numNaive3RT++;
-      return generateThreeRingTriangleNaive(points0, points1, points2);
+      //return generateThreeRingTriangleNaive(points0, points1, points2);
+      return null;
     }
+  }
+
+  private Triangle generateThreeRingTriangleBFS(pt[][] rings) {
+    assert rings.length == 3;
+    Triangle tri = new Triangle(0, 0, 0);
+    TriangleNode triNode = new TriangleNode(tri);
+    Queue<TriangleNode> queue = new LinkedList<TriangleNode>();
+    queue.add(triNode);
+    HashSet<Triangle> set = new HashSet<Triangle>();
+    set.add(tri);
+    boolean stable = triNode.computeChildren(rings, set);
+    if (stable) return tri;
+    while (queue.size() > 0) {
+      TriangleNode node = queue.poll();
+      ArrayList<TriangleNode> children = node.children;
+      int nc = children.size();
+      for (int i = 0; i < nc; ++i) {
+        TriangleNode child = children.get(i);
+        stable = child.computeChildren(rings, set);
+        if (stable) {
+          println("size of explored set = ", set.size());
+          return child.tri;
+        }
+        queue.add(child);
+      }
+    }
+    println("cannot find stable three-ring triangle using BFS");
+    return null;
   }
 
   void generateThreeRingTriangles() {
@@ -228,7 +325,17 @@ class RingSet {
     for (int i = 0; i < nt; ++i) {
       if (debugFastCH && i >= numFacesFastCH) break;
       Triangle face = convexHullRef.get(i);
-      Triangle t = generateThreeRingTriangle(points[face.a], points[face.b], points[face.c]);
+
+      Triangle t = null;
+      if (!useBFS) {
+        t = generateThreeRingTriangle(points[face.a], points[face.b], points[face.c]);
+      } else {
+        pt[][] rings = new pt[3][np];
+        rings[0] = points[face.a];
+        rings[1] = points[face.b];
+        rings[2] = points[face.c];
+        t = generateThreeRingTriangleBFS(rings);
+      }
       Triangle triangle = (t == null) ?
                           null :
                           new Triangle(face.a * np + t.a, face.b * np + t.b, face.c * np + t.c);
@@ -279,6 +386,7 @@ class RingSet {
   }
 
   void showRings() {
+    noStroke();
     fill(orange);
     for (int i = 0; i < nc; ++i) {
       show(centers[i], 1);
@@ -301,8 +409,9 @@ class RingSet {
     }
     return;
   }
-  
+
   void showDebug3RTriInfo() {
+    noStroke();
     fill(red, 150);
     show(contacts[debug3RTriInfo.idr0], 3);
     fill(green, 150);

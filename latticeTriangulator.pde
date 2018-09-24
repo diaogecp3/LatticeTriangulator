@@ -12,7 +12,7 @@ import processing.pdf.*;
  * 9: many convex-hull tests
  * 10: many convex-hull-with-holes tests
  */
-int test = 2;
+int test = 8;
 
 boolean showYellowSphere = false;
 boolean generateCH = false;
@@ -45,9 +45,9 @@ pt centerOfSphere = new pt();
 float rMax = 50;
 float attenuationMin = 0.05;
 float attenuationDelta = 0.05;
-float attenuation = attenuationMin;
+float attenuation = 1.0;
 int numRings = 5;
-int numPointsPerRing = 6;
+int numPointsPerRing = 10;
 RingSet rs;
 
 float r0 = 30;
@@ -89,7 +89,7 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-      rs.loadRings("data/ring_set/rs_medium_3");
+      rs.loadRings("data/ring_set/rs_fail_0");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,
