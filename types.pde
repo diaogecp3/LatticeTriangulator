@@ -25,6 +25,12 @@ class Triangle {
     this.c = c;
   }
 
+  void set(int a, int b, int c) {
+    this.a = a;
+    this.b = b;
+    this.c = c;
+  }
+
   int get(int index) {
     assert index >= 0 && index < 3;
     switch (index) {

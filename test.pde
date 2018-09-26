@@ -75,6 +75,9 @@ void testThreeRingTriangle(int n, int np, float attenuation) {
     case 2:
       System.out.format("Breadth First Search method:\n");
       break;
+    case 3:
+      System.out.format("Breadth First Search method with heuristics:\n");
+      break;
     default:
       System.out.format("Naive method: ");
       break;

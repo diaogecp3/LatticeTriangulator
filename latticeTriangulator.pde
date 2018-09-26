@@ -12,7 +12,7 @@ import processing.pdf.*;
  * 9: many convex-hull tests
  * 10: many convex-hull-with-holes tests
  */
-int test = 8;
+int test = 2;
 
 boolean showYellowSphere = false;
 boolean generateCH = false;
@@ -21,7 +21,7 @@ boolean showRingSet = true;
 boolean showPointSet = true;
 int subdivisionTimes = 0;
 int inputMethodPointSet = 0;
-int inputMethodRingSet = 0;
+int inputMethodRingSet = 1;
 int inputMethodHub = 1;
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
@@ -47,7 +47,7 @@ float attenuationMin = 0.05;
 float attenuationDelta = 0.05;
 float attenuation = 1.0;
 int numRings = 5;
-int numPointsPerRing = 20;
+int numPointsPerRing = 12;
 RingSet rs;
 
 float r0 = 30;
@@ -89,8 +89,8 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-      rs.loadRings("data/ring_set/rs_easy_1");
-      //rs.loadRings("data/tmp/rs_3rt_null_2324");
+      //rs.loadRings("data/ring_set/rs_easy_1");
+      rs.loadRings("data/tmp/rs_3rt_null_2324");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,

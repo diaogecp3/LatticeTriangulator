@@ -15,11 +15,12 @@
 
 import java.util.Queue;
 
-boolean debugFastCH = false;
+boolean debugFastCH = true;
 int numFacesFastCH = 1;
 int numStepsFastCH = 1;
 int maxIterThreeRings = 100;
 int maxIterOneRing = 100;
+//int optionBFSHint = 0;
 
 /*
  * 0: Naive method. Time: O(n^3). Space: O(1)
@@ -28,7 +29,7 @@ int maxIterOneRing = 100;
       from initial state to optimal state. Space: O(min(3^d, n^3))
  * 3: Breadth first search with heuristics. Time and space should be less than 2.
  */
-int method3RT = 0;
+int method3RT = 3;
 
 class Debug3RTriInfo {  // debug info about three-ring-triangle generation
   int idr0, idr1, idr2;
@@ -180,32 +181,7 @@ class RingSet {
     convexHullRef = generateConvexHull(contacts, nc);
   }
 
-  private int findStablePoint(pt[] points, int i, pt a, pt b, vec normal) {
-    vec vn = normal;
-    int d = dot(vn, V(points[i], points[(i + 1) % np])) > 0 ? 1 : -1;
-    int inext = (i + d + np) % np;
-    int iprev = (i - d + np) % np;
-    int steps1 = 0;
-    while ((dot(vn, V(points[i], points[inext])) > 0 ||
-            dot(vn, V(points[i], points[iprev])) > 0) &&
-            (steps1 < maxIterOneRing)) {
-      if (debugFastCH &&
-        debug3RTriInfo.numFaces == numFacesFastCH - 1 &&
-        debug3RTriInfo.numSteps >= numStepsFastCH) break;
-      iprev = i;
-      i = inext;
-      inext = (inext + d + np) % np;
-      vn = N(points[i], a, b);
-      if (debugFastCH) {
-        debug3RTriInfo.numSteps++;
-      }
-      steps1++;
-    }
-    normal.setTo(vn);
-    return i;
-  }
-
-  /* It seems that this function has bugs. */
+  /* This function has bugs? */
   private Triangle generateThreeRingTriangleNaive(pt[] points0,
                                                   pt[] points1,
                                                   pt[] points2) {
@@ -239,6 +215,55 @@ class RingSet {
     return null;
   }
 
+  private int findStablePoint(pt[] points, int i, pt a, pt b, vec normal) {
+    vec vn = normal;
+    int d = dot(vn, V(points[i], points[(i + 1) % np])) > 0 ? 1 : -1;
+    int inext = (i + d + np) % np;
+    int iprev = (i - d + np) % np;
+    int steps1 = 0;
+    while ((dot(vn, V(points[i], points[inext])) > 0 ||
+            dot(vn, V(points[i], points[iprev])) > 0) &&
+            (steps1 < maxIterOneRing)) {
+      if (debugFastCH &&
+        debug3RTriInfo.numFaces == numFacesFastCH - 1 &&
+        debug3RTriInfo.numSteps >= numStepsFastCH) break;
+      iprev = i;
+      i = inext;
+      inext = (inext + d + np) % np;
+      vn = N(points[i], a, b);
+      if (debugFastCH) {
+        debug3RTriInfo.numSteps++;
+      }
+      steps1++;
+    }
+    normal.setTo(vn);  // normal will be updated
+    return i;
+  }
+
+  private boolean findStableTriangleHS(pt[] points0, pt[] points1, pt[] points2,
+                                       Triangle tri, vec normal) {
+    int i = tri.a, j = tri.b, k = tri.c;
+    boolean update = false;
+    /* Find ring A/B/C's stable point respectively. */
+    int inew = findStablePoint(points0, i, points1[j], points2[k], normal);
+    if (inew != i) {
+      i = inew;
+      if (update == false) update = true;
+    }
+    int jnew = findStablePoint(points1, j, points2[k], points0[i], normal);
+    if (jnew != j) {
+      j = jnew;
+      if (update == false) update = true;
+    }
+    int knew = findStablePoint(points2, k, points0[i], points1[j], normal);
+    if (knew != k) {
+      k = knew;
+      if (update == false) update = true;
+    }
+    tri.set(inew, jnew, knew);
+    return update;
+  }
+
   /*
    * Generate a three-ring triangle given 3 rings using heuristic search.
    *
@@ -249,6 +274,7 @@ class RingSet {
                                                pt[] points1,
                                                pt[] points2) {
     int i = 0, j = 0, k = 0;
+    Triangle tri = new Triangle(i, j, k);
     vec normal = N(points0[i], points1[j], points2[k]);
     if (debugFastCH) {
       debug3RTriInfo.idp0 = i;
@@ -261,24 +287,8 @@ class RingSet {
       if (debugFastCH &&
           debug3RTriInfo.numFaces == numFacesFastCH - 1 &&
           debug3RTriInfo.numSteps >= numStepsFastCH) break;
-      boolean noUpdate = true;
-      /* Find ring A/B/C's stable point respectively. */
-      int inew = findStablePoint(points0, i, points1[j], points2[k], normal);
-      if (inew != i) {
-        i = inew;
-        if (noUpdate) noUpdate = false;
-      }
-      int jnew = findStablePoint(points1, j, points2[k], points0[i], normal);
-      if (jnew != j) {
-        j = jnew;
-        if (noUpdate) noUpdate = false;
-      }
-      int knew = findStablePoint(points2, k, points0[i], points1[j], normal);
-      if (knew != k) {
-        k = knew;
-        if (noUpdate) noUpdate = false;
-      }
-      if (noUpdate) break;  // break when stable
+      boolean update = findStableTriangleHS(points0, points1, points2, tri, normal);
+      if (update == false) break;  // break when stable
       iter++;
     }  // end while
 
@@ -289,7 +299,7 @@ class RingSet {
     }
 
     if (iter < maxIterThreeRings) {
-      return new Triangle(i, j, k);
+      return new Triangle(tri.a, tri.b, tri.c);
     } else {  // use backup method (could be naive or BFS)
       numBackup3RT++;
       //return generateThreeRingTriangleNaive(points0, points1, points2);
@@ -297,17 +307,19 @@ class RingSet {
     }
   }
 
+
   /*
-   * Generate a three-ring triangle given 3 rings using BFS method.
+   * Generate a three-ring triangle given 3 rings using BFS method with a hint,
+   * i.e. an initial triangle.
    */
-  private Triangle generateThreeRingTriangleBFS(pt[] points0,
-                                                pt[] points1,
-                                                pt[] points2) {
+  private Triangle generateThreeRingTriangleBFSWithHint(pt[] points0,
+                                                        pt[] points1,
+                                                        pt[] points2,
+                                                        Triangle tri) {
     pt[][] rings = new pt[3][];
     rings[0] = points0;
     rings[1] = points1;
     rings[2] = points2;
-    Triangle tri = new Triangle(0, 0, 0);
     TriangleNode triNode = new TriangleNode(tri);
     Queue<TriangleNode> queue = new LinkedList<TriangleNode>();
     queue.add(triNode);
@@ -335,6 +347,30 @@ class RingSet {
     return null;
   }
 
+  private Triangle generateThreeRingTriangleBFS(pt[] points0,
+                                                pt[] points1,
+                                                pt[] points2,
+                                                int option) {
+    Triangle tri = null;
+    switch (option) {
+      case 0:  // randomly generate an initial triangle
+        tri = new Triangle(int(random(points0.length)),
+                           int(random(points1.length)),
+                           int(random(points2.length)));
+        break;
+      case 1:  // heuristics
+        vec normal = N(points0[0], points1[0], points2[0]);
+        tri = new Triangle(0, 0, 0);
+        findStableTriangleHS(points0, points1, points2, tri, normal);
+        break;
+      default:
+        tri = new Triangle(0, 0, 0);
+        break;
+    }
+    return generateThreeRingTriangleBFSWithHint(points0, points1, points2, tri);
+  }
+
+
   void generateThreeRingTriangles() {
     int nt = convexHullRef.size();  // number of triangles of convex hull
     ArrayList<Triangle> threeRingTris = new ArrayList<Triangle>();
@@ -352,7 +388,10 @@ class RingSet {
           t = generateThreeRingTriangleHS(points[face.a], points[face.b], points[face.c]);
           break;
         case 2:
-          t = generateThreeRingTriangleBFS(points[face.a], points[face.b], points[face.c]);
+          t = generateThreeRingTriangleBFS(points[face.a], points[face.b], points[face.c], 0);
+          break;
+        case 3:
+          t = generateThreeRingTriangleBFS(points[face.a], points[face.b], points[face.c], 1);
           break;
         default:
           t = generateThreeRingTriangleNaive(points[face.a], points[face.b], points[face.c]);
