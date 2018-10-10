@@ -129,7 +129,7 @@ pt intersectionTwoLines(pt pa, pt pb, pt pc, pt pd) {
   vec v0 = U(pa, pb);  // unit vector
   vec v1 = U(pc, pd);  // unit vector
   vec vac = V(pa, pc);
-  
+
   vec c0 = N(v0, v1);
   vec c1 = N(vac, v1);
   float x = c1.norm() / c0.norm();

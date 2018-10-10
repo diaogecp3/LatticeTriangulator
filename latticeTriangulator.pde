@@ -20,8 +20,8 @@ boolean regenerateCH = true;  // for ring set, test shrink/grow
 boolean showRingSet = true;
 boolean showPointSet = true;
 int subdivisionTimes = 0;
-int inputMethodPointSet = 0;
-int inputMethodRingSet = 1;
+int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
+int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 1;
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
@@ -46,8 +46,8 @@ float rMax = 50;
 float attenuationMin = 0.05;
 float attenuationDelta = 0.05;
 float attenuation = 1.0;
-int numRings = 5;
-int numPointsPerRing = 12;
+int numRings = 16;
+int numPointsPerRing = 8;
 RingSet rs;
 
 float r0 = 30;
@@ -89,8 +89,10 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-      //rs.loadRings("data/ring_set/rs_easy_1");
-      rs.loadRings("data/tmp/rs_3rt_null_2324");
+      rs.loadRings("data/ring_set/rs_hard_1");
+      //rs.loadRings("data/tmp/rs_3rt_null_2324");
+      //rs.loadRings("data/ring_set/rs_3rt_bfs_null_1");
+      //rs.loadRings("data/ring_set/rs_3rt_penetration_1");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,
@@ -102,8 +104,14 @@ void setup() {
       exit();
   }
 
+  // check validity of ring set
+  if (!rs.isValid()) {
+    println("ring set not valid!");
+    exit();
+  }
+
   if (test == 2) {
-    rs.generateConvexHullRef();
+    rs.generateRefConvexHull();
   }
 
   if (regenerateCH == false) {
@@ -111,11 +119,12 @@ void setup() {
     rs.generatePoints(attenuation);  // shrink all rings
     if (test == 1) {
       debugCH = false;
-      rs.generateTriangleMesh();  // generate a triangle mesh and store it
+      rs.generateTriangleMesh(0);  // generate a triangle mesh and store it
     }
     if (test == 2) {
       debugFastCH = false;
       rs.generateThreeRingTriangles();  // generate three-ring triangles and store them
+      if (showCorridors) rs.generateTwoRingTriangles();
     }
   }
 
@@ -132,6 +141,7 @@ void setup() {
   }
 
   //testHashSetContains();
+  //testSwingLists(false, false);
 }
 
 void draw() {
@@ -226,6 +236,7 @@ void draw() {
     scribeHeader("number of steps for a three-ring triangle = " + numStepsFastCH, 7);
   }
   scribeHeader("regenerate = " + str(regenerateCH), 8);
+  scribeHeader("fix penetration among 3-ring triangles = " + str(fixPenetration), 9);
   // show menu at bottom, only if not filming
   if (scribeText && !filming) displayFooter();
   if (animating) {  // periodic change of time
@@ -278,11 +289,12 @@ void keyPressed() {
       rs.generatePoints(attenuationMin);  // shrink all rings
       if (test == 1) {
         debugCH = false;
-        rs.generateTriangleMesh();  // generate a triangle mesh and store it
+        rs.generateTriangleMesh(0);  // generate a triangle mesh and store it
       }
       if (test == 2) {
         debugFastCH = false;
         rs.generateThreeRingTriangles();  // generate three-ring triangles and store them
+        if (showCorridors) rs.generateTwoRingTriangles();
       }
     }
   }
@@ -310,9 +322,29 @@ void keyPressed() {
     numFaces = 1;
     numStepsFastCH = 1;
   }
+  if (key == '2') {
+    showCorridors = !showCorridors;
+    if (showCorridors) fixPenetration = true;
+    else fixPenetration = false;
+  }
+  if (key == '3') {
+    fixPenetration = !fixPenetration;
+  }
+
   if (key == '[') attenuation = min(1.0, attenuation + attenuationDelta);
   if (key == ']') attenuation = max(attenuationMin, attenuation - attenuationDelta);
   if (key == 'g') { showRingSet = !showRingSet; showPointSet = !showPointSet; }
+  if (key == 'm') {
+    if (methodTM == 0) methodTM = 1;
+    else {
+      methodTM = 0;
+      if (test == 2) {
+        rs.threeRingTriangles = null;
+        rs.twoRingTriangles = null;
+      }
+    }
+  }
+
   change = true;
 }
 

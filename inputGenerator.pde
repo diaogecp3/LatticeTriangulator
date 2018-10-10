@@ -181,10 +181,10 @@ pt[] generateContactsAndRadii(pt center,                             // in
       pt p = generateOnePointOnSphere(center, radius);
       vec normal = U(center, p);
       float r = random(5, radius * 0.8);
-      float alpha = asin(r/radius);  // [0, PI/2]
+      float alpha = asin(clamp(r/radius, -1.0, 1.0));  // [0, PI/2]
       boolean isValid = true;
       for (int j = 0; j < i; ++j) {
-        float theta = acos(dot(normal, normals[j]));  // [0, PI]
+        float theta = acos(clamp(dot(normal, normals[j]), -1.0, 1.0));  // [0, PI]
         if (theta <= alpha + alphas[j]) {
           isValid = false;
           break;
@@ -210,14 +210,14 @@ pt[] generateContacts(pt center,                                     // in
   assert rMax > 0 && rMax < radius;
   pt[] contacts = new pt[n];
   vec[] normals = new vec[n];
-  float alpha = 2 * asin(rMax/radius);
+  float alpha = 2 * asin(clamp(rMax/radius, -1.0, 1.0));
   for (int i = 0; i < n; ++i) {
     while (true) {
       pt p = generateOnePointOnSphere(center, radius);
       vec normal = U(center, p);
       boolean isValid = true;
       for (int j = 0; j < i; ++j) {
-        float theta = acos(dot(normal, normals[j]));  // [0, PI]
+        float theta = acos(clamp(dot(normal, normals[j]), -1.0, 1.0));  // [0, PI]
         if (theta <= alpha) {
           isValid = false;
           break;
@@ -261,4 +261,4 @@ Hub generateHub(pt c, float r0, float r1, int n) {
   Ball ball = new Ball(c, r0);
   Ball[] neighbors = generateBallsOnSphere(c, r1, r1 - 1.3 * r0, n);
   return new Hub(ball, neighbors, n);
-} 
+}

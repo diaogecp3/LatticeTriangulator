@@ -44,6 +44,21 @@ class Triangle {
     return -1;
   }
 
+  void set(int index, int value) {
+    assert index >= 0 && index < 3;
+    switch (index) {
+      case 0:
+        a = value;
+        break;
+      case 1:
+        b = value;
+        break;
+      case 2:
+        c = value;
+        break;
+    }
+  }
+
   @Override
   public boolean equals(Object o) {
     if (o == this) return true;

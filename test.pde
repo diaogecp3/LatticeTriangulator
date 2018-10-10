@@ -3,10 +3,34 @@
  *********************************************************/
 
 
-int numTests = 10000;
+int numTests = 1000;
 int numBackup3RT = 0;
 int numPointsPerTest = 64;
 boolean showResults = false;
+boolean saveFailures = true;
+
+class DebugInfoConvexity {
+  pt[] points;
+  int a, b, c, d;
+  DebugInfoConvexity(pt[] points, int a, int b, int c, int d) {
+    this.points = points;
+    this.a = a;
+    this.b = b;
+    this.c = c;
+    this.d = d;
+  }
+  void display(color c0, color c1) {
+    fill(c0);
+    beginShape(TRIANGLES);
+    vertex(points[a]);
+    vertex(points[b]);
+    vertex(points[c]);
+    endShape();
+    fill(c1);
+    show(points[d], 3);
+  }
+}
+
 
 /*
  * Test the performance of convex hull generation for points on a sphere.
@@ -43,8 +67,8 @@ void testThreeRingTriangle(int n, int np, float attenuation) {
     RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere, 3, np);
     ringSet.init();
     ringSet.generatePoints(attenuation);
-    ringSet.convexHullRef = new ArrayList<Triangle>();
-    ringSet.convexHullRef.add(new Triangle(0, 1, 2));
+    ringSet.refConvexHull.triangles = new ArrayList<Triangle>();
+    ringSet.refConvexHull.triangles.add(new Triangle(0, 1, 2));
     long st = System.nanoTime();
     ringSet.generateThreeRingTriangles();
     long ed = System.nanoTime();
@@ -52,12 +76,13 @@ void testThreeRingTriangle(int n, int np, float attenuation) {
     pt[] points = ringSet.get1DPointArray();
     if (ringSet.threeRingTriangles.get(0) == null) {
       successes[i] = false;
+      System.out.format("%d fails\n", i);
     } else {
       valids[i] = true;
       boolean success = passQualityTest(ringSet.threeRingTriangles, points, points.length);
       successes[i] = success;
     }
-    if (successes[i] == false) {
+    if (successes[i] == false && saveFailures) {
       if (valids[i]) ringSet.saveRings("data/tmp/rs_3rt_low_quality_" + i);
       else ringSet.saveRings("data/tmp/rs_3rt_null_" + i);
     }
@@ -105,11 +130,13 @@ boolean passConvexityTest(ArrayList<Triangle> triangles, pt[] G, int nv) {
       if (j == a || j == b || j == c) continue;
       pt D = G[j];
       vec AD = V(A, D);
-      if (isPositive(dot(normal, AD)) && isPositive(dot(U(normal), U(AD)))) {
+      if (dot(normal, AD) > 0) {
         System.out.format("dot(normal, AD) = %f, dot(U(normal), U(AD)) = %f " +
                           "norm(normal) = %f, norm(AD) = %f\n",
                           dot(normal, AD), dot(U(normal), U(AD)),
                           normal.norm(), AD.norm());
+        DebugInfoConvexity dInfo = new DebugInfoConvexity(G, a, b, c, j);
+        dInfo.display(green, orange);
         return false;
       }
     }
@@ -170,7 +197,7 @@ void oneConvexHullWithHolesTest() {
     pt[] pointArray = rs.get1DPointArray();
     if (regenerateCH) {  // regenerate a convex hull
       long startTime = System.nanoTime();
-      rs.generateTriangleMesh();
+      rs.generateTriangleMesh(0);
       long endTime = System.nanoTime();
       timeCH = (endTime - startTime) / 1000000.0;
     }
@@ -190,24 +217,48 @@ void oneFastConvexHullWithHolesTest() {
     pt[] pointArray = rs.get1DPointArray();
     if (regenerateCH) {
       long startTime = System.nanoTime();
-      rs.generateThreeRingTriangles();
+      rs.generateTriangleMesh(methodTM);
       long endTime = System.nanoTime();
       timeCH = (endTime - startTime) / 1000000.0;
     }
-    fill(red);
-    stroke(0);
-    showTriangles(rs.threeRingTriangles, pointArray);
-    numTriangles = rs.threeRingTriangles.size();
-    fill(#0AED62);  // light green
-    noStroke();
-    showTriangleNormals(rs.threeRingTriangles, pointArray);
-    if (debugFastCH && method3RT == 1) {
-      rs.showDebug3RTriInfo();
-    } else {
-      boolean success = passQualityTest(rs.threeRingTriangles, pointArray, pointArray.length);
-      if (!success) {
-        println("not pass quality (convexity) test!");
+    numTriangles = 0;
+
+    if (methodTM == 1) {
+      if (rs.threeRingTriangles != null) {
+        fill(red);
+        stroke(0);
+        showTriangles(rs.threeRingTriangles, pointArray);
+        fill(#0AED62, 100);  // light green
+        noStroke();
+        showTriangleNormals(rs.threeRingTriangles, pointArray);
+        numTriangles += rs.threeRingTriangles.size();
       }
+      if (rs.twoRingTriangles != null) {
+        fill(blue);
+        stroke(0);
+        showTriangles(rs.twoRingTriangles, pointArray);
+        fill(#0AED62, 100);
+        noStroke();
+        showTriangleNormals(rs.twoRingTriangles, pointArray);
+        numTriangles += rs.twoRingTriangles.size();
+      }
+    } else {
+      fill(green);
+      stroke(0);
+      showTriangles(rs.triangles, pointArray);
+      fill(blue, 100);
+      noStroke();
+      showTriangleNormals(rs.triangles, pointArray);
+      numTriangles += rs.triangles.size();
+    }
+
+    if (debugFastCH && method3RT == 1) {
+      //rs.showDebug3RTriInfo();
+    } else {
+      // boolean success = passQualityTest(rs.threeRingTriangles, pointArray, pointArray.length);
+      // if (!success) {
+      //   println("not pass quality (convexity) test!");
+      // }
     }
   } else {
     numTriangles = -1;
@@ -236,7 +287,7 @@ void oneSubdivisionTest() {
     triMesh.showTriangleMesh(red, true);
     // triMesh.showCornerPairs(blue, 3);
     // triMesh.showVertices(green, 1);
-    numTriangles = triMesh.getNumTriangles();
+    numTriangles = triMesh.nt;
   } else {
     numTriangles = -1;
   }

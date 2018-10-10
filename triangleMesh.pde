@@ -2,6 +2,15 @@
  * Triangle mesh processing.
  ******************************************************************************/
 
+int nextCorner(int cid) {
+    return cid - (cid % 3) + (cid + 1) % 3;
+}
+
+int prevCorner(int cid) {
+    return cid - (cid % 3) + (cid + 2) % 3;
+}
+
+
 /*
  * TriangleMesh class.
  *
@@ -12,32 +21,38 @@ class TriangleMesh {
   ArrayList<pt> positions;
   ArrayList<Triangle> triangles;
   ArrayList<Integer> oppositeTable;
+  ArrayList<ArrayList<Integer>> swingLists;
   int nv, nt;
 
   TriangleMesh(ArrayList<pt> positions, ArrayList<Triangle> triangles) {
     this.positions = positions;
     this.triangles = triangles;
+    nv = this.positions.size();
+    nt = this.triangles.size();
     oppositeTable = new ArrayList<Integer>();
-    nv = this.positions.size();
-    nt = this.triangles.size();
     setupOppositeTable();
   }
 
-  TriangleMesh(ArrayList<pt> positions, ArrayList<Triangle> triangles,
-               ArrayList<Integer> oppositeTable) {
-    this.positions = positions;
+  // TriangleMesh(ArrayList<pt> positions, ArrayList<Triangle> triangles,
+  //              ArrayList<Integer> oppositeTable) {
+  //   this.positions = positions;
+  //   this.triangles = triangles;
+  //   nv = this.positions.size();
+  //   nt = this.triangles.size();
+  //   this.oppositeTable = oppositeTable;
+  // }
+
+  TriangleMesh(pt[] positionArray, ArrayList<Triangle> triangles) {
+    nv = positionArray.length;
+    positions = new ArrayList<pt>();
+    for (int i = 0; i < nv; ++i) positions.add(positionArray[i]);
     this.triangles = triangles;
-    this.oppositeTable = oppositeTable;
-    nv = this.positions.size();
-    nt = this.triangles.size();
+    nt = triangles.size();
+    oppositeTable = new ArrayList<Integer>();
     setupOppositeTable();
   }
 
-  int getNumTriangles() {
-    return nt;
-  }
-
-  void setupOppositeTable() {
+  private void setupOppositeTable() {
     assert nv > 0 && nt > 0;
     int nc = 3 * nt;
 
@@ -74,48 +89,31 @@ class TriangleMesh {
     return;
   }
 
-  private int cornerIDToVertexID(int cid) {
-    return triangles.get(cid / 3).get(cid % 3);
-  }
-
-  void showCornerPairs(color c, float w) {
-    int nc = 3 * nt;
-    stroke(c);
-    strokeWeight(w);
-    for (int i = 0; i < nc; ++i) {
-      int j = oppositeTable.get(i);
-      if (j == -1 || j < i) continue;
-      int a = cornerIDToVertexID(i);
-      int b = cornerIDToVertexID(j);
-      pt pa = positions.get(a);
-      pt pb = positions.get(b);
-      line(pa.x, pa.y, pa.z, pb.x, pb.y, pb.z);
+  void setupSwingLists() {
+    assert triangles != null && oppositeTable != null;
+    swingLists = new ArrayList<ArrayList<Integer>>();
+    for (int i = 0; i < nv; ++i) swingLists.add(new ArrayList<Integer>());
+    int numCorners = nt * 3;
+    boolean[] visited = new boolean[numCorners];  // all false
+    for (int i = 0; i < numCorners; ++i) {  // i = corner ID
+      if (visited[i]) continue;
+      ArrayList<Integer> list = new ArrayList<Integer>();
+      int c = i;
+      do {
+        //System.out.format("c = %d ", c);
+        list.add(c);
+        visited[c] = true;
+        int opp = oppositeTable.get(nextCorner(c));
+        //System.out.format("o(n(c)) = %d ", opp);
+        if (opp == -1) break;  // c is the last corner in cw order
+        c = nextCorner(opp);  // update c
+        //System.out.format("\n");
+      } while (c != i && !visited[c]);
+      //System.out.format("\n");
+      int vid = cornerIDToVertexID(i);
+      list.addAll(swingLists.get(vid));
+      swingLists.set(vid, list);
     }
-    return;
-  }
-
-  void showTriangleMesh(color c, boolean useStroke) {
-    fill(c, 255);
-    if (useStroke) {
-      stroke(0);
-      strokeWeight(1);
-    } else noStroke();
-    beginShape(TRIANGLES);
-    for (int i = 0; i < nt; ++i) {
-      vertex(positions.get(triangles.get(i).a));
-      vertex(positions.get(triangles.get(i).b));
-      vertex(positions.get(triangles.get(i).c));
-    }
-    endShape();
-  }
-
-  void showVertices(color c, float r) {
-    fill(c, 255);
-    noStroke();
-    for (int i = 0; i < nv; ++i) {
-      show(positions.get(i), r);
-    }
-    return;
   }
 
   void subdivide(int times, pt center, float r) {
@@ -196,5 +194,49 @@ class TriangleMesh {
       setupOppositeTable();  // update opposite table
       triedTimes++;
     }
+  }
+
+  void showVertices(color c, float r) {
+    fill(c, 255);
+    noStroke();
+    for (int i = 0; i < nv; ++i) {
+      show(positions.get(i), r);
+    }
+    return;
+  }
+
+  void showTriangleMesh(color c, boolean useStroke) {
+    fill(c, 255);
+    if (useStroke) {
+      stroke(0);
+      strokeWeight(1);
+    } else noStroke();
+    beginShape(TRIANGLES);
+    for (int i = 0; i < nt; ++i) {
+      vertex(positions.get(triangles.get(i).a));
+      vertex(positions.get(triangles.get(i).b));
+      vertex(positions.get(triangles.get(i).c));
+    }
+    endShape();
+  }
+
+  void showCornerPairs(color c, float w) {
+    int nc = 3 * nt;
+    stroke(c);
+    strokeWeight(w);
+    for (int i = 0; i < nc; ++i) {
+      int j = oppositeTable.get(i);
+      if (j == -1 || j < i) continue;
+      int a = cornerIDToVertexID(i);
+      int b = cornerIDToVertexID(j);
+      pt pa = positions.get(a);
+      pt pb = positions.get(b);
+      line(pa.x, pa.y, pa.z, pb.x, pb.y, pb.z);
+    }
+    return;
+  }
+
+  private int cornerIDToVertexID(int cid) {
+    return triangles.get(cid / 3).get(cid % 3);
   }
 }

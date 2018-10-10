@@ -20,12 +20,11 @@ float average(float[] a, int n, int start, int end) {
 float accuracy(boolean[] a, int n, int start, int end, boolean[] valids) {
   assert start >= 0 && end <= n && end > start;
   float sum = 0.0;
-  float ret = 0.0;
   if (valids == null) {
     for (int i = start; i < end; ++i) {
       sum += (a[i] ? 1 : 0);
     }
-    ret = sum / n;
+    return sum / n;
   } else {
     int k = 0;
     for (int i = start; i < end; ++i) {
@@ -34,9 +33,8 @@ float accuracy(boolean[] a, int n, int start, int end, boolean[] valids) {
         k++;
       }
     }
-    ret = sum / k;
+    return sum / k;
   }
-  return ret;
 }
 
 /*
@@ -63,19 +61,31 @@ boolean isAbsZero(float x) {
 }
 
 /*
- * Return true iff x is positive.
- */
-boolean isPositive(float x) {
-  return x >= 0.00001;
-}
-
-/*
  * Return true iff x is non-positive.
  */
 boolean isNonPositive(float x) {
-  // assume that x >= 0
   return x < 0.00001;
 }
+
+/*
+ * Return clamped value of x w.r.t. [a, b].
+ */
+float clamp(float x, float a, float b) {
+  return min(max(x, a), b);
+}
+
+int argmin(ArrayList<Integer> a) {
+  int ret = 0, min = a.get(0);
+  for (int i = 1; i < a.size(); ++i) {
+    if (a.get(i) < min) {
+      min = a.get(i);
+      ret = i;
+    }
+  }
+  return ret;
+}
+
+
 
 /*
  * Generate a random vector, with each element sampled from [-n, n).
@@ -143,7 +153,7 @@ void showTriangleNormals(ArrayList<Triangle> triangles, pt[] G) {
 }
 
 /*
- * Show inner vertices
+ * Show inner vertices.
  */
 void showInnerVertices(ArrayList<Vertex> vertices, pt[] G) {
   int n = vertices.size();
