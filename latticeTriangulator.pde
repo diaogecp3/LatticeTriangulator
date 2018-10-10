@@ -21,7 +21,7 @@ boolean showRingSet = true;
 boolean showPointSet = true;
 int subdivisionTimes = 0;
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
-int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
+int inputMethodRingSet = 1;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 1;
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
@@ -71,7 +71,7 @@ void setup() {
   if (test >= 8) {
     noLoop();
     debugCH = false;
-    debugFastCH = false;
+    debug3RT = false;
   }
 
   switch (inputMethodPointSet) {
@@ -89,10 +89,11 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-      rs.loadRings("data/ring_set/rs_hard_1");
-      //rs.loadRings("data/tmp/rs_3rt_null_2324");
+      // rs.loadRings("data/ring_set/rs_hard_0");
       //rs.loadRings("data/ring_set/rs_3rt_bfs_null_1");
       //rs.loadRings("data/ring_set/rs_3rt_penetration_1");
+      //rs.loadRings("data/ring_set/rs_3rt_wrong_fix_1");
+      rs.loadRings("data/ring_set/rs_2rt_fail");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,
@@ -122,7 +123,7 @@ void setup() {
       rs.generateTriangleMesh(0);  // generate a triangle mesh and store it
     }
     if (test == 2) {
-      debugFastCH = false;
+      debug3RT = false;
       rs.generateThreeRingTriangles();  // generate three-ring triangles and store them
       if (showCorridors) rs.generateTwoRingTriangles();
     }
@@ -278,8 +279,9 @@ void keyPressed() {
 
   /* Following are Yaohong's keys. */
   if (key == '0') {
-    debugCH = !debugCH;
-    debugFastCH = !debugFastCH;
+    //debugCH = !debugCH;
+    //debug3RT = !debug3RT;
+    debug2RT = !debug2RT;
   }
   if (key == 'o') showYellowSphere = !showYellowSphere;
   if (key == 'h') generateCH = !generateCH;
@@ -292,7 +294,7 @@ void keyPressed() {
         rs.generateTriangleMesh(0);  // generate a triangle mesh and store it
       }
       if (test == 2) {
-        debugFastCH = false;
+        debug3RT = false;
         rs.generateThreeRingTriangles();  // generate three-ring triangles and store them
         if (showCorridors) rs.generateTwoRingTriangles();
       }
@@ -304,6 +306,8 @@ void keyPressed() {
       numFacesFastCH = numTriangles + 1;
     }
     subdivisionTimes++;
+    rs.debug2RTriInfo.numGlobalStep = min(rs.debug2RTriInfo.numGlobalStep + 1, rs.nRings);
+    rs.debug2RTriInfo.numLocalStep = 1;
   }
   if (key == '-') {
     if (numFaces > 0) {
@@ -311,12 +315,16 @@ void keyPressed() {
       numFacesFastCH--;
     }
     subdivisionTimes = max(0, subdivisionTimes - 1);
+    rs.debug2RTriInfo.numGlobalStep = max(1, rs.debug2RTriInfo.numGlobalStep - 1);
+    rs.debug2RTriInfo.numLocalStep = 1;
   }
   if (key == '*') {
     numStepsFastCH++;
+    rs.debug2RTriInfo.numLocalStep = min(rs.debug2RTriInfo.numLocalStep + 1, rs.nPointsPerRing);
   }
   if (key == '/') {
     numStepsFastCH = max(1, numStepsFastCH - 1);
+    rs.debug2RTriInfo.numLocalStep = max(1, rs.debug2RTriInfo.numLocalStep - 1);
   }
   if (key == '1') {
     numFaces = 1;

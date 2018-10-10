@@ -42,3 +42,6 @@ I cannot fix self-penetration among three-ring triangles.
 This is not true: only 2 adjacent three-ring triangles can intersect.
 This is not true: the distance between the two "feet" of the two intersecting triangles
 on a common ring is 1 (can be > 1).
+
+In rs_3rt_wrong_fix:
+Penetration fixing should not do anything (nothing to fix), but it does and it is bad!

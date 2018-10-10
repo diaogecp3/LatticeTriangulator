@@ -252,8 +252,10 @@ void oneFastConvexHullWithHolesTest() {
       numTriangles += rs.triangles.size();
     }
 
-    if (debugFastCH && method3RT == 1) {
-      //rs.showDebug3RTriInfo();
+    if (debug3RT && method3RT == 1) {
+      rs.showDebug3RTriInfo();
+    } else if (debug2RT) {
+      rs.showDebug2RTriInfo();
     } else {
       // boolean success = passQualityTest(rs.threeRingTriangles, pointArray, pointArray.length);
       // if (!success) {
