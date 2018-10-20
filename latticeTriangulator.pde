@@ -7,12 +7,14 @@ import processing.pdf.*;
  * 2: one fast-convex-hull-with-holes test
  * 3: one subdivision test
  * 4: one hub test
- * 5-7: to be determined
+ * 5: one pivot-plane-around-line-until-hit-circle test
+ * 6: one tangent-plane-of-three-circles test.
+ * 7: to be determined
  * 8: many three-ring-triangle tests
  * 9: many convex-hull tests
  * 10: many convex-hull-with-holes tests
  */
-int test = 2;
+int test = 6;
 
 boolean showYellowSphere = false;
 boolean generateCH = false;
@@ -21,17 +23,17 @@ boolean showRingSet = true;
 boolean showPointSet = true;
 int subdivisionTimes = 0;
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
-int inputMethodRingSet = 1;  // 0: read from file, 1: generate randomly
-int inputMethodHub = 1;
+int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
+int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
 float rx = -0.06 * TWO_PI, ry = -0.04 * TWO_PI;  // view angles manipulated when space pressed but not mouse
-boolean animating = true,
-        tracking = false,
-        center = true,
-        showFrame = false,
-        snappingPDF = false,
-        viewpoint = false;
+boolean animating = true;
+boolean tracking = false;
+boolean center = true;
+boolean showFrame = false;
+boolean snappingPDF = false;
+boolean viewpoint = false;
 float t = 0, s = 0;
 pt Viewer = P();
 pt F = P(0,0,0);  // focus point: the camera is looking at it (moved when 'f or 'F' are pressed)
@@ -46,7 +48,7 @@ float rMax = 50;
 float attenuationMin = 0.05;
 float attenuationDelta = 0.05;
 float attenuation = 1.0;
-int numRings = 16;
+int numRings = 4;
 int numPointsPerRing = 8;
 RingSet rs;
 
@@ -89,11 +91,12 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-      // rs.loadRings("data/ring_set/rs_hard_0");
+       rs.loadRings("data/ring_set/rs_medium_5");
       //rs.loadRings("data/ring_set/rs_3rt_bfs_null_1");
       //rs.loadRings("data/ring_set/rs_3rt_penetration_1");
-      //rs.loadRings("data/ring_set/rs_3rt_wrong_fix_1");
-      rs.loadRings("data/ring_set/rs_2rt_fail");
+      //rs.loadRings("data/ring_set/rs_3rt_wrong_fix_2");
+      //rs.loadRings("data/ring_set/rs_2rt_fail");
+      //rs.loadRings("data/ring_set/rs_plane_line_circle_0");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,
@@ -125,13 +128,14 @@ void setup() {
     if (test == 2) {
       debug3RT = false;
       rs.generateThreeRingTriangles();  // generate three-ring triangles and store them
-      if (showCorridors) rs.generateTwoRingTriangles();
+      if (show2RTs) rs.generateTwoRingTriangles();
     }
   }
 
   switch (inputMethodHub) {
     case 0:  // read from file
-      println("Not implement yet");
+      hub = new Hub();
+      hub.load("data/hub/hub_easy_0");
       break;
     case 1:  // generate randomly
       hub = generateHub(centerOfSphere, r0, r1, nNeighbors);
@@ -147,82 +151,93 @@ void setup() {
 
 void draw() {
   background(255);
-  {
-    pushMatrix();  // to ensure that we can restore the standard view before writing on the canvas
-    if (snappingPDF) beginRecord(PDF, "PDFimages/P" + nf(pictureCounter++,3) + ".pdf");
 
-    // SET PERSPECTIVE
-    float fov = PI / 3.0;
-    float cameraZ = (height / 2.0) / tan(fov / 2.0);
-    camera(0, 0, cameraZ, 0, 0, 0, 0, 1, 0);  // sets a standard perspective
-    perspective(fov, 1.0, 1.0, 10000);
+  pushMatrix();  // to ensure that we can restore the standard view before writing on the canvas
+  if (snappingPDF) beginRecord(PDF, "PDFimages/P" + nf(pictureCounter++,3) + ".pdf");
 
-    // SET VIEW
-    translate(0, 0, dz);  // puts origin of model at screen center and moves forward/away by dz
-    lights();  // turns on view-dependent lighting
-    rotateX(rx); rotateY(ry);  // rotates the model around the new origin (center of screen)
-    rotateX(HALF_PI);  // rotates frame around X to make X and Y basis vectors parallel to the floor
-    if (center) translate(-F.x, -F.y, -F.z);
-    if (viewpoint) {Viewer = viewPoint(); viewpoint = false;} // sets Viewer to the current viewpoint when ',' is pressed
-    computeProjectedVectors(); // computes screen projections I, J, K of basis vectors (see bottom of pv3D): used for dragging in viewer's frame
-    if (showFrame) showFrame(150); // X-red, Y-green, Z-blue arrows
+  // SET PERSPECTIVE
+  float fov = PI / 3.0;
+  float cameraZ = (height / 2.0) / tan(fov / 2.0);
+  camera(0, 0, cameraZ, 0, 0, 0, 0, 1, 0);  // sets a standard perspective
+  perspective(fov, 1.0, 1.0, 10000);
 
-    noStroke();
+  // SET VIEW
+  translate(0, 0, dz);  // puts origin of model at screen center and moves forward/away by dz
+  lights();  // turns on view-dependent lighting
+  rotateX(rx); rotateY(ry);  // rotates the model around the new origin (center of screen)
+  rotateX(HALF_PI);  // rotates frame around X to make X and Y basis vectors parallel to the floor
+  if (center) translate(-F.x, -F.y, -F.z);
+  if (viewpoint) {Viewer = viewPoint(); viewpoint = false;} // sets Viewer to the current viewpoint when ',' is pressed
+  computeProjectedVectors(); // computes screen projections I, J, K of basis vectors (see bottom of pv3D): used for dragging in viewer's frame
+  if (showFrame) showFrame(150); // X-red, Y-green, Z-blue arrows
 
-    fill(magenta); show(centerOfSphere, 4); // show center of the sphere
-    Pick = pick(mouseX,mouseY);
+  noStroke();
 
-    if (picking) {
-      P.setPickToIndexOfVertexClosestTo(Pick); // id of vertex of P with closest screen projection to mouse (us in keyPressed 'x'...
-      picking = false;
-    }
+  fill(magenta); show(centerOfSphere, 4); // show center of the sphere
+  Pick = pick(mouseX,mouseY);
 
-    switch (test) {
-      case 0:  // one convex-hull test
-        oneConvexHullTest();
-        break;
-      case 1:  // one convex-hull-with-holes test
-        oneConvexHullWithHolesTest();
-        break;
-      case 2:  // one fast-convex-hull-with-holes test
-        oneFastConvexHullWithHolesTest();
-        break;
-      case 3:
-        oneSubdivisionTest();
-        break;
-      case 4:
-        oneHubTest();
-        break;
-
-      case 8:
-        testThreeRingTriangle(numTests, numPointsPerRing, attenuation);
-        break;
-      case 9:  // many convex-hull tests
-        testConvexHull(numTests, numPointsPerTest, showResults);
-        break;
-      case 10:  // many convex-hull-with-holes tests
-        println("Many convex-hull-with-holes tests coming soon");
-        exit();
-        break;
-      default:
-        println("Please enter a correct test number");
-        exit();
-    }
-
-    // Show the big yellow sphere
-    if (showYellowSphere) {
-      fill(yellow, 100);
-      noStroke();
-      show(centerOfSphere, radiusOfSphere);
-    }
-
-    if (exitDraw) noLoop();
-
-    if (snappingPDF) { endRecord(); snappingPDF = false; }
-    popMatrix(); // done with 3D drawing, restore front view for writing text
+  if (picking) {
+    P.setPickToIndexOfVertexClosestTo(Pick); // id of vertex of P with closest screen projection to mouse (us in keyPressed 'x'...
+    picking = false;
   }
+
+  switch (test) {
+    case 0:  // one convex-hull test
+      oneConvexHullTest();
+      break;
+    case 1:  // one convex-hull-with-holes test
+      oneConvexHullWithHolesTest();
+      break;
+    case 2:  // one fast-convex-hull-with-holes test
+      oneFastConvexHullWithHolesTest();
+      break;
+    case 3:
+      oneSubdivisionTest();
+      break;
+    case 4:
+      oneHubTest();
+      break;
+    case 5:
+      onePivotPlaneAroundLineHitCircleTest();
+      break;
+    case 6:
+      tangentPlaneThreeCirclesTest();
+      break;
+    case 8:
+      testThreeRingTriangle(numTests, numPointsPerRing, attenuation);
+      break;
+    case 9:  // many convex-hull tests
+      testConvexHull(numTests, numPointsPerTest, showResults);
+      break;
+    case 10:  // many convex-hull-with-holes tests
+      println("Many convex-hull-with-holes tests coming soon");
+      exit();
+      break;
+    default:
+      println("Please enter a correct test number");
+      exit();
+  }
+
+  // Show the big yellow sphere
+  if (showYellowSphere) {
+    fill(yellow, 100);
+    noStroke();
+    show(centerOfSphere, radiusOfSphere);
+  }
+
+  if (exitDraw) noLoop();
+
+  if (snappingPDF) {
+    endRecord();
+    snappingPDF = false;
+  }
+  popMatrix(); // done with 3D drawing, restore front view for writing text
+
   // display header, including my face
-  if (scribeText) { fill(black); displayHeader(); }
+  if (scribeText) {
+    fill(black);
+    displayHeader();
+  }
   // display anything related to my project
   scribeHeader("debug = " + str(debugCH), 2);
   scribeHeader("number of faces I enter = " + numFaces, 3);
@@ -234,10 +249,10 @@ void draw() {
     scribeHeader("time for subdivision = " + timeSB + "ms", 6);
   }
   if (test == 2) {
-    scribeHeader("number of steps for a three-ring triangle = " + numStepsFastCH, 7);
+    scribeHeader("number of steps for a three-ring triangle = " + numSteps3RT, 7);
   }
   scribeHeader("regenerate = " + str(regenerateCH), 8);
-  scribeHeader("fix penetration among 3-ring triangles = " + str(fixPenetration), 9);
+  scribeHeader("fix penetration among 3-ring triangles = " + str(fix3RTPenetration), 9);
   // show menu at bottom, only if not filming
   if (scribeText && !filming) displayFooter();
   if (animating) {  // periodic change of time
@@ -252,30 +267,38 @@ void draw() {
 }
 
 void keyPressed() {
-  if(key == '`') picking = true;
-  if(key == '?') scribeText = !scribeText;
-  if(key == '!') snapPicture();
-  if(key == '@') snappingPDF = true;
-  if(key == '~') filming = !filming;
-  if(key == 'q') Q.copyFrom(P);
-  if(key == 'p') P.projectOnSphere(100);
-  if(key == 'e') { PtQ.copyFrom(Q); Q.copyFrom(P); P.copyFrom(PtQ); }
-  if(key == '=') { bu = fu; bv = fv; }
-  // if(key == '.') F=P.Picked(); // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
-  if(key == 'c') center = !center; // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
-  if(key == 't') tracking = !tracking; // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
-  // if(key == 'x' || key == 'z' || key == 'd' || key == 'a') P.setPickedIndexTo(pp); // picks the vertex of P that has closest projeciton to mouse
-  if(key == 'x' || key == 'z' || key == 'd' || key == 'a') P.setPickToIndexOfVertexClosestTo(Pick);  // picks the vertex of P that has closest projeciton to mouse
-  if(key == 'd') P.deletePicked();
-  if(key == 'i') P.insertClosestProjection(Pick);  // Inserts new vertex in P that is the closeset projection of O
-  if(key == 'W') { P.savePts("data/pts"); Q.savePts("data/pts2"); }  // save vertices to pts2
-  if(key == 'L') { P.loadPts("data/pts"); Q.loadPts("data/pts2"); }  // loads saved model
-  if(key == 'w') { P.savePts("data/pts"); rs.saveRings("data/rs_unnamed"); }  // save vertices to pts
-  if(key == 'l') { P.loadPts("data/pts"); rs.loadRings("data/rs_unnamed"); }
-  // if(key == 'a') animating = !animating; // toggle animation
-  if(key == ',') viewpoint = true;
-  if(key == '>') showFrame = !showFrame;
-  if(key == '#') exit();
+  if (key == '`') picking = true;
+  if (key == '?') scribeText = !scribeText;
+  if (key == '!') snapPicture();
+  if (key == '@') snappingPDF = true;
+  if (key == '~') filming = !filming;
+  if (key == 'q') Q.copyFrom(P);
+  if (key == 'p') P.projectOnSphere(100);
+  if (key == 'e') { PtQ.copyFrom(Q); Q.copyFrom(P); P.copyFrom(PtQ); }
+  if (key == '=') { bu = fu; bv = fv; }
+  // if (key == '.') F=P.Picked(); // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
+  if (key == 'c') center = !center; // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
+  if (key == 't') tracking = !tracking; // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
+  // if (key == 'x' || key == 'z' || key == 'd' || key == 'a') P.setPickedIndexTo(pp); // picks the vertex of P that has closest projeciton to mouse
+  if (key == 'x' || key == 'z' || key == 'd' || key == 'a') P.setPickToIndexOfVertexClosestTo(Pick);  // picks the vertex of P that has closest projeciton to mouse
+  if (key == 'd') P.deletePicked();
+  if (key == 'i') P.insertClosestProjection(Pick);  // Inserts new vertex in P that is the closeset projection of O
+  if (key == 'W') { P.savePts("data/pts"); Q.savePts("data/pts2"); }  // save vertices to pts2
+  if (key == 'L') { P.loadPts("data/pts"); Q.loadPts("data/pts2"); }  // loads saved model
+  if (key == 'w') {  // save data
+    P.savePts("data/pts_unnamed");
+    rs.saveRings("data/rs_unnamed");
+    hub.save("data/hub_unnamed");
+  }
+  if (key == 'l') {  // load data
+    P.loadPts("data/pts_unnamed");
+    rs.loadRings("data/rs_unnamed");
+    hub.load("data/hub.unnamed");
+  }
+  // if (key == 'a') animating = !animating; // toggle animation
+  if (key == ',') viewpoint = true;
+  if (key == '>') showFrame = !showFrame;
+  if (key == '#') exit();
 
   /* Following are Yaohong's keys. */
   if (key == '0') {
@@ -296,47 +319,47 @@ void keyPressed() {
       if (test == 2) {
         debug3RT = false;
         rs.generateThreeRingTriangles();  // generate three-ring triangles and store them
-        if (showCorridors) rs.generateTwoRingTriangles();
+        if (show2RTs) rs.generateTwoRingTriangles();
       }
     }
   }
   if (key == '+') {
     if (numTriangles >= 0) {
       numFaces = numTriangles + 1;
-      numFacesFastCH = numTriangles + 1;
+      numFaces3RT = numTriangles + 1;
     }
     subdivisionTimes++;
-    rs.debug2RTriInfo.numGlobalStep = min(rs.debug2RTriInfo.numGlobalStep + 1, rs.nRings);
-    rs.debug2RTriInfo.numLocalStep = 1;
+    rs.debug2RTInfo.numGlobalStep = min(rs.debug2RTInfo.numGlobalStep + 1, rs.nRings);
+    rs.debug2RTInfo.numLocalStep = 1;
   }
   if (key == '-') {
     if (numFaces > 0) {
       numFaces--;
-      numFacesFastCH--;
+      numFaces3RT--;
     }
     subdivisionTimes = max(0, subdivisionTimes - 1);
-    rs.debug2RTriInfo.numGlobalStep = max(1, rs.debug2RTriInfo.numGlobalStep - 1);
-    rs.debug2RTriInfo.numLocalStep = 1;
+    rs.debug2RTInfo.numGlobalStep = max(1, rs.debug2RTInfo.numGlobalStep - 1);
+    rs.debug2RTInfo.numLocalStep = 1;
   }
   if (key == '*') {
-    numStepsFastCH++;
-    rs.debug2RTriInfo.numLocalStep = min(rs.debug2RTriInfo.numLocalStep + 1, rs.nPointsPerRing);
+    numSteps3RT++;
+    rs.debug2RTInfo.numLocalStep = min(rs.debug2RTInfo.numLocalStep + 1, rs.nPointsPerRing);
   }
   if (key == '/') {
-    numStepsFastCH = max(1, numStepsFastCH - 1);
-    rs.debug2RTriInfo.numLocalStep = max(1, rs.debug2RTriInfo.numLocalStep - 1);
+    numSteps3RT = max(1, numSteps3RT - 1);
+    rs.debug2RTInfo.numLocalStep = max(1, rs.debug2RTInfo.numLocalStep - 1);
   }
   if (key == '1') {
     numFaces = 1;
-    numStepsFastCH = 1;
+    numSteps3RT = 1;
   }
   if (key == '2') {
-    showCorridors = !showCorridors;
-    if (showCorridors) fixPenetration = true;
-    else fixPenetration = false;
+    show2RTs = !show2RTs;
+    if (show2RTs) fix3RTPenetration = true;
+    else fix3RTPenetration = false;
   }
   if (key == '3') {
-    fixPenetration = !fixPenetration;
+    fix3RTPenetration = !fix3RTPenetration;
   }
 
   if (key == '[') attenuation = min(1.0, attenuation + attenuationDelta);
@@ -384,11 +407,11 @@ void mouseDragged() {
   if (keyPressed && key == 'X') P.moveAll(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   if (keyPressed && key == 'Z') P.moveAll(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   if (keyPressed && key == 'f') { // move focus point on plane
-    if(center) F.sub(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
+    if (center) F.sub(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
     else F.add(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   }
   if (keyPressed && key == 'F') { // move focus point vertically
-    if(center) F.sub(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
+    if (center) F.sub(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
     else F.add(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   }
 }

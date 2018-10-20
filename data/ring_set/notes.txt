@@ -43,5 +43,8 @@ This is not true: only 2 adjacent three-ring triangles can intersect.
 This is not true: the distance between the two "feet" of the two intersecting triangles
 on a common ring is 1 (can be > 1).
 
-In rs_3rt_wrong_fix:
-Penetration fixing should not do anything (nothing to fix), but it does and it is bad!
+In rs_3rt_wrong_fix_2:
+the 3RT penetration fixed, but 2RT seems wrong/bad?
+
+In rs_plane_line_circle_0:
+the plane is wrong, why?

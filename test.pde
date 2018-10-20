@@ -227,6 +227,7 @@ void oneFastConvexHullWithHolesTest() {
       if (rs.threeRingTriangles != null) {
         fill(red);
         stroke(0);
+        strokeWeight(2);
         showTriangles(rs.threeRingTriangles, pointArray);
         fill(#0AED62, 100);  // light green
         noStroke();
@@ -253,9 +254,9 @@ void oneFastConvexHullWithHolesTest() {
     }
 
     if (debug3RT && method3RT == 1) {
-      rs.showDebug3RTriInfo();
+      rs.showDebug3RTInfo();
     } else if (debug2RT) {
-      rs.showDebug2RTriInfo();
+      rs.showDebug2RTInfo();
     } else {
       // boolean success = passQualityTest(rs.threeRingTriangles, pointArray, pointArray.length);
       // if (!success) {
@@ -298,4 +299,86 @@ void oneSubdivisionTest() {
 void oneHubTest() {
   hub.showHub(red, 150);
   hub.showBoundingBall(blue, 100);
+}
+
+
+void onePivotPlaneAroundLineHitCircleTest() {
+  assert rs.nRings >= 3;
+  rs.generatePoints(attenuation);
+  assert rs.points != null && rs.centers != null && rs.radii != null;
+  pt c = rs.centers[0];
+  float r = rs.radii[0];
+  vec n = U(rs.c, c);
+  pt a = rs.points[1][0];
+  pt b = rs.points[2][0];
+  pt[] contacts = pivotPlaneAroundLineHitCircle(c, r, n, a, b, null, null);
+  assert contacts != null && contacts.length == 2;
+
+  vec t0 = U(N(n, V(c, contacts[0])));
+  vec t1 = U(N(n, V(c, contacts[1])));
+  vec n0 = U(N(a, b, contacts[0]));
+  vec n1 = U(N(a, b, contacts[1]));
+  println("dot(n0, t0) =", dot(n0, t0), "(shoule be close to 0)");
+  println("dot(n1, t1) =", dot(n1, t1), "(shoule be close to 0)");
+
+  fill(orange, 100);
+  showTriangle(a, b, contacts[0]);
+  fill(purple, 100);
+  showTriangle(a, b, contacts[1]);
+  fill(red);
+  disk(c, n, r);
+  fill(blue);
+  show(a, 3);
+  show(b, 3);
+
+  // show the two planes using point-normal method
+  {
+    // fill(green, 100);
+    // vec ab = V(a, b);
+    // vec cp0 = V(c, contacts[0]);
+    // float alpha0 = -dot(cp0, ab) / dot(n, ab);
+    // vec normal0 = A(cp0, alpha0, n);
+    // showPlane(contacts[0], normal0, 20);
+    // vec cp1 = V(c, contacts[1]);
+    // float alpha1 = -dot(cp1, ab) / dot(n, ab);
+    // vec normal1 = A(cp1, alpha1, n);
+    // showPlane(contacts[1], normal1, 20);
+  }
+}
+
+void tangentPlaneThreeCirclesTest() {
+  assert rs.nRings >= 3;
+  rs.generatePoints(attenuation);
+  assert rs.points != null && rs.centers != null && rs.radii != null;
+
+  pt c0 = rs.centers[0];
+  pt c1 = rs.centers[1];
+  pt c2 = rs.centers[2];
+  float r0 = rs.radii[0];
+  float r1 = rs.radii[1];
+  float r2 = rs.radii[2];
+  vec n0 = U(rs.c, c0);
+  vec n1 = U(rs.c, c1);
+  vec n2 = U(rs.c, c2);
+  vec vi0 = rs.initDirs[0];
+  vec vi1 = rs.initDirs[1];
+  vec vi2 = rs.initDirs[2];
+  pt[] ps = tangentPlaneThreeCircles(c0, r0, n0, vi0, null,
+                                     c1, r1, n1, vi1, null,
+                                     c2, r2, n2, vi2, null);
+  {
+    fill(red);
+    show(ps[0], 5);
+    disk(c0, n0, r0);
+    fill(green);
+    show(ps[1], 5);
+    disk(c1, n1, r1);
+    fill(blue);
+    show(ps[2], 5);
+    disk(c2, n2, r2);
+    fill(orange, 100);
+    showTriangle(ps[0], ps[1], ps[2]);
+    fill(cyan, 100);
+    showNormalToTriangle(ps[0], ps[1], ps[2], 20, 4);
+  }
 }

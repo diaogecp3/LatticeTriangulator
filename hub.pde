@@ -91,9 +91,10 @@ void showTangentialCone(Ball ba, Ball bb) {
  * defined by it and each of its neighboring balls.
  */
 class Hub {
-  Ball ball;
-  Ball[] neighbors;
-  int nNeighbors;
+  Ball ball = null;
+  Ball[] neighbors = null;
+  int nNeighbors = 0;
+  Hub() {}
   Hub(Ball ball, Ball[] neighbors, int nNeighbors) {
     this.ball = ball;
     this.neighbors = neighbors;
@@ -125,6 +126,35 @@ class Hub {
     for (int i = 0; i < nNeighbors; ++i) {
       showTangentialCone(ball, neighbors[i]);
       neighbors[i].showBall();
+    }
+    return;
+  }
+
+  void save(String file) {
+    String[] lines = new String[2 + nNeighbors];
+    int i = 0;
+    lines[i++] = str(nNeighbors + 1);
+    lines[i++] = str(ball.c.x) + "," + str(ball.c.y) + "," + str(ball.c.z) +
+                 "," + str(ball.r);
+    for (int j = 0; j < nNeighbors; ++j) {
+      lines[i++] = str(neighbors[j].c.x) + "," + str(neighbors[j].c.y) + "," +
+                   str(neighbors[j].c.z) + "," + str(neighbors[j].r);
+    }
+    saveStrings(file, lines);
+    return;
+  }
+
+  void load(String file) {
+    String[] lines = loadStrings(file);
+    int i = 0;
+    nNeighbors = int(lines[i++]) - 1;
+    println("loading:", file, "number of neighbors =", nNeighbors);
+    float[] tmp = float(split(lines[i++], ","));
+    ball = new Ball(tmp[0], tmp[1], tmp[2], tmp[3]);
+    neighbors = new Ball[nNeighbors];
+    for (int j = 0; j < nNeighbors; ++j) {
+      tmp = float(split(lines[i++], ","));
+      neighbors[j] = new Ball(tmp[0], tmp[1], tmp[2], tmp[3]);
     }
     return;
   }

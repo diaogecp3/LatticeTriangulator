@@ -253,6 +253,10 @@ class Ball {
     this.c = c;
     this.r = r;
   }
+  Ball(float x, float y, float z, float r) {
+    this.c = new pt(x, y, z);
+    this.r = r;
+  }
   void showBall() {
     show(c, r);
   }

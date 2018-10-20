@@ -1,5 +1,5 @@
 /******************************************************************************
- * Convex hull generation in a special case where all vertices are on a sphere.
+ * Convex hull generation where all input vertices are on a sphere.
  ******************************************************************************/
 
 

@@ -2,14 +2,9 @@
  * Ring set processing.
  ******************************************************************************/
 
-
 /*
  * TODO:
- *
- * 1. Use BFS to generate three-ring triangles.
- *    It is slower than naive method? Yes when n is small. No when n is large.
- *    How to make it fast? Combine BFS and heuristics, i.e. finding a good
-      initial triangle.
+ * 1. Clean up code.
  */
 
 
@@ -18,12 +13,12 @@ import java.util.Queue;
 boolean debug3RT = false;
 boolean debug3RTFix = false;
 boolean debug2RT = false;
-boolean fixPenetration = false;
-boolean showCorridors = false;
-int numFacesFastCH = 1;
-int numStepsFastCH = 1;
-int maxIterThreeRings = 100;
-int maxIterOneRing = 100;
+boolean fix3RTPenetration = false;
+boolean show2RTs = false;
+int numFaces3RT = 1;
+int numSteps3RT = 1;
+int maxIterHSGlobal = 100;
+int maxIterHSLocal = 100;
 
 
 /*
@@ -39,7 +34,8 @@ int method3RT = 3;
 /*
  * Method for triangle mesh generation for ring set.
  * 0: Generate a convex hull. Time: O(n^2)
- * 1: Generate a mesh using referenced convex hull. Time: O(r^2 + n)
+ * 1: Generate a mesh using referenced convex hull. Time: O(r^2 + n), where r is
+      the number of rings.
  */
 int methodTM = 1;
 
@@ -51,12 +47,12 @@ int methodTM = 1;
  * rings lie on a sphere.
  */
 class RingSet {
-  class Debug3RTriInfo {  // debug info about three-ring-triangle generation
+  class Debug3RTInfo {  // debug info about three-ring-triangle generation
     int idr0, idr1, idr2;
     int idp0, idp1, idp2;
     int numSteps;
     int numFaces;
-    Debug3RTriInfo() {
+    Debug3RTInfo() {
       idr0 = idr1 = idr2 = -1;
       idp0 = idp1 = idp2 = -1;
       numSteps = 0;
@@ -64,7 +60,7 @@ class RingSet {
     }
   }
 
-  class Debug2RTriInfo {
+  class Debug2RTInfo {
     pt pa0, pa1, pb0, pb1;
     int numGlobalStep = 1;
     int numLocalStep = 1;
@@ -125,7 +121,8 @@ class RingSet {
 
   pt c;  // the center of the sphere where the ring set lies
   float r;  // the radius of the sphere where the ring set lies
-  int nRings, nPointsPerRing;  // number of rings/circles, and number of points on each ring
+  int nRings;  // number of rings/circles
+  int nPointsPerRing;  // number of points on each ring
   boolean sameRadius;  // whether all rings have the same radius
   pt[] contacts;  // the intersections between the outward normals of rings and the sphere
   float[] radii;  // the radii of rings
@@ -140,8 +137,8 @@ class RingSet {
   ArrayList<Triangle> twoRingTriangles = null;
   ArrayList<ArrayList<Integer>> splitLists = null;
 
-  Debug3RTriInfo debug3RTriInfo = new Debug3RTriInfo();  // for debug
-  Debug2RTriInfo debug2RTriInfo = new Debug2RTriInfo();  // for debug
+  Debug3RTInfo debug3RTInfo = new Debug3RTInfo();  // for debug
+  Debug2RTInfo debug2RTInfo = new Debug2RTInfo();  // for debug
 
   RingSet(pt c, float r) {
     this.c = c;
@@ -281,16 +278,16 @@ class RingSet {
     int steps1 = 0;
     while ((dot(vn, V(points[i], points[inext])) > 0 ||
             dot(vn, V(points[i], points[iprev])) > 0) &&
-            (steps1 < maxIterOneRing)) {
+            (steps1 < maxIterHSLocal)) {
       if (debug3RT &&
-        debug3RTriInfo.numFaces == numFacesFastCH - 1 &&
-        debug3RTriInfo.numSteps >= numStepsFastCH) break;
+        debug3RTInfo.numFaces == numFaces3RT - 1 &&
+        debug3RTInfo.numSteps >= numSteps3RT) break;
       iprev = i;
       i = inext;
       inext = (inext + d + nPointsPerRing) % nPointsPerRing;
       vn = N(points[i], a, b);
       if (debug3RT) {
-        debug3RTriInfo.numSteps++;
+        debug3RTInfo.numSteps++;
       }
       steps1++;
     }
@@ -335,28 +332,28 @@ class RingSet {
     Triangle tri = new Triangle(i, j, k);
     vec normal = N(points0[i], points1[j], points2[k]);
     if (debug3RT) {
-      debug3RTriInfo.idp0 = i;
-      debug3RTriInfo.idp1 = j;
-      debug3RTriInfo.idp2 = k;
-      debug3RTriInfo.numSteps = 1;
+      debug3RTInfo.idp0 = i;
+      debug3RTInfo.idp1 = j;
+      debug3RTInfo.idp2 = k;
+      debug3RTInfo.numSteps = 1;
     }
     int iter = 0;
-    while (iter < maxIterThreeRings) {
+    while (iter < maxIterHSGlobal) {
       if (debug3RT &&
-          debug3RTriInfo.numFaces == numFacesFastCH - 1 &&
-          debug3RTriInfo.numSteps >= numStepsFastCH) break;
+          debug3RTInfo.numFaces == numFaces3RT - 1 &&
+          debug3RTInfo.numSteps >= numSteps3RT) break;
       boolean update = findStableTriangleHS(points0, points1, points2, tri, normal);
       if (update == false) break;  // break when stable
       iter++;
     }  // end while
 
     if (debug3RT) {
-      debug3RTriInfo.idp0 = i;
-      debug3RTriInfo.idp1 = j;
-      debug3RTriInfo.idp2 = k;
+      debug3RTInfo.idp0 = i;
+      debug3RTInfo.idp1 = j;
+      debug3RTInfo.idp2 = k;
     }
 
-    if (iter < maxIterThreeRings) {
+    if (iter < maxIterHSGlobal) {
       return new Triangle(tri.a, tri.b, tri.c);
     } else {  // use backup method (could be naive or BFS)
       numBackup3RT++;
@@ -450,22 +447,22 @@ class RingSet {
            edgeIntersectsTriangle(b0, b2, a0, a1, a2);
   }
 
-  // TODO: current implementation may be optimized, especially triangle-triangle/edge intersection
+  // TODO: current implementation may be optimized, especially triangle-edge intersection
   void fixPenetration3RT() {
     assert threeRingTriangles != null;
     setupSplitLists();
     for (int i = 0; i < nRings; ++i) {
       ArrayList<Integer> splits = splitLists.get(i);
-      int ns = splits.size();
       ArrayList<Integer> swings = refConvexHull.swingLists.get(i);
+      int ns = splits.size();
 
-      /* Pick a index to start. */
+      /* Pick the index with minimum location to start. */
       int first = argmin(splits);  // index, [0, ns)
       int firstSplit = splits.get(first);  // point ID (global)
       HashMap<Integer, Integer> splitCount = new HashMap<Integer, Integer>();
       splitCount.put(firstSplit, 1);
       ArrayList<pt> cornerTriangles = new ArrayList<pt>();
-      ArrayList<Integer> splitIdxs = new ArrayList<Integer>();
+      // ArrayList<Integer> splitIdxs = new ArrayList<Integer>();
 
       /* Fix any issue around this index. */
       int cid0 = swings.get(first);
@@ -476,8 +473,7 @@ class RingSet {
       cornerTriangles.add(pa0);
       cornerTriangles.add(pb0);
       cornerTriangles.add(pc0);
-      splitIdxs.add(first);
-
+      // splitIdxs.add(first);
       int start = (first + 1) % ns;
       int end = (first + ns - 1) % ns;
       int count = 1;
@@ -490,35 +486,24 @@ class RingSet {
 
       while (count < ns) {  // search right, i.e. increment start pointer if possible
         int cid = swings.get(start);
-        int tid = cid / 3;
-        Triangle tri = threeRingTriangles.get(tid);
+        Triangle tri = threeRingTriangles.get(cid / 3);
         int ia = tri.get(cid % 3), ib = tri.get((cid + 1) % 3), ic = tri.get((cid + 2) % 3);
         pt pa = getPoint(ia), pb = getPoint(ib), pc = getPoint(ic);
         int key = splits.get(start);
-        //if (splits.get(start) == firstSplit) {
         if (splitCount.containsKey(key)) {
           splitCount.put(key, splitCount.get(key) + 1);
           cornerTriangles.add(pa);
           cornerTriangles.add(pb);
           cornerTriangles.add(pc);
-          splitIdxs.add(start);
+          // splitIdxs.add(start);
           start = (start + 1) % ns;
           count++;
           continue;
         }
 
-        // if (edgeIntersectsTriangle(pa, pb, pa0, pb0, pc0) ||
-        //     edgeIntersectsTriangle(pa, pc, pa0, pb0, pc0) ||
-        //     edgeIntersectsTriangle(pa0, pb0, pa, pb, pc) ||
-        //     edgeIntersectsTriangle(pa0, pc0, pa, pb, pc)) { // current triangle intersect first triangle
-        //   splits.set(start, firstSplit);
-        //   tri.set(cid % 3, firstSplit);
-        //   start = (start + 1) % ns;
-        //   count++;
-        // } else break;
         int curSize = cornerTriangles.size();
-        int j;
-        for (j = curSize - 3; j >= 0; j -= 3) {  // the order may help improve performance a little bit
+        int j = curSize - 3;
+        for (; j >= 0; j -= 3) {  // the order may help improve performance
           pt pd = cornerTriangles.get(j);
           pt pe = cornerTriangles.get(j+1);
           pt pf = cornerTriangles.get(j+2);
@@ -529,7 +514,7 @@ class RingSet {
           cornerTriangles.add(pa);
           cornerTriangles.add(pb);
           cornerTriangles.add(pc);
-          splitIdxs.add(start);
+          // splitIdxs.add(start);
           start = (start + 1) % ns;
           count++;
         } else {  // intersection not found!
@@ -545,45 +530,24 @@ class RingSet {
       // }
 
       while (count < ns) {  // search left, i.e. decrement end pointer if possible
-        // if (splits.get(end) == firstSplit) {
-        //   end = (end + ns - 1) % ns;
-        //   count++;
-        //   continue;
-        // };
-        // int cid = swings.get(end);
-        // int tid = cid / 3;
-        // Triangle tri = threeRingTriangles.get(tid);
-        // int ia = tri.get(cid % 3), ib = tri.get((cid + 1) % 3), ic = tri.get((cid + 2) % 3);
-        // pt pa = getPoint(ia), pb = getPoint(ib), pc = getPoint(ic);
-        // if (edgeIntersectsTriangle(pa, pb, pa0, pb0, pc0) ||
-        //     edgeIntersectsTriangle(pa, pc, pa0, pb0, pc0) ||
-        //     edgeIntersectsTriangle(pa0, pb0, pa, pb, pc) ||
-        //     edgeIntersectsTriangle(pa0, pc0, pa, pb, pc)) { // current triangle intersect first triangle
-        //   splits.set(end, firstSplit);
-        //   tri.set(cid % 3, firstSplit);
-        //   end = (end + ns - 1) % ns;
-        //   count++;
-        // } else break;
         int cid = swings.get(end);
-        int tid = cid / 3;
-        Triangle tri = threeRingTriangles.get(tid);
+        Triangle tri = threeRingTriangles.get(cid / 3);
         int ia = tri.get(cid % 3), ib = tri.get((cid + 1) % 3), ic = tri.get((cid + 2) % 3);
         pt pa = getPoint(ia), pb = getPoint(ib), pc = getPoint(ic);
-
         int key = splits.get(end);
         if (splitCount.containsKey(key)) {
           splitCount.put(key, splitCount.get(key) + 1);
           cornerTriangles.add(pa);
           cornerTriangles.add(pb);
           cornerTriangles.add(pc);
-          splitIdxs.add(end);
+          // splitIdxs.add(end);
           end = (end + ns - 1) % ns;
           count++;
           continue;
         }
         int curSize = cornerTriangles.size();
-        int j;
-        for (j = curSize - 3; j >= 0; j -= 3) {  // the order may help improve performance a little bit
+        int j = curSize - 3;
+        for (; j >= 0; j -= 3) {  // the order may help improve performance
           pt pd = cornerTriangles.get(j);
           pt pe = cornerTriangles.get(j+1);
           pt pf = cornerTriangles.get(j+2);
@@ -594,7 +558,7 @@ class RingSet {
           cornerTriangles.add(pa);
           cornerTriangles.add(pb);
           cornerTriangles.add(pc);
-          splitIdxs.add(end);
+          // splitIdxs.add(end);
           end = (end + ns - 1) % ns;
           count++;
         } else {  // intersection not found!
@@ -609,7 +573,7 @@ class RingSet {
       //   show(tmp, 5);
       // }
 
-      /* Fix the root. */
+      /* Fix the first group. */
       int newSplit = firstSplit;  // make all corners/triangles touch newSplit
       int maxCount = splitCount.get(firstSplit);
       for (Integer k : splitCount.keySet()) {
@@ -618,8 +582,9 @@ class RingSet {
           newSplit = k;
         }
       }
-      for (int j = 0; j < splitIdxs.size(); ++j) {
-        int idx = splitIdxs.get(j);
+      // for (int j = 0; j < splitIdxs.size(); ++j) {
+      for (int idx = (end + 1) % ns; idx != start; idx = (idx + 1) % ns) {
+        //int idx = splitIdxs.get(j);
         int cid = swings.get(idx);
         int tid = cid / 3;
         int ccid = cid % 3;
@@ -628,7 +593,6 @@ class RingSet {
           threeRingTriangles.get(tid).set(ccid, newSplit);
         }
       }
-
 
       /* Fix the rest. */
       int prevSplit = splits.get(start);
@@ -644,46 +608,15 @@ class RingSet {
         curSplit = splits.get(start);
         count++;
       }
-
-      // int second = (first + 1) % nSplits;
-      // int third = (second + 1) % nSplits;
-      // int s0 = splits.get(first);
-      // int s1 = splits.get(second);
-      // int s2 = splits.get(third);
-      // int d1 = min(s1 - s0, s0 + nSplits - s1);
-      // if (s2 < s1) {
-      //   int d2 = min(s1 - s2, s2 + nSplits - s1);
-      //   if (d1 < d2) {
-      //     s1 = s0;  // decrease s1 to match s0
-      //     splits.set(second, s1);
-      //     int cid = refConvexHull.swingLists.get(i).get(second);
-      //     threeRingTriangles.get(cid / 3).set(cid % 3, s1);
-      //   }
-      // }
-
-      /* Check if the rest are good. If not, fix it. */
-      // int last = first + nSplits;
-      // int prev = s1;
-      // for (int j = first + 2; j < last; ++j) {
-      //   int k = j % nSplits;
-      //   int cur = splits.get(k);
-      //   if (cur < prev) {
-      //     cur = prev;  // increase cur to match prev
-      //     splits.set(k, cur);
-      //     int cid = refConvexHull.swingLists.get(i).get(k);
-      //     threeRingTriangles.get(cid / 3).set(cid % 3, cur);
-      //   } else prev = cur;
-      // }
-
     }
   }
 
   void generateThreeRingTriangles() {
     int nt = refConvexHull.nt;  // number of triangles of convex hull
     ArrayList<Triangle> threeRingTris = new ArrayList<Triangle>();
-    debug3RTriInfo.numFaces = 0;
+    debug3RTInfo.numFaces = 0;
     for (int i = 0; i < nt; ++i) {
-      if (debug3RT && i >= numFacesFastCH) break;
+      if (debug3RT && i >= numFaces3RT) break;
       Triangle face = refConvexHull.triangles.get(i);
 
       Triangle t = null;
@@ -709,19 +642,21 @@ class RingSet {
                           new Triangle(face.a * nPointsPerRing + t.a, face.b * nPointsPerRing + t.b, face.c * nPointsPerRing + t.c);
       threeRingTris.add(triangle);
       if (debug3RT) {
-        debug3RTriInfo.idr0 = face.a;
-        debug3RTriInfo.idr1 = face.b;
-        debug3RTriInfo.idr2 = face.c;
-        debug3RTriInfo.numFaces++;
+        debug3RTInfo.idr0 = face.a;
+        debug3RTInfo.idr1 = face.b;
+        debug3RTInfo.idr2 = face.c;
+        debug3RTInfo.numFaces++;
       }
     }  // end for
     this.threeRingTriangles = threeRingTris;
 
-    if (fixPenetration) {
+    if (fix3RTPenetration) {
       fixPenetration3RT();
     }
   }
 
+
+  // TODO: need to revisit, bacause current method is quite simple and may create overlapping triangles (with flipped normals)
   private void fillCorridor(int loA, int hiA, int loB, int hiB, int rA, int rB) {
     int i = loA, j = loB;
     pt pa = getPoint(loA), pb = getPoint(loB);
@@ -739,7 +674,7 @@ class RingSet {
       }
       boolean moveA = true;
       if (pc != null && pd != null) {
-        /* Select a good triangle based on what? */
+        /* TODO: the criterion used to select a good triangle may be changed. */
         if (d(pa, pd) < d(pb, pc)) {
           twoRingTriangles.add(new Triangle(i, j, jNext));
           moveA = false;
@@ -761,17 +696,17 @@ class RingSet {
     twoRingTriangles = new ArrayList<Triangle>();
     boolean[][] visited = new boolean[nRings][nRings];
     for (int i = 0; i < nRings; ++i) {  // i = ID of ring A
-      if (debug2RT && i >= debug2RTriInfo.numGlobalStep) break;
+      if (debug2RT && i >= debug2RTInfo.numGlobalStep) break;
       ArrayList<Integer> swings = refConvexHull.swingLists.get(i);
       int ns = swings.size();
       ArrayList<Integer> splits = splitLists.get(i);
       for (int j = 0, curC = swings.get(0); j < ns; ++j) {
-        if (debug2RT && i == debug2RTriInfo.numGlobalStep - 1 && j >= debug2RTriInfo.numLocalStep) break;
+        if (debug2RT && i == debug2RTInfo.numGlobalStep - 1 && j >= debug2RTInfo.numLocalStep) break;
         int swingC = swings.get((j+1) % ns);
         int prevC = prevCorner(curC);
         int nextSwingC = nextCorner(swingC);
-        int ringB = refConvexHull.triangles.get(prevC / 3).get(prevC % 3);
-        if (visited[i][ringB]) {
+        int k = refConvexHull.triangles.get(prevC / 3).get(prevC % 3);  // ID of another ring
+        if (visited[i][k]) {
           curC = swingC;
           continue;
         }
@@ -779,15 +714,15 @@ class RingSet {
         int hiA = splits.get((j+1) % ns);
         int loB = threeRingTriangles.get(prevC / 3).get(prevC % 3);
         int hiB = threeRingTriangles.get(nextSwingC / 3).get(nextSwingC % 3);
-        fillCorridor(loA, hiA, loB, hiB, i, ringB);
+        fillCorridor(loA, hiA, loB, hiB, i, k);
         curC = swingC;
-        visited[i][ringB] = visited[ringB][i] = true;
+        visited[i][k] = visited[k][i] = true;
 
-        if (debug2RT && i == debug2RTriInfo.numGlobalStep - 1 && j == debug2RTriInfo.numLocalStep - 1) {
-          debug2RTriInfo.pa0 = getPoint(loA);
-          debug2RTriInfo.pa1 = getPoint(hiA);
-          debug2RTriInfo.pb0 = getPoint(loB);
-          debug2RTriInfo.pb1 = getPoint(hiB);
+        if (debug2RT && i == debug2RTInfo.numGlobalStep - 1 && j == debug2RTInfo.numLocalStep - 1) {
+          debug2RTInfo.pa0 = getPoint(loA);
+          debug2RTInfo.pa1 = getPoint(hiA);
+          debug2RTInfo.pb0 = getPoint(loB);
+          debug2RTInfo.pb1 = getPoint(hiB);
         }
       }
     }
@@ -799,7 +734,7 @@ class RingSet {
 
   private void generateTriangleMeshFast() {
     generateThreeRingTriangles();
-    if (showCorridors) generateTwoRingTriangles();
+    if (show2RTs) generateTwoRingTriangles();
     else twoRingTriangles = null;
     triangles = new ArrayList<Triangle>();
     triangles.addAll(threeRingTriangles);
@@ -816,6 +751,12 @@ class RingSet {
         break;
     }
   }
+
+  // TODO
+  void generateTangentPlaneThreeCircles(int i, int j, int k) {
+
+  }
+
 
   void showRings() {
     noStroke();
@@ -842,28 +783,28 @@ class RingSet {
     return;
   }
 
-  void showDebug3RTriInfo() {
+  void showDebug3RTInfo() {
     noStroke();
     fill(red, 150);
-    show(contacts[debug3RTriInfo.idr0], 3);
+    show(contacts[debug3RTInfo.idr0], 3);
     fill(green, 150);
-    show(contacts[debug3RTriInfo.idr1], 3);
+    show(contacts[debug3RTInfo.idr1], 3);
     fill(blue, 150);
-    show(contacts[debug3RTriInfo.idr2], 3);
+    show(contacts[debug3RTInfo.idr2], 3);
     fill(#BF6868, 200);  // light red
-    show(points[debug3RTriInfo.idr0][debug3RTriInfo.idp0], 5);
+    show(points[debug3RTInfo.idr0][debug3RTInfo.idp0], 5);
     fill(#40935D, 200);  // light green
-    show(points[debug3RTriInfo.idr1][debug3RTriInfo.idp1], 5);
+    show(points[debug3RTInfo.idr1][debug3RTInfo.idp1], 5);
     fill(#517EC9, 200);  // light blue
-    show(points[debug3RTriInfo.idr2][debug3RTriInfo.idp2], 5);
+    show(points[debug3RTInfo.idr2][debug3RTInfo.idp2], 5);
   }
 
-  void showDebug2RTriInfo() {
-    fill(red, 200); show(debug2RTriInfo.pa0, 5);
-    fill(yellow, 200); show(debug2RTriInfo.pa1, 5);
-    fill(green, 100); show(debug2RTriInfo.pb0, 5);
-    fill(blue, 100); show(debug2RTriInfo.pb1, 5);
-    fill(#8B7373, 200); show(centers[debug2RTriInfo.numGlobalStep - 1], 5);  // center of current ring
+  void showDebug2RTInfo() {
+    fill(red, 200); show(debug2RTInfo.pa0, 5);
+    fill(yellow, 200); show(debug2RTInfo.pa1, 5);
+    fill(green, 100); show(debug2RTInfo.pb0, 5);
+    fill(blue, 100); show(debug2RTInfo.pb1, 5);
+    fill(#8B7373, 200); show(centers[debug2RTInfo.numGlobalStep - 1], 5);  // center of current ring
   }
 
   void saveRings(String file) {

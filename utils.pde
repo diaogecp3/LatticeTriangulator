@@ -123,6 +123,19 @@ vec2 solveLinearEquationsInTwoVars(float a, float b, float c, float d, float e, 
   return new vec2(x, y);
 }
 
+
+/*
+ * Show a triangle.
+ */
+void showTriangle(pt a, pt b, pt c) {
+  beginShape(TRIANGLES);
+  vertex(a);
+  vertex(b);
+  vertex(c);
+  endShape();
+}
+
+
 /*
  * Show triangles.
  */

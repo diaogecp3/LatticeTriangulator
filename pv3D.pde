@@ -64,8 +64,8 @@ vec N(vec U, vec V) {return V( U.y*V.z-U.z*V.y, U.z*V.x-U.x*V.z, U.x*V.y-U.y*V.x
 vec N(pt A, pt B, pt C) {return N(V(A,B),V(A,C)); };                                                   // normal to triangle (A,B,C), not normalized (proportional to area)
 vec B(vec U, vec V) {return U(N(N(U,V),U)); }
 vec Normal(vec V) {
-  if(abs(V.z)<=min(abs(V.x),abs(V.y))) return V(-V.y,V.x,0);
-  if(abs(V.x)<=min(abs(V.z),abs(V.y))) return V(0,-V.z,V.y);
+  if (abs(V.z)<=min(abs(V.x),abs(V.y))) return V(-V.y,V.x,0);
+  if (abs(V.x)<=min(abs(V.z),abs(V.y))) return V(0,-V.z,V.y);
   return V(V.z,0,-V.x);
   }
 
@@ -127,7 +127,7 @@ vec R(vec V, float a, vec I, vec J) {float x=d(V,I), y=d(V,J); float c=cos(a), s
 pt R(pt Q, pt C, pt P, pt R) { // returns rotated version of Q by angle(CP,CR) parallel to plane (C,P,R)
    vec I0=U(C,P), I1=U(C,R), V=V(C,Q);
    float c=d(I0,I1), s=sqrt(1.-sq(c));
-     if(abs(s)<0.00001) return Q;
+     if (abs(s)<0.00001) return Q;
    vec J0=V(1./s,I1,-c/s,I0);
    vec J1=V(-s,I0,c,J0);
    float x=d(V,I0), y=d(V,J0);
