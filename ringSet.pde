@@ -5,6 +5,7 @@
 /*
  * TODO:
  * 1. Clean up code.
+ * 2. Generate three-ring triangles using approximated extreme plane method.
  */
 
 
@@ -28,8 +29,9 @@ int maxIterHSLocal = 100;
  * 2: Breadth first search. Time: roughly O(min(3^d, n^3)) where d is the length
       from initial state to optimal state. Space: O(min(3^d, n^3)). Not converge?
  * 3: Breadth first search with heuristics. Time and space should be less than 2.
+ * 4: Approximated extreme plane. Time: roughly O(1), Space: roughly O(1).
  */
-int method3RT = 3;
+int method3RT = 0;
 
 /*
  * Method for triangle mesh generation for ring set.
@@ -126,8 +128,9 @@ class RingSet {
   boolean sameRadius;  // whether all rings have the same radius
   pt[] contacts;  // the intersections between the outward normals of rings and the sphere
   float[] radii;  // the radii of rings
-  vec[] initDirs;  // the initial directions, one for each ring, used to generate the first point on ring
-
+  vec[] xAxes;  // the initial directions, one for each ring, used to generate the first point on ring
+  vec[] yAxes;
+  vec[] normals;
   pt[][] points;  // the generated points on rings
   pt[] centers;  // the centers of rings, one for each ring
 
@@ -164,14 +167,23 @@ class RingSet {
     radii[0] = rMax;
   }
 
+  private void generateYAxes() {
+    yAxes = new vec[nRings];
+    for (int i = 0; i < nRings; ++i) {
+      yAxes[i] = N(normals[i], xAxes[i]);
+    }
+  }
+
   void init() {
+    normals = new vec[nRings];
     if (!sameRadius) {
       radii = new float[nRings];
-      contacts = generateContactsAndRadii(c, r, nRings, radii);
+      contacts = generateContactsAndRadii(c, r, nRings, radii, normals);
     } else {
-      contacts = generateContacts(c, r, nRings, radii[0]);
+      contacts = generateContacts(c, r, nRings, radii[0], normals);
     }
-    initDirs = generateInitDirs(c, contacts, nRings);
+    xAxes = generateInitDirs(c, contacts, nRings);
+    generateYAxes();
   }
 
   int getNumRings() {
@@ -184,14 +196,14 @@ class RingSet {
 
   pt[] get1DPointArray() {
     if (points == null) return null;
-    pt[] G = new pt[nRings * nPointsPerRing];
+    pt[] pointArray = new pt[nRings * nPointsPerRing];
     int k = 0;
     for (int i = 0; i < nRings; ++i) {
       for (int j = 0; j < nPointsPerRing; ++j) {
-        G[k++] = points[i][j];
+        pointArray[k++] = points[i][j];
       }
     }
-    return G;
+    return pointArray;
   }
 
   ArrayList<pt> get1DPointArrayList() {
@@ -218,16 +230,14 @@ class RingSet {
     if (!sameRadius) {
       float[] curRadii = new float[nRings];
       for (int i = 0; i < nRings; ++i) curRadii[i] = radii[i] * attenuation;
-      points = generatePointsForCircles(contacts, curRadii, c, r, initDirs, nRings,
+      points = generatePointsForCircles(contacts, curRadii, c, r, xAxes, nRings,
                                         nPointsPerRing, centers);
     } else {
       float curRadius = radii[0] * attenuation;
-      points = generatePointsForCircles(contacts, curRadius, c, r, initDirs, nRings,
+      points = generatePointsForCircles(contacts, curRadius, c, r, xAxes, nRings,
                                         nPointsPerRing, centers);
     }
   }
-
-
 
   void generateRefConvexHull() {
     assert contacts.length >= 3;
@@ -236,7 +246,6 @@ class RingSet {
     refConvexHull.setupSwingLists();  // for fixing penetration
   }
 
-  /* This function has bugs? */
   private Triangle generateThreeRingTriangleNaive(pt[] points0,
                                                   pt[] points1,
                                                   pt[] points2) {
@@ -355,7 +364,8 @@ class RingSet {
 
     if (iter < maxIterHSGlobal) {
       return new Triangle(tri.a, tri.b, tri.c);
-    } else {  // use backup method (could be naive or BFS)
+    } else {  // use backup method
+      println("cannot find stable three-ring triangle using HS");
       numBackup3RT++;
       //return generateThreeRingTriangleNaive(points0, points1, points2);
       return null;
@@ -390,15 +400,17 @@ class RingSet {
         TriangleNode child = children.get(i);
         stable = child.computeChildren(rings, set);
         if (stable) {
-          if (set.size() > nPointsPerRing * nPointsPerRing * nPointsPerRing) {
-            println("size of explored set (bigger than np^3) = ", set.size());
-          }
+          // if (set.size() > nPointsPerRing * nPointsPerRing * nPointsPerRing) {
+          //   println("size of explored set (bigger than np^3) = ", set.size());
+          // }
           return child.tri;
         }
         queue.add(child);
       }
     }
     println("cannot find stable three-ring triangle using BFS");  // this is possible!
+    numBackup3RT++;
+    //return generateThreeRingTriangleNaive(points0, points1, points2);
     return null;
   }
 
@@ -423,6 +435,72 @@ class RingSet {
         break;
     }
     return generateThreeRingTriangleBFSWithHint(points0, points1, points2, tri);
+  }
+
+  private Triangle generateThreeRingTriangleApprox(int rid0, int rid1, int rid2) {
+    pt[] cs = {centers[rid0], centers[rid1], centers[rid2]};
+    float[] rs = {radii[rid0], radii[rid1], radii[rid2]};
+    vec[] ns = {normals[rid0], normals[rid1], normals[rid2]};
+    vec[] vis = {xAxes[rid0], xAxes[rid1], xAxes[rid2]};
+    vec[] vjs = {yAxes[rid0], yAxes[rid1], yAxes[rid2]};
+    pt[] ps = tangentPlaneThreeCircles(cs[0], rs[0], ns[0], vis[0], vjs[0],
+                                       cs[1], rs[1], ns[1], vis[1], vjs[1],
+                                       cs[2], rs[2], ns[2], vis[2], vjs[2]);
+
+    float da = TWO_PI / nPointsPerRing;
+    int[][] candidates = new int[3][2];
+    for (int i = 0; i < 3; ++i) {
+      vec cp = V(cs[i], ps[i]);
+      float angle = acos(dot(cp, vis[i]) / rs[i]);
+      if (dot(cp, vjs[i]) < 0) angle = TWO_PI - angle;
+      float tmp = angle / da;
+      int prev = int(tmp);
+      int next = prev + 1;
+      if (tmp - prev > next - tmp) {
+        candidates[i][0] = next % nPointsPerRing;
+        candidates[i][1] = prev % nPointsPerRing;
+      } else {
+        candidates[i][0] = prev % nPointsPerRing;
+        candidates[i][1] = next % nPointsPerRing;
+      }
+    }
+
+    pt[] ps0 = points[rid0];
+    pt[] ps1 = points[rid1];
+    pt[] ps2 = points[rid2];
+    vec[] vs = new vec[6];
+    for (int i = 0; i < 2; ++i) {
+      int ia = candidates[0][i];
+      pt pa = ps0[ia];
+      vs[0] = V(pa, ps0[(ia - 1 + nPointsPerRing) % nPointsPerRing]);
+      vs[1] = V(pa, ps0[(ia + 1) % nPointsPerRing]);
+      for (int j = 0; j < 2; ++j) {
+        int ib = candidates[1][j];
+        pt pb = ps1[ib];
+        vs[2] = V(pb, ps1[(ib - 1 + nPointsPerRing) % nPointsPerRing]);
+        vs[3] = V(pb, ps1[(ib + 1) % nPointsPerRing]);
+        for (int k = 0; k < 2; ++k) {
+          int ic = candidates[2][k];
+          pt pc = ps2[ic];
+          vs[4] = V(pc, ps2[(ic - 1 + nPointsPerRing) % nPointsPerRing]);
+          vs[5] = V(pc, ps2[(ic + 1) % nPointsPerRing]);
+          vec n = N(pa, pb, pc);
+          boolean isValid = true;
+          for (vec v : vs) {
+            if (dot(n, v) > 0) {
+              isValid = false;
+              break;
+            }
+          }
+          if (isValid) return new Triangle(ia, ib, ic);
+        }
+      }
+    }
+
+    println("cannot find stable three-ring triangle using Approximated Extreme Plane method");
+    numBackup3RT++;
+    //return generateThreeRingTriangleNaive(ps0, ps1, ps2);
+    return null;
   }
 
   private void setupSplitLists() {
@@ -633,6 +711,9 @@ class RingSet {
         case 3:
           t = generateThreeRingTriangleBFS(points[face.a], points[face.b], points[face.c], 1);
           break;
+        case 4:
+          t = generateThreeRingTriangleApprox(face.a, face.b, face.c);
+          break;
         default:
           t = generateThreeRingTriangleNaive(points[face.a], points[face.b], points[face.c]);
           break;
@@ -752,11 +833,26 @@ class RingSet {
     }
   }
 
-  // TODO
-  void generateTangentPlaneThreeCircles(int i, int j, int k) {
-
+  pt[] generateExtremePlaneThreeRings(int rid0, int rid1, int rid2) {
+    pt c0 = centers[rid0];
+    pt c1 = centers[rid1];
+    pt c2 = centers[rid2];
+    float r0 = radii[rid0];
+    float r1 = radii[rid1];
+    float r2 = radii[rid2];
+    vec n0 = normals[rid0];
+    vec n1 = normals[rid1];
+    vec n2 = normals[rid2];
+    vec vi0 = xAxes[0];
+    vec vi1 = xAxes[1];
+    vec vi2 = xAxes[2];
+    vec vj0 = yAxes[0];
+    vec vj1 = yAxes[1];
+    vec vj2 = yAxes[2];
+    return tangentPlaneThreeCircles(c0, r0, n0, vi0, vj0,
+                                    c1, r1, n1, vi1, vj1,
+                                    c2, r2, n2, vi2, vj2);
   }
-
 
   void showRings() {
     noStroke();
@@ -816,8 +912,8 @@ class RingSet {
       lines[i++] = str(contacts[j].x) + "," + str(contacts[j].y) + "," +
                    str(contacts[j].z);
       lines[i++] = str(radii[j]);
-      lines[i++] = str(initDirs[j].x) + "," + str(initDirs[j].y) + "," +
-                   str(initDirs[j].z);
+      lines[i++] = str(xAxes[j].x) + "," + str(xAxes[j].y) + "," +
+                   str(xAxes[j].z);
     }
     saveStrings(file, lines);
     return;
@@ -831,14 +927,17 @@ class RingSet {
     println("loading:", file, "nc =", nRings, "np =", nPointsPerRing);
     contacts = new pt[nRings];
     radii = new float[nRings];
-    initDirs = new vec[nRings];
+    xAxes = new vec[nRings];
+    normals = new vec[nRings];
     for (int j = 0; j < nRings; ++j) {
       float[] contact = float(split(lines[i++], ","));
       contacts[j] = new pt(contact[0], contact[1], contact[2]);
+      normals[j] = U(c, contacts[j]);
       radii[j] = float(lines[i++]);
       float[] initDir = float(split(lines[i++], ","));
-      initDirs[j] = new vec(initDir[0], initDir[1], initDir[2]);
+      xAxes[j] = new vec(initDir[0], initDir[1], initDir[2]);
     }
+    generateYAxes();
     return;
   }
 

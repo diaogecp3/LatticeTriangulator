@@ -3,11 +3,11 @@
  *********************************************************/
 
 
-int numTests = 1000;
+int numTests = 10000;
 int numBackup3RT = 0;
 int numPointsPerTest = 64;
 boolean showResults = false;
-boolean saveFailures = true;
+boolean saveFailures = false;
 
 class DebugInfoConvexity {
   pt[] points;
@@ -67,8 +67,10 @@ void testThreeRingTriangle(int n, int np, float attenuation) {
     RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere, 3, np);
     ringSet.init();
     ringSet.generatePoints(attenuation);
+    ringSet.refConvexHull = new TriangleMesh();
     ringSet.refConvexHull.triangles = new ArrayList<Triangle>();
     ringSet.refConvexHull.triangles.add(new Triangle(0, 1, 2));
+    ringSet.refConvexHull.nt = 1;
     long st = System.nanoTime();
     ringSet.generateThreeRingTriangles();
     long ed = System.nanoTime();
@@ -103,6 +105,9 @@ void testThreeRingTriangle(int n, int np, float attenuation) {
     case 3:
       System.out.format("Breadth First Search method with heuristics:\n");
       break;
+    case 4:
+      System.out.format("Approximated Extreme Plane method:\n");
+      break;
     default:
       System.out.format("Naive method: ");
       break;
@@ -114,6 +119,32 @@ void testThreeRingTriangle(int n, int np, float attenuation) {
                     n, np, attenuation, succRate, succRateValid, avgTime, numBackup3RT);
 }
 
+
+void testExtremePlaneThreeCircles(int n, int np, float attenuation) {
+  float[] times = new float[n];
+  for (int i = 0; i < n; ++i) {
+    RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere, 3, np);
+    ringSet.init();
+    ringSet.generatePoints(attenuation);
+    long st = System.nanoTime();
+    ringSet.generateExtremePlaneThreeRings(0, 1, 2);
+    long ed = System.nanoTime();
+    times[i] = (ed - st) / 1000000.0;
+  }
+  float avgTime = average(times, n, 0, n);
+  switch (methodEP) {
+    case 1:
+      System.out.format("Heuristic initialization using normal defined by 3 centers\n");
+      break;
+    case 2:
+      System.out.format("Heuristic initialization using plane defined by 3 centers\n");
+      break;
+    default:
+      System.out.format("Basic initialization using 3 x axes\n");
+  }
+  System.out.format("Extreme plane generation (n = %d, np = %d (doesn't matter), attenuation = %f): " +
+                    "average time = %f ms.\n", n, np, attenuation, avgTime);
+}
 
 boolean passConvexityTest(ArrayList<Triangle> triangles, pt[] G, int nv) {
   int n = triangles.size();
@@ -360,25 +391,89 @@ void tangentPlaneThreeCirclesTest() {
   vec n0 = U(rs.c, c0);
   vec n1 = U(rs.c, c1);
   vec n2 = U(rs.c, c2);
-  vec vi0 = rs.initDirs[0];
-  vec vi1 = rs.initDirs[1];
-  vec vi2 = rs.initDirs[2];
+  vec vi0 = rs.xAxes[0];
+  vec vi1 = rs.xAxes[1];
+  vec vi2 = rs.xAxes[2];
   pt[] ps = tangentPlaneThreeCircles(c0, r0, n0, vi0, null,
                                      c1, r1, n1, vi1, null,
                                      c2, r2, n2, vi2, null);
   {
     fill(red);
-    show(ps[0], 5);
+    //show(ps[0], 3);
     disk(c0, n0, r0);
     fill(green);
-    show(ps[1], 5);
+    //show(ps[1], 3);
     disk(c1, n1, r1);
     fill(blue);
-    show(ps[2], 5);
+    //show(ps[2], 3);
     disk(c2, n2, r2);
-    fill(orange, 100);
+  }
+  {
+    fill(orange, 180);
     showTriangle(ps[0], ps[1], ps[2]);
     fill(cyan, 100);
     showNormalToTriangle(ps[0], ps[1], ps[2], 20, 4);
+  }
+
+  ps = tangentPlaneThreeCircles(c0, r0, n0, vi0, null,
+                                c2, r2, n2, vi2, null,
+                                c1, r1, n1, vi1, null);
+  {
+    fill(purple, 180);
+    showTriangle(ps[0], ps[1], ps[2]);
+    fill(magenta, 100);
+    showNormalToTriangle(ps[0], ps[1], ps[2], 20, 4);
+  }
+
+  if (showRingSet) rs.showRings();
+}
+
+void exactCHThreeCirclesTest() {
+  assert rs.nRings >= 3;
+  rs.generatePoints(attenuation);
+  assert rs.points != null && rs.centers != null && rs.radii != null;
+
+  pt c0 = rs.centers[0];
+  pt c1 = rs.centers[1];
+  pt c2 = rs.centers[2];
+  float r0 = rs.radii[0];
+  float r1 = rs.radii[1];
+  float r2 = rs.radii[2];
+  vec n0 = U(rs.c, c0);
+  vec n1 = U(rs.c, c1);
+  vec n2 = U(rs.c, c2);
+  vec vi0 = rs.xAxes[0];
+  vec vi1 = rs.xAxes[1];
+  vec vi2 = rs.xAxes[2];
+  exactCHThreeCircles(c0, r0, n0, vi0, null,
+                      c1, r1, n1, vi1, null,
+                      c2, r2, n2, vi2, null);
+
+}
+
+void testCirclePlaneIntersection() {
+  assert rs.nRings >= 3;
+  pt p0 = new pt();
+  pt p1 = new pt();
+  rs.generatePoints(attenuation);
+
+  pt c0 = rs.centers[0];
+  float r0 = rs.radii[0];
+  vec n0 = rs.normals[0];
+  pt c1 = rs.centers[1];
+  pt c2 = rs.centers[2];
+  vec d = normalToTriangle(c0, c1, c2);
+
+  fill(orange, 100);
+  // showTriangle(c0, c1, c2);
+  showPlane(c0, d, r0);
+  fill(red, 100);
+  disk(c0, n0, r0);
+
+  if (intersectionCirclePlane(c0, r0, n0, c0, d, p0, p1)) {
+    fill(green, 100);
+    show(p0, 3);
+    fill(blue, 100);
+    show(p1, 3);
   }
 }

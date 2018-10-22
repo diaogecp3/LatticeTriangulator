@@ -23,7 +23,8 @@ class TriangleMesh {
   ArrayList<Integer> oppositeTable;
   ArrayList<ArrayList<Integer>> swingLists;
   int nv, nt;
-
+  
+  TriangleMesh() {}
   TriangleMesh(ArrayList<pt> positions, ArrayList<Triangle> triangles) {
     this.positions = positions;
     this.triangles = triangles;

@@ -206,10 +206,15 @@ void disk(pt P, vec V, float r) {
   }
 
 void disk(pt P, vec I, vec J, float r) {
-  float da = TWO_PI/36;
+  float da = TWO_PI / 36;
+  float a = 0;
   beginShape(TRIANGLE_FAN);
     v(P);
-    for(float a=0; a<=TWO_PI+da; a+=da) v(P(P,r*cos(a),I,r*sin(a),J));
+    for(int i = 0; i < 36; ++i) {
+      v(P(P,r*cos(a),I,r*sin(a),J));
+      a += da;
+    }
+    v(P(P, r, I));
   endShape();
   }
 

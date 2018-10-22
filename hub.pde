@@ -19,28 +19,43 @@ float intersectionDistance(Ball ba, Ball bb, Ball bc) {
   float rc = bc.r;
   vec vba = V(pb, pa);  // used as axis-I
   vec vca = V(pc, pa);
-  float dba = vba.norm();
+  float dba = vba.norm();  // length of vba
   float dca = vca.norm();
-  vba = V(1.0/dba, vba);  // normalize vba
-  vca = V(1.0/dca, vca);  // normalize vca
+  vba.div(dba);  // normalize vba
+  vca.div(dca);  // normalize vca
   vec normal = N(vba, vca);  // cross(BA, BC) = cross(AB, AC)
   vec axisJ = N(normal, vba);
-  vec vbaRotated = R(vba, HALF_PI, vba, axisJ);
-  vec vcaRotated = R(vca, HALF_PI, vca, axisJ);
+  vec vbaRotated = axisJ;
+  vec vcaRotated = R(vca, HALF_PI, vba, axisJ);
   float cosb = (rb - ra) / dba;
   float cosc = (rc - ra) / dca;
   float sinb = sqrt(1 - cosb * cosb);  // sinb is always positive
   float sinc = sqrt(1 - cosc * cosc);  // sinc is always positive
+
+
+  // TODO: need to revisit
   vec v0 = V(cosb, vba, -sinb, vbaRotated);
   vec v1 = V(cosc, vca, sinc, vcaRotated);
+
+  // vec v0 = V(sinb, vba, -cosb, vbaRotated);
+  // vec v1 = V(sinc, vca, cosc, vcaRotated);
+
   pt pba10 = P(pb, rb, v0);
   pt pba11 = P(pa, ra, v0);
   pt pca00 = P(pc, rc, v1);
   pt pca01 = P(pa, ra, v1);
   pt px = intersectionTwoLines(pba10, pba11, pca00, pca01);
+
+  {
+    fill(green, 100);
+    show(px, 10);
+  }
+
   return d(pa, px);
 }
 
+
+// TODO: need to revisit
 /*
  * Show the tangential cone touching ball ba and bb.
  */
@@ -52,7 +67,7 @@ void showTangentialCone(Ball ba, Ball bb) {
   float ra = ba.r, rb = bb.r;
   vec vab = V(ca, cb);
   float d = vab.norm();
-  vab = V(1.0/d, vab);  // normalize vab
+  vab.div(d);  // normalize vab
   vec axisI = constructNormal(vab);
   vec axisJ = N(vab, axisI);
   /* Compute first contact point on ba (and on bb). */
@@ -109,6 +124,7 @@ class Hub {
         t = max(t, d);
       }
     }
+    println("t = ", t);
     return t;
   }
 

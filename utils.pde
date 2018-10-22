@@ -123,6 +123,18 @@ vec2 solveLinearEquationsInTwoVars(float a, float b, float c, float d, float e, 
   return new vec2(x, y);
 }
 
+float[] solveQuadraticEquation(float a, float b, float c) {
+  float det = b * b - 4 * a * c;
+  if (det < 0) return null;
+  float[] xs = new float[2];
+  float sdet = sqrt(det);
+  float aa = 2 * a;
+  xs[0] = (-b + sdet) / aa;
+  xs[1] = (-b - sdet) / aa;
+  return xs;
+}
+
+
 
 /*
  * Show a triangle.

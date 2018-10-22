@@ -8,13 +8,15 @@ import processing.pdf.*;
  * 3: one subdivision test
  * 4: one hub test
  * 5: one pivot-plane-around-line-until-hit-circle test
- * 6: one tangent-plane-of-three-circles test.
- * 7: to be determined
+ * 6: one tangent-plane-of-three-circles test
+ * 7: one exact-convex-hull-for-three-circles test
  * 8: many three-ring-triangle tests
  * 9: many convex-hull tests
  * 10: many convex-hull-with-holes tests
+ * 11: many extreme-plane tests
+ * 12: one circle-plane-intersection test
  */
-int test = 6;
+int test = 4;
 
 boolean showYellowSphere = false;
 boolean generateCH = false;
@@ -23,8 +25,8 @@ boolean showRingSet = true;
 boolean showPointSet = true;
 int subdivisionTimes = 0;
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
-int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
-int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
+int inputMethodRingSet = 1;  // 0: read from file, 1: generate randomly
+int inputMethodHub = 1;  // 0: read from file, 1: generate randomly
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
 float rx = -0.06 * TWO_PI, ry = -0.04 * TWO_PI;  // view angles manipulated when space pressed but not mouse
@@ -49,12 +51,12 @@ float attenuationMin = 0.05;
 float attenuationDelta = 0.05;
 float attenuation = 1.0;
 int numRings = 4;
-int numPointsPerRing = 8;
+int numPointsPerRing = 6;
 RingSet rs;
 
-float r0 = 30;
-float r1 = 100;
-int nNeighbors = 3;
+float r0 = 20;
+float r1 = 80;
+int nNeighbors = 2;
 Hub hub;
 
 int numTriangles = -1;
@@ -70,7 +72,7 @@ void setup() {
 
   P.declare();
 
-  if (test >= 8) {
+  if (test >= 8 && test < 12) {
     noLoop();
     debugCH = false;
     debug3RT = false;
@@ -91,12 +93,13 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-       rs.loadRings("data/ring_set/rs_medium_5");
-      //rs.loadRings("data/ring_set/rs_3rt_bfs_null_1");
+       //rs.loadRings("data/ring_set/rs_medium_5");
+      rs.loadRings("data/ring_set/rs_3rt_bfs_null_1");
       //rs.loadRings("data/ring_set/rs_3rt_penetration_1");
       //rs.loadRings("data/ring_set/rs_3rt_wrong_fix_2");
       //rs.loadRings("data/ring_set/rs_2rt_fail");
       //rs.loadRings("data/ring_set/rs_plane_line_circle_0");
+      //rs.loadRings("data/ring_set/rs_exact_CH_0");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,
@@ -135,7 +138,7 @@ void setup() {
   switch (inputMethodHub) {
     case 0:  // read from file
       hub = new Hub();
-      hub.load("data/hub/hub_easy_0");
+      hub.load("data/hub/hub_easy_1");
       break;
     case 1:  // generate randomly
       hub = generateHub(centerOfSphere, r0, r1, nNeighbors);
@@ -203,6 +206,9 @@ void draw() {
     case 6:
       tangentPlaneThreeCirclesTest();
       break;
+    case 7:
+      exactCHThreeCirclesTest();
+      break;
     case 8:
       testThreeRingTriangle(numTests, numPointsPerRing, attenuation);
       break;
@@ -212,6 +218,12 @@ void draw() {
     case 10:  // many convex-hull-with-holes tests
       println("Many convex-hull-with-holes tests coming soon");
       exit();
+      break;
+    case 11:
+      testExtremePlaneThreeCircles(numTests, numPointsPerRing, attenuation);
+      break;
+    case 12:
+      testCirclePlaneIntersection();
       break;
     default:
       println("Please enter a correct test number");
@@ -357,9 +369,11 @@ void keyPressed() {
     show2RTs = !show2RTs;
     if (show2RTs) fix3RTPenetration = true;
     else fix3RTPenetration = false;
+    show2RT = !show2RT;
   }
   if (key == '3') {
     fix3RTPenetration = !fix3RTPenetration;
+    show3RT = !show3RT;
   }
 
   if (key == '[') attenuation = min(1.0, attenuation + attenuationDelta);

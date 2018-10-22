@@ -172,9 +172,10 @@ void showGroups(pt[] centers, pt[][] points, int nc, int np) {
 pt[] generateContactsAndRadii(pt center,                             // in
                               float radius,                          // in
                               int n,                                 // in
-                              float[] radii) {                       // out
+                              float[] radii,                         // out
+                              vec[] normals) {                       // out
   pt[] contacts = new pt[n];
-  vec[] normals = new vec[n];
+  //vec[] normals = new vec[n];
   float[] alphas = new float[n];
   for (int i = 0; i < n; ++i) {
     while (true) {
@@ -206,10 +207,11 @@ pt[] generateContactsAndRadii(pt center,                             // in
 pt[] generateContacts(pt center,                                     // in
                       float radius,                                  // in
                       int n,                                         // in
-                      float rMax) {                                  // in
+                      float rMax,                                    // in
+                      vec[] normals) {                               // out
   assert rMax > 0 && rMax < radius;
   pt[] contacts = new pt[n];
-  vec[] normals = new vec[n];
+  // vec[] normals = new vec[n];
   float alpha = 2 * asin(clamp(rMax/radius, -1.0, 1.0));
   for (int i = 0; i < n; ++i) {
     while (true) {

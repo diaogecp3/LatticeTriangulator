@@ -128,4 +128,3 @@ void showMan(pt[] P, float h) {
   fill(blue); show(Fb,5); collar(Ob,V(h,Nb),1,5); show(Kb,5); collar(Kb,V(Kb,B),5,10);
   fill(orange); show(B,10); show(T,15); collar(B,V(B,T),10,15);
   }
-

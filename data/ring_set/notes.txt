@@ -48,3 +48,6 @@ the 3RT penetration fixed, but 2RT seems wrong/bad?
 
 In rs_plane_line_circle_0:
 the plane is wrong, why?
+
+In rs_3rt_bfs_null_1:
+naive 3RT method fails.
