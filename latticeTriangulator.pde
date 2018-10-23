@@ -10,13 +10,19 @@ import processing.pdf.*;
  * 5: one pivot-plane-around-line-until-hit-circle test
  * 6: one tangent-plane-of-three-circles test
  * 7: one exact-convex-hull-for-three-circles test
- * 8: many three-ring-triangle tests
- * 9: many convex-hull tests
- * 10: many convex-hull-with-holes tests
- * 11: many extreme-plane tests
- * 12: one circle-plane-intersection test
+ * ...
+ * 10: many convex-hull tests
+ * 11: many convex-hull-with-holes tests
+ * 12: many three-ring-triangle tests
+ * 13: many extreme-plane tests
+ * ...
+ * 20: one circle-plane-intersection test
  */
-int test = 4;
+int test = 2;
+
+int inputMethodPointSet = 1;  // 0: read from file, 1: generate randomly
+int inputMethodRingSet = 1;  // 0: read from file, 1: generate randomly
+int inputMethodHub = 1;  // 0: read from file, 1: generate randomly
 
 boolean showYellowSphere = false;
 boolean generateCH = false;
@@ -24,9 +30,6 @@ boolean regenerateCH = true;  // for ring set, test shrink/grow
 boolean showRingSet = true;
 boolean showPointSet = true;
 int subdivisionTimes = 0;
-int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
-int inputMethodRingSet = 1;  // 0: read from file, 1: generate randomly
-int inputMethodHub = 1;  // 0: read from file, 1: generate randomly
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
 float rx = -0.06 * TWO_PI, ry = -0.04 * TWO_PI;  // view angles manipulated when space pressed but not mouse
@@ -50,8 +53,8 @@ float rMax = 50;
 float attenuationMin = 0.05;
 float attenuationDelta = 0.05;
 float attenuation = 1.0;
-int numRings = 4;
-int numPointsPerRing = 6;
+int numRings = 8;
+int numPointsPerRing = 8;
 RingSet rs;
 
 float r0 = 20;
@@ -61,7 +64,7 @@ Hub hub;
 
 int numTriangles = -1;
 float timeCH = 0.0;
-float timeSB = 0.0;
+float timeSD = 0.0;
 
 void setup() {
   face0 = loadImage("data/Yaohong.jpg");  // load Yaohong's image
@@ -72,10 +75,11 @@ void setup() {
 
   P.declare();
 
-  if (test >= 8 && test < 12) {
+  if (test >= 10 && test < 20) {
     noLoop();
     debugCH = false;
     debug3RT = false;
+    debug2RT = false;
   }
 
   switch (inputMethodPointSet) {
@@ -93,8 +97,9 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-       //rs.loadRings("data/ring_set/rs_medium_5");
-      rs.loadRings("data/ring_set/rs_3rt_bfs_null_1");
+      rs.load("data/rs_unnamed");
+      //rs.load("data/ring_set/rs_medium_0");
+      //rs.loadRings("data/ring_set/rs_3rt_bfs_null_1");
       //rs.loadRings("data/ring_set/rs_3rt_penetration_1");
       //rs.loadRings("data/ring_set/rs_3rt_wrong_fix_2");
       //rs.loadRings("data/ring_set/rs_2rt_fail");
@@ -111,30 +116,6 @@ void setup() {
       exit();
   }
 
-  // check validity of ring set
-  if (!rs.isValid()) {
-    println("ring set not valid!");
-    exit();
-  }
-
-  if (test == 2) {
-    rs.generateRefConvexHull();
-  }
-
-  if (regenerateCH == false) {
-    attenuation = attenuationMin;
-    rs.generatePoints(attenuation);  // shrink all rings
-    if (test == 1) {
-      debugCH = false;
-      rs.generateTriangleMesh(0);  // generate a triangle mesh and store it
-    }
-    if (test == 2) {
-      debug3RT = false;
-      rs.generateThreeRingTriangles();  // generate three-ring triangles and store them
-      if (show2RTs) rs.generateTwoRingTriangles();
-    }
-  }
-
   switch (inputMethodHub) {
     case 0:  // read from file
       hub = new Hub();
@@ -148,8 +129,25 @@ void setup() {
       exit();
   }
 
-  //testHashSetContains();
-  //testSwingLists(false, false);
+  // check validity of ring set
+  if (!rs.isValid()) {
+    println("ring set not valid!");
+    exit();
+  }
+
+  if (regenerateCH == false) {
+    attenuation = attenuationMin;
+    rs.generatePoints(attenuation);  // shrink all rings
+    if (test == 1) {
+      debugCH = false;
+      rs.generateTriangleMesh(0);  // generate a triangle mesh and store it
+    }
+    if (test == 2) {
+      debug3RT = false;
+      debug2RT = false;
+      rs.generateTriangleMesh(1);  // generate a triangle mesh and store it
+    }
+  }
 }
 
 void draw() {
@@ -175,7 +173,6 @@ void draw() {
   if (showFrame) showFrame(150); // X-red, Y-green, Z-blue arrows
 
   noStroke();
-
   fill(magenta); show(centerOfSphere, 4); // show center of the sphere
   Pick = pick(mouseX,mouseY);
 
@@ -185,23 +182,23 @@ void draw() {
   }
 
   switch (test) {
-    case 0:  // one convex-hull test
-      oneConvexHullTest();
+    case 0:
+      convexHullTest();
       break;
-    case 1:  // one convex-hull-with-holes test
-      oneConvexHullWithHolesTest();
+    case 1:
+      convexHullWithHolesTest();
       break;
-    case 2:  // one fast-convex-hull-with-holes test
-      oneFastConvexHullWithHolesTest();
+    case 2:
+      fastConvexHullWithHolesTest();
       break;
     case 3:
-      oneSubdivisionTest();
+      subdivisionTest();
       break;
     case 4:
-      oneHubTest();
+      hubTest();
       break;
     case 5:
-      onePivotPlaneAroundLineHitCircleTest();
+      pivotPlaneAroundLineHitCircleTest();
       break;
     case 6:
       tangentPlaneThreeCirclesTest();
@@ -209,21 +206,22 @@ void draw() {
     case 7:
       exactCHThreeCirclesTest();
       break;
-    case 8:
-      testThreeRingTriangle(numTests, numPointsPerRing, attenuation);
+
+    case 10:  // many convex-hull tests
+      convexHullTests(numTests, numPointsPerTest);
       break;
-    case 9:  // many convex-hull tests
-      testConvexHull(numTests, numPointsPerTest, showResults);
+    case 11:  // many convex-hull-with-holes tests
+      convexHullWithHolesTests(numTests, numRings, numPointsPerRing, attenuation);
       break;
-    case 10:  // many convex-hull-with-holes tests
-      println("Many convex-hull-with-holes tests coming soon");
-      exit();
+    case 12:  // many three-ring-triangle tests
+      threeRingTriangleTests(numTests, numPointsPerRing, attenuation);
       break;
-    case 11:
-      testExtremePlaneThreeCircles(numTests, numPointsPerRing, attenuation);
+    case 13:  // many extreme-plane(-of-three-circles) tests
+      extremePlaneTests(numTests, attenuation);
       break;
-    case 12:
-      testCirclePlaneIntersection();
+
+    case 20:
+      testIntersectionCirclePlane();
       break;
     default:
       println("Please enter a correct test number");
@@ -258,9 +256,9 @@ void draw() {
     scribeHeader("time for convex hull generation = " + timeCH + "ms", 5);
   }
   if (test == 3 && subdivisionTimes > 0) {
-    scribeHeader("time for subdivision = " + timeSB + "ms", 6);
+    scribeHeader("time for subdivision = " + timeSD + "ms", 6);
   }
-  if (test == 2) {
+  if (test == 2 && debug3RT) {
     scribeHeader("number of steps for a three-ring triangle = " + numSteps3RT, 7);
   }
   scribeHeader("regenerate = " + str(regenerateCH), 8);
@@ -299,12 +297,12 @@ void keyPressed() {
   if (key == 'L') { P.loadPts("data/pts"); Q.loadPts("data/pts2"); }  // loads saved model
   if (key == 'w') {  // save data
     P.savePts("data/pts_unnamed");
-    rs.saveRings("data/rs_unnamed");
+    rs.save("data/rs_unnamed");
     hub.save("data/hub_unnamed");
   }
   if (key == 'l') {  // load data
     P.loadPts("data/pts_unnamed");
-    rs.loadRings("data/rs_unnamed");
+    rs.load("data/rs_unnamed");
     hub.load("data/hub.unnamed");
   }
   // if (key == 'a') animating = !animating; // toggle animation
@@ -314,8 +312,8 @@ void keyPressed() {
 
   /* Following are Yaohong's keys. */
   if (key == '0') {
-    //debugCH = !debugCH;
-    //debug3RT = !debug3RT;
+    debugCH = !debugCH;
+    debug3RT = !debug3RT;
     debug2RT = !debug2RT;
   }
   if (key == 'o') showYellowSphere = !showYellowSphere;
@@ -330,8 +328,8 @@ void keyPressed() {
       }
       if (test == 2) {
         debug3RT = false;
-        rs.generateThreeRingTriangles();  // generate three-ring triangles and store them
-        if (show2RTs) rs.generateTwoRingTriangles();
+        debug2RT = false;
+        rs.generateTriangleMesh(1);  // generate a triangle mesh and store it
       }
     }
   }
@@ -366,14 +364,15 @@ void keyPressed() {
     numSteps3RT = 1;
   }
   if (key == '2') {
-    show2RTs = !show2RTs;
-    if (show2RTs) fix3RTPenetration = true;
-    else fix3RTPenetration = false;
     show2RT = !show2RT;
+    if (show2RT) fix3RTPenetration = true;
+    else fix3RTPenetration = false;
+    show2T = !show2T;
   }
   if (key == '3') {
-    fix3RTPenetration = !fix3RTPenetration;
     show3RT = !show3RT;
+    fix3RTPenetration = !fix3RTPenetration;
+    show3T = !show3T;
   }
 
   if (key == '[') attenuation = min(1.0, attenuation + attenuationDelta);

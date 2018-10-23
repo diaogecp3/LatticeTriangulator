@@ -23,14 +23,26 @@ class TriangleMesh {
   ArrayList<Integer> oppositeTable;
   ArrayList<ArrayList<Integer>> swingLists;
   int nv, nt;
-  
-  TriangleMesh() {}
+
+  TriangleMesh() {
+    positions = new ArrayList<pt>();
+    triangles = new ArrayList<Triangle>();
+    nv = nt = 0;
+  }
+
+  TriangleMesh(pt[] positionArray) {
+    nv = positionArray.length;
+    positions = new ArrayList<pt>();
+    for (int i = 0; i < nv; ++i) positions.add(positionArray[i]);
+    triangles = new ArrayList<Triangle>();
+    nt = 0;
+  }
+
   TriangleMesh(ArrayList<pt> positions, ArrayList<Triangle> triangles) {
     this.positions = positions;
     this.triangles = triangles;
     nv = this.positions.size();
     nt = this.triangles.size();
-    oppositeTable = new ArrayList<Integer>();
     setupOppositeTable();
   }
 
@@ -49,11 +61,20 @@ class TriangleMesh {
     for (int i = 0; i < nv; ++i) positions.add(positionArray[i]);
     this.triangles = triangles;
     nt = triangles.size();
-    oppositeTable = new ArrayList<Integer>();
     setupOppositeTable();
   }
 
+  void addTriangle(Triangle tri) {
+    assert tri.a < nv && tri.b < nv && tri.c < nv;
+    assert tri.a >= 0 && tri.b >= 0 && tri.c >= 0;
+    triangles.add(tri);
+    nt++;
+  }
+
   private void setupOppositeTable() {
+    if (oppositeTable == null) {
+      oppositeTable = new ArrayList<Integer>();
+    }
     assert nv > 0 && nt > 0;
     int nc = 3 * nt;
 

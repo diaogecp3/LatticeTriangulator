@@ -5,17 +5,16 @@
 /*
  * TODO:
  * 1. Clean up code.
- * 2. Generate three-ring triangles using approximated extreme plane method.
  */
 
 
 import java.util.Queue;
 
 boolean debug3RT = false;
-boolean debug3RTFix = false;
 boolean debug2RT = false;
 boolean fix3RTPenetration = false;
-boolean show2RTs = false;
+boolean show2RT = false;
+boolean show3RT = true;
 int numFaces3RT = 1;
 int numSteps3RT = 1;
 int maxIterHSGlobal = 100;
@@ -31,7 +30,7 @@ int maxIterHSLocal = 100;
  * 3: Breadth first search with heuristics. Time and space should be less than 2.
  * 4: Approximated extreme plane. Time: roughly O(1), Space: roughly O(1).
  */
-int method3RT = 0;
+int method3RT = 3;
 
 /*
  * Method for triangle mesh generation for ring set.
@@ -49,7 +48,10 @@ int methodTM = 1;
  * rings lie on a sphere.
  */
 class RingSet {
-  class Debug3RTInfo {  // debug info about three-ring-triangle generation
+  /*
+   * Debug info about three-ring-triangle generation, used in heuristic search.
+   */
+  class Debug3RTInfo {
     int idr0, idr1, idr2;
     int idp0, idp1, idp2;
     int numSteps;
@@ -62,12 +64,18 @@ class RingSet {
     }
   }
 
+  /*
+   * Debug info about two-ring-triangle generation.
+   */
   class Debug2RTInfo {
     pt pa0, pa1, pb0, pb1;
     int numGlobalStep = 1;
     int numLocalStep = 1;
   }
 
+  /*
+   * Triangle node used in BFS for three-ring-triangle generation.
+   */
   class TriangleNode {
     Triangle tri;
     ArrayList<TriangleNode> children = null;
@@ -128,9 +136,9 @@ class RingSet {
   boolean sameRadius;  // whether all rings have the same radius
   pt[] contacts;  // the intersections between the outward normals of rings and the sphere
   float[] radii;  // the radii of rings
-  vec[] xAxes;  // the initial directions, one for each ring, used to generate the first point on ring
-  vec[] yAxes;
-  vec[] normals;
+  vec[] xAxes;  // the x axes, one for each ring, used to generate the first point on ring
+  vec[] yAxes;  // the y axes, one for each ring
+  vec[] normals;  // the normals, one for each ring
   pt[][] points;  // the generated points on rings
   pt[] centers;  // the centers of rings, one for each ring
 
@@ -167,9 +175,11 @@ class RingSet {
     radii[0] = rMax;
   }
 
-  private void generateYAxes() {
+  private void generateXYAxes() {
+    xAxes = new vec[nRings];
     yAxes = new vec[nRings];
     for (int i = 0; i < nRings; ++i) {
+      xAxes[i] = constructNormal(normals[i]);
       yAxes[i] = N(normals[i], xAxes[i]);
     }
   }
@@ -182,8 +192,7 @@ class RingSet {
     } else {
       contacts = generateContacts(c, r, nRings, radii[0], normals);
     }
-    xAxes = generateInitDirs(c, contacts, nRings);
-    generateYAxes();
+    generateXYAxes();
   }
 
   int getNumRings() {
@@ -239,7 +248,11 @@ class RingSet {
     }
   }
 
-  void generateRefConvexHull() {
+  /*
+   * Generate a convex hull using contacts. This convex hull is used as a
+   * reference in three-ring-triangle generation.
+   */
+  private void generateRefConvexHull() {
     assert contacts.length >= 3;
     ArrayList<Triangle> trianglesRefCH = generateConvexHull(contacts, nRings);
     refConvexHull = new TriangleMesh(contacts, trianglesRefCH);
@@ -329,10 +342,8 @@ class RingSet {
   }
 
   /*
-   * Generate a three-ring triangle given 3 rings using heuristic search.
-   *
-   * It may not converge when rings are large, rings have just a few points.
-   *
+   * Generate a three-ring triangle given 3 rings using heuristic search. It may
+   * not converge when rings are large, rings have just a few points.
    */
   private Triangle generateThreeRingTriangleHS(pt[] points0,
                                                pt[] points1,
@@ -371,7 +382,6 @@ class RingSet {
       return null;
     }
   }
-
 
   /*
    * Generate a three-ring triangle given 3 rings using BFS method with a hint,
@@ -414,6 +424,11 @@ class RingSet {
     return null;
   }
 
+  /*
+   * Generate a three-ring triangle using BFS method. This method can be slow.
+   * It is slower than naive method when the number of points on each ring is
+   * small. However, with a good hint, this method can be fast.
+   */
   private Triangle generateThreeRingTriangleBFS(pt[] points0,
                                                 pt[] points1,
                                                 pt[] points2,
@@ -437,6 +452,12 @@ class RingSet {
     return generateThreeRingTriangleBFSWithHint(points0, points1, points2, tri);
   }
 
+  /*
+   * Generate a three-ring triangle using approximated extreme plane method.
+   * This method first finds the exact extreme plane/triangle using the three
+   * circles, and then trys to find a triangle defined by sampled points that
+   * can approximate the exact extreme triangle.
+   */
   private Triangle generateThreeRingTriangleApprox(int rid0, int rid1, int rid2) {
     pt[] cs = {centers[rid0], centers[rid1], centers[rid2]};
     float[] rs = {radii[rid0], radii[rid1], radii[rid2]};
@@ -526,7 +547,7 @@ class RingSet {
   }
 
   // TODO: current implementation may be optimized, especially triangle-edge intersection
-  void fixPenetration3RT() {
+  private void fixPenetration3RT() {
     assert threeRingTriangles != null;
     setupSplitLists();
     for (int i = 0; i < nRings; ++i) {
@@ -540,7 +561,6 @@ class RingSet {
       HashMap<Integer, Integer> splitCount = new HashMap<Integer, Integer>();
       splitCount.put(firstSplit, 1);
       ArrayList<pt> cornerTriangles = new ArrayList<pt>();
-      // ArrayList<Integer> splitIdxs = new ArrayList<Integer>();
 
       /* Fix any issue around this index. */
       int cid0 = swings.get(first);
@@ -551,7 +571,6 @@ class RingSet {
       cornerTriangles.add(pa0);
       cornerTriangles.add(pb0);
       cornerTriangles.add(pc0);
-      // splitIdxs.add(first);
       int start = (first + 1) % ns;
       int end = (first + ns - 1) % ns;
       int count = 1;
@@ -573,7 +592,6 @@ class RingSet {
           cornerTriangles.add(pa);
           cornerTriangles.add(pb);
           cornerTriangles.add(pc);
-          // splitIdxs.add(start);
           start = (start + 1) % ns;
           count++;
           continue;
@@ -592,7 +610,6 @@ class RingSet {
           cornerTriangles.add(pa);
           cornerTriangles.add(pb);
           cornerTriangles.add(pc);
-          // splitIdxs.add(start);
           start = (start + 1) % ns;
           count++;
         } else {  // intersection not found!
@@ -618,7 +635,6 @@ class RingSet {
           cornerTriangles.add(pa);
           cornerTriangles.add(pb);
           cornerTriangles.add(pc);
-          // splitIdxs.add(end);
           end = (end + ns - 1) % ns;
           count++;
           continue;
@@ -636,7 +652,6 @@ class RingSet {
           cornerTriangles.add(pa);
           cornerTriangles.add(pb);
           cornerTriangles.add(pc);
-          // splitIdxs.add(end);
           end = (end + ns - 1) % ns;
           count++;
         } else {  // intersection not found!
@@ -662,7 +677,6 @@ class RingSet {
       }
       // for (int j = 0; j < splitIdxs.size(); ++j) {
       for (int idx = (end + 1) % ns; idx != start; idx = (idx + 1) % ns) {
-        //int idx = splitIdxs.get(j);
         int cid = swings.get(idx);
         int tid = cid / 3;
         int ccid = cid % 3;
@@ -689,19 +703,24 @@ class RingSet {
     }
   }
 
+  /*
+   * Generate three-ring triangles. A three-ring triangle is an "extreme"
+   * triangle that touches three rings and have them on the same side.
+   */
   void generateThreeRingTriangles() {
+    if (refConvexHull == null) generateRefConvexHull();
     int nt = refConvexHull.nt;  // number of triangles of convex hull
-    ArrayList<Triangle> threeRingTris = new ArrayList<Triangle>();
-    debug3RTInfo.numFaces = 0;
+    if (threeRingTriangles != null) {
+      threeRingTriangles.clear();
+    } else {
+      threeRingTriangles = new ArrayList<Triangle>();
+    }
+    if (debug3RT && method3RT == 1) debug3RTInfo.numFaces = 0;
     for (int i = 0; i < nt; ++i) {
-      if (debug3RT && i >= numFaces3RT) break;
+      if (debug3RT && method3RT == 1 && i >= numFaces3RT) break;
       Triangle face = refConvexHull.triangles.get(i);
-
       Triangle t = null;
       switch (method3RT) {
-        case 0:
-          t = generateThreeRingTriangleNaive(points[face.a], points[face.b], points[face.c]);
-          break;
         case 1:
           t = generateThreeRingTriangleHS(points[face.a], points[face.b], points[face.c]);
           break;
@@ -716,28 +735,26 @@ class RingSet {
           break;
         default:
           t = generateThreeRingTriangleNaive(points[face.a], points[face.b], points[face.c]);
-          break;
       }
       Triangle triangle = (t == null) ?
                           null :
                           new Triangle(face.a * nPointsPerRing + t.a, face.b * nPointsPerRing + t.b, face.c * nPointsPerRing + t.c);
-      threeRingTris.add(triangle);
-      if (debug3RT) {
+      threeRingTriangles.add(triangle);
+      if (debug3RT && method3RT == 1) {
         debug3RTInfo.idr0 = face.a;
         debug3RTInfo.idr1 = face.b;
         debug3RTInfo.idr2 = face.c;
         debug3RTInfo.numFaces++;
       }
     }  // end for
-    this.threeRingTriangles = threeRingTris;
 
     if (fix3RTPenetration) {
       fixPenetration3RT();
     }
   }
 
-
-  // TODO: need to revisit, bacause current method is quite simple and may create overlapping triangles (with flipped normals)
+  // TODO: need to revisit, bacause current method is quite simple and may create
+  // overlapping triangles (with flipped normals)
   private void fillCorridor(int loA, int hiA, int loB, int hiB, int rA, int rB) {
     int i = loA, j = loB;
     pt pa = getPoint(loA), pb = getPoint(loB);
@@ -773,6 +790,10 @@ class RingSet {
     }
   }
 
+  /*
+   * Generate two-ring triangles. A two-ring triangle is a triangle that has two
+   * vertices on a ring and another vertex on another ring.
+   */
   void generateTwoRingTriangles() {
     twoRingTriangles = new ArrayList<Triangle>();
     boolean[][] visited = new boolean[nRings][nRings];
@@ -786,7 +807,7 @@ class RingSet {
         int swingC = swings.get((j+1) % ns);
         int prevC = prevCorner(curC);
         int nextSwingC = nextCorner(swingC);
-        int k = refConvexHull.triangles.get(prevC / 3).get(prevC % 3);  // ID of another ring
+        int k = refConvexHull.triangles.get(prevC / 3).get(prevC % 3);  // k = ID of ring B
         if (visited[i][k]) {
           curC = swingC;
           continue;
@@ -813,26 +834,37 @@ class RingSet {
     triangles = generateConvexHull(points, nRings, nPointsPerRing);
   }
 
-  private void generateTriangleMeshFast() {
+  private void generateTriangleMeshFast() { //<>//
+    if (!debug2RT || show2RT) fix3RTPenetration = true;
     generateThreeRingTriangles();
-    if (show2RTs) generateTwoRingTriangles();
-    else twoRingTriangles = null;
+    if (!debug2RT || show2RT) {
+      generateTwoRingTriangles();
+    } else {
+      twoRingTriangles = null;
+    }
     triangles = new ArrayList<Triangle>();
     triangles.addAll(threeRingTriangles);
     if (twoRingTriangles != null) triangles.addAll(twoRingTriangles);
   }
 
+  /*
+   * Generate a triangle mesh based on the given option. When option is 1, use
+   * 3RT and 2RT trick to generate the mesh. Otherwise, a convex hull will be
+   * generated.
+   */
   void generateTriangleMesh(int option) {
     switch (option) {
-      case 0:
-        generateTriangleMeshCH();
-        break;
       case 1:
         generateTriangleMeshFast();
         break;
+      default:
+        generateTriangleMeshCH();
     }
   }
 
+  /*
+   * Generate an extreme triangle touching three rings given the three ring IDs.
+   */
   pt[] generateExtremePlaneThreeRings(int rid0, int rid1, int rid2) {
     pt c0 = centers[rid0];
     pt c1 = centers[rid1];
@@ -876,6 +908,10 @@ class RingSet {
         collar(points[i][j], V(points[i][j], points[i][(j + 1) % nPointsPerRing]), 1, 1);
       }
     }
+    fill(purple);
+    for (int i = 0; i < nRings; ++i) {
+      arrow(centers[i], V(20, normals[i]), 4);
+    }
     return;
   }
 
@@ -903,7 +939,7 @@ class RingSet {
     fill(#8B7373, 200); show(centers[debug2RTInfo.numGlobalStep - 1], 5);  // center of current ring
   }
 
-  void saveRings(String file) {
+  void save(String file) {
     String[] lines = new String[2 + 3 * nRings];
     int i = 0;
     lines[i++] = str(nRings);
@@ -919,7 +955,7 @@ class RingSet {
     return;
   }
 
-  void loadRings(String file) {
+  void load(String file) {
     String[] lines = loadStrings(file);
     int i = 0;
     nRings = int(lines[i++]);
@@ -929,6 +965,7 @@ class RingSet {
     radii = new float[nRings];
     xAxes = new vec[nRings];
     normals = new vec[nRings];
+    yAxes = new vec[nRings];
     for (int j = 0; j < nRings; ++j) {
       float[] contact = float(split(lines[i++], ","));
       contacts[j] = new pt(contact[0], contact[1], contact[2]);
@@ -936,20 +973,17 @@ class RingSet {
       radii[j] = float(lines[i++]);
       float[] initDir = float(split(lines[i++], ","));
       xAxes[j] = new vec(initDir[0], initDir[1], initDir[2]);
+      yAxes[j] = N(normals[j], xAxes[j]);
     }
-    generateYAxes();
     return;
   }
 
   boolean isValid() {
     for (int i = 0; i < nRings; ++i) {
-      vec normal0 = U(c, contacts[i]);
       float alpha0 = asin(clamp(radii[i]/r, -1.0, 1.0));
       for (int j = i + 1; j < nRings; ++j) {
-        vec normal1 = U(c, contacts[j]);
         float alpha1 = asin(clamp(radii[j]/r, -1.0, 1.0));
-        float theta = acos(clamp(dot(normal0, normal1), -1.0, 1.0));
-        // println("theta = ", theta, "dot of normal0 and normal1 = ", dot(normal0, normal1));
+        float theta = acos(clamp(dot(normals[i], normals[j]), -1.0, 1.0));
         if (theta <= alpha0 + alpha1) return false;
       }
     }

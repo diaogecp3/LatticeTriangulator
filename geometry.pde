@@ -6,35 +6,18 @@
  * And so on.
  ******************************************************************************/
 
-boolean show3RT = true;
-boolean show2RT = true;
-int methodEP = 1;  // 0: basic, 1: heuristic normal, 2: heuristic plane
 
+boolean show3T = true;
+boolean show2T = true;
+int methodEP = 0;  // 0: basic, 1: heuristic normal, 2: heuristic plane
+
+
+/*
+ * Construct the normal to triangle (A, B, C).
+ */
 vec normalToTriangle(pt A, pt B, pt C) {
   return U(N(A, B, C));
 }
-
-void showNormalToTriangle(pt A, pt B, pt C, float d, float r) {
-  vec N = normalToTriangle(A, B, C);
-  pt D = P(A, B, C);
-  arrow(D, V(d, N), r);
-}
-
-void showPlane(pt p, vec n, float s) {
-  vec vi = constructNormal(n);
-  vec vj = N(n, vi);
-  pt p0 = P(p, s, vi, s, vj);
-  pt p1 = P(p, -s, vi, s, vj);
-  pt p2 = P(p, s, vi, -s, vj);
-  pt p3 = P(p, -s, vi, -s, vj);
-  beginShape(TRIANGLE_STRIP);
-  vertex(p0);
-  vertex(p1);
-  vertex(p2);
-  vertex(p3);
-  endShape();
-}
-
 
 /*
  * Construct a vector normal to given vector v. v is not necessarily a unit
@@ -47,8 +30,6 @@ vec constructNormal(vec v) {
     return U(new vec(0.0, v.z, -v.y));  // cross product of v and (1, 0, 0)
   }
 }
-
-
 
 /*
  * This is a helper function to find the two intersection points of two planes.
@@ -67,7 +48,6 @@ void constructAndSolveLE(vec A,                                      // in
   yz1.set(t1);
   return;
 }
-
 
 /*
  * Compute the intersection line of two planes, given that they are not parallel.
@@ -113,6 +93,9 @@ boolean intersectionTwoPlanes(pt A,                                     // in
   return true;
 }
 
+/*
+ * Compute the distance from point P to line AB.
+ */
 float distanceToLine(pt P, pt A, pt B) {
   vec AP = V(A, P), AB = V(A, B);
   if (parallel(AP, AB)) return 0;
@@ -121,9 +104,15 @@ float distanceToLine(pt P, pt A, pt B) {
   return d;
 }
 
+/*
+ * Return true if disk (ca, va, ra) and disk (cb, vb, rb) don't intersect. The
+ * algorithm is: check if the two supporting planes intersect, and compute the
+ * distances from the two centers to the intersection line, respectively, and
+ * check if the two distances is smaller than or equal to ra/rb.
+ */
 boolean emptyIntersectionTwoDisks(pt ca, vec va, float ra, pt cb, vec vb, float rb) {
   if (parallel(va, vb)) {  // two planes are parallel
-    if (abs(dot(V(ca, cb), va)) < 0.0001) {  // two disks on the same plane
+    if (isAbsZero(dot(V(ca, cb), va))) {  // two disks on the same plane
       if (d(ca, cb) > ra + rb) return true;
       else return false;
     } else {
@@ -141,10 +130,17 @@ boolean emptyIntersectionTwoDisks(pt ca, vec va, float ra, pt cb, vec vb, float 
   }
 }
 
+/*
+ * Return true if disk d0 and disk d1 don't intersect.
+ */
 boolean emptyIntersectionTwoDisks(Disk d0, Disk d1) {
   return emptyIntersectionTwoDisks(d0.c, d0.d, d0.r, d1.c, d1.d, d1.r);
 }
 
+/*
+ * Compute the intesection point of line (pa, pb) and line (pc, pd). Assume that
+ * these two lines are on the same plane.
+ */
 pt intersectionTwoLines(pt pa, pt pb, pt pc, pt pd) {
   vec v0 = U(pa, pb);  // unit vector
   vec v1 = U(pc, pd);  // unit vector
@@ -152,7 +148,8 @@ pt intersectionTwoLines(pt pa, pt pb, pt pc, pt pd) {
 
   vec c0 = N(v0, v1);
   vec c1 = N(vac, v1);
-  float x = c1.norm() / c0.norm();
+  // float x = c1.norm() / c0.norm();
+  float x = sqrt(dot(c1, c1) / dot(c0, c0));
 
   /* In case when cross(v0, v1) and cross(vac, v1) don't point in the same direction. */
   if (c0.x * c1.x < 0 || c0.y * c1.y < 0 || c0.z * c1.z < 0) x = -x;
@@ -160,7 +157,9 @@ pt intersectionTwoLines(pt pa, pt pb, pt pc, pt pd) {
   return P(pa, x, v0);
 }
 
-
+/*
+ * Return true if line (a, b) and disk (c, r, n) don't intersect.
+ */
 boolean emptyIntersectionLineDisk(pt a, pt b, pt c, float r, vec n) {
   vec ab = V(a, b);
   vec ac = V(a, c);
@@ -181,7 +180,10 @@ boolean emptyIntersectionLineDisk(pt a, pt b, pt c, float r, vec n) {
   }
 }
 
-
+/*
+ * Return true if circle (c, r, n) intersects plane (p, d). If true, (p0, p1)
+ * will be the intersection line. p0 and p1 will be on the circle.
+ */
 boolean intersectionCirclePlane(pt c, float r, vec n, pt p, vec d, pt p0, pt p1) {
   pt pa = new pt();
   pt pb = new pt();
@@ -198,34 +200,11 @@ boolean intersectionCirclePlane(pt c, float r, vec n, pt p, vec d, pt p0, pt p1)
   return true;
 }
 
-
-// solve a*cos(theta) + b*sin(theta) = c
-float[] solveLinearEquationInCosSin(float a, float b, float c) {
-  assert a * a + b * b > 0.0000001;  // at least one of {a, b} is non-zero
-  float[] thetas = new float[2];
-  if (notAbsZero(a) && notAbsZero(b)) {  // a != 0 and b != 0
-    // println("a = ", a, "b = ", b);
-    /* How to decide tmp0 here? According to the sign of b. */
-    float tmp0 = asin(c / (sqrt(a * a + b * b)));  // [-pi/2, pi/2]
-    //float tmp0 = asin(-c / (sqrt(a * a + b * b)));  // [-pi/2, pi/2]
-    if (b < 0) tmp0 = -tmp0;  // [-pi/2, pi/2]
-    float tmp1 = atan(a / b);  // (-pi/2, pi/2)
-    thetas[0] = tmp0 - tmp1;  // (-pi, pi)
-    thetas[1] = PI - tmp0 - tmp1;  // (0, 2pi)
-    thetas[0] = thetas[0] < 0 ? thetas[0] + TWO_PI : thetas[0];  // [0, pi), (pi, 2pi)
-  } else if (isAbsZero(a)) {  // a == 0 and b != 0
-    println("a == 0");
-    thetas[0] = asin(c/b);  // [-pi/2, pi/2]
-    thetas[1] = PI - thetas[0];  // [pi/2, 3pi/2]
-    if (thetas[0] < 0) thetas[0] += TWO_PI;  // [3pi/2, 0), [0, pi/2]
-  } else {  // a != 0 and b == 0
-    println("b == 0");
-    thetas[0] = acos(c/a);  // [0, pi]
-    thetas[1] = TWO_PI - thetas[0];  // [pi, 2pi]
-  }
-  return thetas;
-}
-
+/*
+ * Return the points of contact between the plane that passes through line (a, b)
+ * and the circle (c, r, n). (vi, vj), which is optional, is the local frame on
+ * the circle.
+ */
 pt[] pivotPlaneAroundLineHitCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec vj) {
   pt[] ps = new pt[2];
   boolean empty = emptyIntersectionLineDisk(a, b, c, r, n);
@@ -248,9 +227,8 @@ pt[] pivotPlaneAroundLineHitCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec
     return ps;
   }
   if (vj == null) vj = N(n, vi);  // cross product
-  float[] thetas;  // valid theta should be in [-pi, pi]?
+  float[] thetas;
   if (notAbsZero(dnab)) {
-    // println("dot(N, AB) != 0");
     vec v = A(ca, -dnca/dnab, ab);
     float fa = dot(vi, v);
     float fb = dot(vj, v);
@@ -262,12 +240,17 @@ pt[] pivotPlaneAroundLineHitCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec
   }
 
   assert thetas.length == 2;
-  // println("theta 1 =", thetas[0], "theta 2 =", thetas[1]);
   ps[0] = P(c, r * cos(thetas[0]), vi, r * sin(thetas[0]), vj);
   ps[1] = P(c, r * cos(thetas[1]), vi, r * sin(thetas[1]), vj);
   return ps;
 }
 
+/*
+ * Return the points of contact that define the tangent plane of the three
+ * circles (c0, r0, n0), (c1, r1, n1), and (c2, r2, n2). (vi0, vj0), (vi1, vj1),
+ * (vi2, vj2), which are optional, are local frames on the three circles,
+ * respectively.
+ */
 pt[] tangentPlaneThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
                               pt c1, float r1, vec n1, vec vi1, vec vj1,
                               pt c2, float r2, vec n2, vec vi2, vec vj2) {
@@ -373,7 +356,11 @@ pt[] tangentPlaneThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
   return ps;
 }
 
-
+/*
+ * Construct and show the exact convex hull defined by three circles (c0, r0, n0),
+ * (c1, r1, n2), and (c2, r2, n2). (vi0, vj0), (vi1, vj1), (vi2, vj2), which are
+ * optional, are local frames on the three circles, respectively.
+ */
 void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
                          pt c1, float r1, vec n1, vec vi1, vec vj1,
                          pt c2, float r2, vec n2, vec vi2, vec vj2) {
@@ -453,8 +440,8 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     disk(c1, n1, r1);
     disk(c2, n2, r2);
   }
-  // assert points.size() == 6 * nSamples;
-  if (show3RT) {
+  assert points.size() == 6 * nSamples;
+  if (show3T) {
     fill(orange, 100);
     showTriangle(points.get(0), points.get(1), points.get(2));
     showTriangle(points.get(3), points.get(4), points.get(5));
@@ -462,8 +449,7 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     showNormalToTriangle(points.get(0), points.get(1), points.get(2), 20, 2);
     showNormalToTriangle(points.get(3), points.get(4), points.get(5), 20, 2);
   }
-
-  if (show2RT) {
+  if (show2T) {
     fill(purple, 100);
     stroke(0);
     strokeWeight(2);
@@ -484,7 +470,6 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
       vertex(points.get(ib));
       endShape();
     }
-
     noStroke();
     for (int i = 0; i < 3; ++i) {
       int start = 6 + i * 2 * (nSamples - 1);
@@ -499,6 +484,4 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
       }
     }
   }
-
-
 }

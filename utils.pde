@@ -1,9 +1,13 @@
 /******************************************************************************
  * Utility functions.
+ *
+ * Statistics, rendering, math, etc.
  ******************************************************************************/
 
 
 boolean exitDraw = false;
+
+/* Statistics functions below. */
 
 /*
  * Compute average value for range [start, end) of array a.
@@ -17,6 +21,11 @@ float average(float[] a, int n, int start, int end) {
   return sum / (end - start);
 }
 
+/*
+ * Compute accuracy for range [start, end) of array a. If array valids is not
+ * null, only the valid values (indicated by array valids) of array a will be
+ * considered.
+ */
 float accuracy(boolean[] a, int n, int start, int end, boolean[] valids) {
   assert start >= 0 && end <= n && end > start;
   float sum = 0.0;
@@ -37,14 +46,8 @@ float accuracy(boolean[] a, int n, int start, int end, boolean[] valids) {
   }
 }
 
-/*
- * Exception handler.
- */
-void exceptionHandler() {
-  P.savePts("data/pts_unnamed");
-  rs.saveRings("data/rs_unnamed");
-  exitDraw = true;
-}
+
+/* Math functions below. */
 
 /*
  * Return true iff |x| is not close to 0.
@@ -74,6 +77,10 @@ float clamp(float x, float a, float b) {
   return min(max(x, a), b);
 }
 
+/*
+ * Return the index whose value is minimum in an array list. If there are more
+ * than one minimums, return the lowest index.
+ */
 int argmin(ArrayList<Integer> a) {
   int ret = 0, min = a.get(0);
   for (int i = 1; i < a.size(); ++i) {
@@ -85,28 +92,11 @@ int argmin(ArrayList<Integer> a) {
   return ret;
 }
 
-
-
 /*
  * Generate a random vector, with each element sampled from [-n, n).
  */
 vec random3(float n) {
   return new vec(random(-n, n), random(-n, n), random(-n, n));
-}
-
-/*
- * Convert a 2D point array into a 1D point array. This is used for ring set
- * processing.
- */
-pt[] convertTo1DArray(pt[][] points, int nr, int nc) {
-  pt[] G = new pt[nr * nc];
-  int k = 0;
-  for (int i = 0; i < nr; ++i) {
-    for (int j = 0; j < nc; ++j) {
-      G[k++] = points[i][j];
-    }
-  }
-  return G;
 }
 
 /*
@@ -123,6 +113,9 @@ vec2 solveLinearEquationsInTwoVars(float a, float b, float c, float d, float e, 
   return new vec2(x, y);
 }
 
+/*
+ * Solve ax^2 + bx + c = 0, return two solutions if there exists.
+ */
 float[] solveQuadraticEquation(float a, float b, float c) {
   float det = b * b - 4 * a * c;
   if (det < 0) return null;
@@ -134,7 +127,37 @@ float[] solveQuadraticEquation(float a, float b, float c) {
   return xs;
 }
 
+/*
+ * Solve a*cos(theta) + b*sin(theta) = c, return two thetas. The two thetas will
+ * be in [0, 2pi].
+ */
+float[] solveLinearEquationInCosSin(float a, float b, float c) {
+  assert a * a + b * b > 0.0000001;  // at least one of {a, b} is non-zero
+  float[] thetas = new float[2];
+  if (notAbsZero(a) && notAbsZero(b)) {  // a != 0 and b != 0
+    // println("a = ", a, "b = ", b);
+    /* How to decide (the sign of) tmp0 here? According to the sign of b. */
+    float tmp0 = asin(c / (sqrt(a * a + b * b)));  // [-pi/2, pi/2]
+    if (b < 0) tmp0 = -tmp0;  // [-pi/2, pi/2]
+    float tmp1 = atan(a / b);  // (-pi/2, pi/2)
+    thetas[0] = tmp0 - tmp1;  // (-pi, pi)
+    thetas[1] = PI - tmp0 - tmp1;  // (0, 2pi)
+    thetas[0] = thetas[0] < 0 ? thetas[0] + TWO_PI : thetas[0];  // [0, pi), (pi, 2pi)
+  } else if (isAbsZero(a)) {  // a == 0 and b != 0
+    println("a == 0");
+    thetas[0] = asin(c/b);  // [-pi/2, pi/2]
+    thetas[1] = PI - thetas[0];  // [pi/2, 3pi/2]
+    if (thetas[0] < 0) thetas[0] += TWO_PI;  // [3pi/2, 0), [0, pi/2]
+  } else {  // a != 0 and b == 0
+    println("b == 0");
+    thetas[0] = acos(c/a);  // [0, pi]
+    thetas[1] = TWO_PI - thetas[0];  // [pi, 2pi]
+  }
+  return thetas;
+}
 
+
+/* Rendering functions below. */
 
 /*
  * Show a triangle.
@@ -146,7 +169,6 @@ void showTriangle(pt a, pt b, pt c) {
   vertex(c);
   endShape();
 }
-
 
 /*
  * Show triangles.
@@ -200,4 +222,59 @@ void showManifoldEdges(boolean[][] manifoldMask, pt[] G, int nv) {
       }
     }
   }
+}
+
+/*
+ * Show the normal to triangle (A, B, C) as an arrow. d controls the length of
+ * the arrow and r controls the size of the arrow tip.
+ */
+void showNormalToTriangle(pt A, pt B, pt C, float d, float r) {
+  vec N = normalToTriangle(A, B, C);
+  pt D = P(A, B, C);
+  arrow(D, V(d, N), r);
+}
+
+/*
+ * Show the plane defined by (p, n). s controls the size of the plane shown.
+ */
+void showPlane(pt p, vec n, float s) {
+  vec vi = constructNormal(n);
+  vec vj = N(n, vi);
+  pt p0 = P(p, s, vi, s, vj);
+  pt p1 = P(p, -s, vi, s, vj);
+  pt p2 = P(p, s, vi, -s, vj);
+  pt p3 = P(p, -s, vi, -s, vj);
+  beginShape(TRIANGLE_STRIP);
+  vertex(p0);
+  vertex(p1);
+  vertex(p2);
+  vertex(p3);
+  endShape();
+}
+
+
+/* Misc functions below. */
+
+/*
+ * Exception handler.
+ */
+void exceptionHandler() {
+  P.savePts("data/pts_unnamed");
+  rs.save("data/rs_unnamed");
+  exitDraw = true;
+}
+
+/*
+ * Convert a 2D point array into a 1D point array. This is used for ring set
+ * processing.
+ */
+pt[] convertTo1DArray(pt[][] points, int nr, int nc) {
+  pt[] G = new pt[nr * nc];
+  int k = 0;
+  for (int i = 0; i < nr; ++i) {
+    for (int j = 0; j < nc; ++j) {
+      G[k++] = points[i][j];
+    }
+  }
+  return G;
 }

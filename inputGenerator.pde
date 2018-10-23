@@ -55,7 +55,7 @@ pt[] generateContactsOnSphere(pt C, float R, int nc, float rMax) {
       Disk disk = new Disk(c, normal, rMax);
       boolean bad = false;
       for (int j = 0; j < i; ++j) {
-        if (!emptyIntersectionTwoDisks(disk, disks[j])) {
+        if (!emptyIntersectionTwoDisks(disk, disks[j])) {  // too expensive
           bad = true;
           break;
         }
@@ -72,14 +72,6 @@ pt[] generateContactsOnSphere(pt C, float R, int nc, float rMax) {
 
 
 
-vec[] generateInitDirs(pt C, pt[] contacts, int nc) {
-  vec[] initDirs = new vec[nc];
-  for (int i = 0; i < nc; ++i) {
-    vec v = V(C, contacts[i]);
-    initDirs[i] = constructNormal(v);
-  }
-  return initDirs;
-}
 
 pt[] generatePointsForOneCircle(pt p,                                // in
                                 float r,                             // in
@@ -140,42 +132,12 @@ pt[][] generatePointsForCircles(pt[] contacts,                       // in
 }
 
 
-
-
-// a center = the center of a disk
-void showGroups(pt[] centers, pt[][] points, int nc, int np) {
-  fill(orange);
-  for (int i = 0; i < nc; ++i) {
-    show(centers[i], 3);
-  }
-  fill(green);
-  for (int i = 0; i < nc; ++i) {
-    arrow(centers[i], V(centers[i], points[i][0]), 3);
-  }
-  fill(blue);
-  for (int i = 0; i < nc; ++i) {
-    for (int j = 0; j < np; ++j) {
-      show(points[i][j], 3);
-    }
-  }
-  fill(cyan);
-  for (int i = 0; i < nc; ++i) {
-    for (int j = 0; j < np; ++j) {
-      collar(points[i][j], V(points[i][j], points[i][(j + 1) % np]), 1, 1);
-    }
-  }
-  return;
-}
-
-
-
 pt[] generateContactsAndRadii(pt center,                             // in
                               float radius,                          // in
                               int n,                                 // in
                               float[] radii,                         // out
                               vec[] normals) {                       // out
   pt[] contacts = new pt[n];
-  //vec[] normals = new vec[n];
   float[] alphas = new float[n];
   for (int i = 0; i < n; ++i) {
     while (true) {
@@ -211,7 +173,6 @@ pt[] generateContacts(pt center,                                     // in
                       vec[] normals) {                               // out
   assert rMax > 0 && rMax < radius;
   pt[] contacts = new pt[n];
-  // vec[] normals = new vec[n];
   float alpha = 2 * asin(clamp(rMax/radius, -1.0, 1.0));
   for (int i = 0; i < n; ++i) {
     while (true) {

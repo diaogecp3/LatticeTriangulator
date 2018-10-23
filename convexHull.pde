@@ -350,7 +350,7 @@ ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
     boolean successQT = passQualityTest(triangles, G, nv);
     if (!successQT) {
       k++;
-      println("fail quality test!");
+      println("Fail quality test! Disturb vertices and try again! ");
       if (k > 15) {
         exceptionHandler();
         break;

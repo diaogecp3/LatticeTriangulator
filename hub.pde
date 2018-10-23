@@ -3,8 +3,6 @@
  ******************************************************************************/
 
 
-
-
 /*
  * A tangential cone touches ball ba and bb, and another tangential cone touches
  * ball ba and bc. Find the minimum radius such that, if ball ba has a radius
@@ -124,7 +122,6 @@ class Hub {
         t = max(t, d);
       }
     }
-    println("t = ", t);
     return t;
   }
 

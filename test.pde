@@ -6,8 +6,8 @@
 int numTests = 10000;
 int numBackup3RT = 0;
 int numPointsPerTest = 64;
-boolean showResults = false;
 boolean saveFailures = false;
+
 
 class DebugInfoConvexity {
   pt[] points;
@@ -31,121 +31,10 @@ class DebugInfoConvexity {
   }
 }
 
-
 /*
- * Test the performance of convex hull generation for points on a sphere.
- * The number of tests done is n. For each test, input size is m. If showResult
- * is true, 3D results will be shown on screen.
+ * Return true if the given triangle mesh passes convexity test, i.e. if the
+ * given triangle mesh is a convex hull.
  */
-void testConvexHull(int n, int m, boolean showResults) {
-  float[] times = new float[n];  // in millisecons
-  int p = n / 10;
-  for (int i = 0; i < n; ++i) {
-    generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, m);
-    long startTime = System.nanoTime();
-    ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
-    long endTime = System.nanoTime();
-    times[i] = (endTime - startTime) / 1000000.0;
-    if (i % p == 0) System.out.format("duration of %d-th test = %f ms. \n", i, times[i]);
-    if (showResults) {
-      fill(red); showTriangles(triangles, P.G);
-      fill(cyan); showTriangleNormals(triangles, P.G);
-    }
-  }
-
-  float avg = average(times, n, 1, n);
-  System.out.format("Generate a convex hull for %d point, %d tests in total," +
-    " average time (ignore the first one) = %f ms. \n", m, n, avg);
-}
-
-
-void testThreeRingTriangle(int n, int np, float attenuation) {
-  boolean[] successes = new boolean[n];
-  boolean[] valids = new boolean[n];
-  float[] times = new float[n];
-  for (int i = 0; i < n; ++i) {
-    RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere, 3, np);
-    ringSet.init();
-    ringSet.generatePoints(attenuation);
-    ringSet.refConvexHull = new TriangleMesh();
-    ringSet.refConvexHull.triangles = new ArrayList<Triangle>();
-    ringSet.refConvexHull.triangles.add(new Triangle(0, 1, 2));
-    ringSet.refConvexHull.nt = 1;
-    long st = System.nanoTime();
-    ringSet.generateThreeRingTriangles();
-    long ed = System.nanoTime();
-    times[i] = (ed - st) / 1000000.0;
-    pt[] points = ringSet.get1DPointArray();
-    if (ringSet.threeRingTriangles.get(0) == null) {
-      successes[i] = false;
-      System.out.format("%d fails\n", i);
-    } else {
-      valids[i] = true;
-      boolean success = passQualityTest(ringSet.threeRingTriangles, points, points.length);
-      successes[i] = success;
-    }
-    if (successes[i] == false && saveFailures) {
-      if (valids[i]) ringSet.saveRings("data/tmp/rs_3rt_low_quality_" + i);
-      else ringSet.saveRings("data/tmp/rs_3rt_null_" + i);
-    }
-  }
-  float avgTime = average(times, n, 0, n);
-  float succRate = accuracy(successes, n, 0, n, null);
-  float succRateValid = accuracy(successes, n, 0, n, valids);
-  switch (method3RT) {
-    case 0:
-      System.out.format("Naive method:\n");
-      break;
-    case 1:
-      System.out.format("Heuristic Search method:\n");
-      break;
-    case 2:
-      System.out.format("Breadth First Search method:\n");
-      break;
-    case 3:
-      System.out.format("Breadth First Search method with heuristics:\n");
-      break;
-    case 4:
-      System.out.format("Approximated Extreme Plane method:\n");
-      break;
-    default:
-      System.out.format("Naive method: ");
-      break;
-  }
-  System.out.format("Three-ring triangle generation " +
-                    "(n = %d, np = %d, attenuation = %f): " +
-                    "success rate = %f, success rate (valid) = %f, " +
-                    "average time = %f ms, times to use backup method = %d.\n",
-                    n, np, attenuation, succRate, succRateValid, avgTime, numBackup3RT);
-}
-
-
-void testExtremePlaneThreeCircles(int n, int np, float attenuation) {
-  float[] times = new float[n];
-  for (int i = 0; i < n; ++i) {
-    RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere, 3, np);
-    ringSet.init();
-    ringSet.generatePoints(attenuation);
-    long st = System.nanoTime();
-    ringSet.generateExtremePlaneThreeRings(0, 1, 2);
-    long ed = System.nanoTime();
-    times[i] = (ed - st) / 1000000.0;
-  }
-  float avgTime = average(times, n, 0, n);
-  switch (methodEP) {
-    case 1:
-      System.out.format("Heuristic initialization using normal defined by 3 centers\n");
-      break;
-    case 2:
-      System.out.format("Heuristic initialization using plane defined by 3 centers\n");
-      break;
-    default:
-      System.out.format("Basic initialization using 3 x axes\n");
-  }
-  System.out.format("Extreme plane generation (n = %d, np = %d (doesn't matter), attenuation = %f): " +
-                    "average time = %f ms.\n", n, np, attenuation, avgTime);
-}
-
 boolean passConvexityTest(ArrayList<Triangle> triangles, pt[] G, int nv) {
   int n = triangles.size();
   for (int i = 0; i < n; ++i) {
@@ -175,34 +64,164 @@ boolean passConvexityTest(ArrayList<Triangle> triangles, pt[] G, int nv) {
   return true;
 }
 
-
+/*
+ * Return true if the given triangle mesh passes quality test.
+ *
+ * For the time being, the quality test only contains convexity test.
+ */
 boolean passQualityTest(ArrayList<Triangle> triangles, pt[] G, int nv) {
   if (!passConvexityTest(triangles, G, nv)) return false;
   return true;
 }
 
+/*
+ * Test the performance of convex hull generation for points on a sphere. The
+ * number of tests is n. For each test, input size is m.
+ */
+void convexHullTests(int n, int m) {
+  float[] times = new float[n];  // in millisecons
+  int p = n / 10;
+  for (int i = 0; i < n; ++i) {
+    generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, m);
+    long startTime = System.nanoTime();
+    ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
+    long endTime = System.nanoTime();
+    times[i] = (endTime - startTime) / 1000000.0;
+    if (i % p == 0) System.out.format("duration of %d-th test = %f ms. \n", i, times[i]);
+  }
 
-void testIntersectionTwoDisks() {
-  pt ca = new pt(0.5, 0, 0);
-  vec va = new vec(0, 0, 1);
-  float ra = 1.0;
-
-  pt cb = new pt(0.2, 0, 1.2);
-  vec vb = new vec(1, 0, 0);
-  float rb = 1.0;
-
-  pt p0 = new pt(), p1 = new pt();
-  intersectionTwoPlanes(ca, va, cb, vb, p0, p1);
-  System.out.format("p0 = (%f, %f, %f), p1 = (%f, %f, %f) \n", p0.x, p0.y, p0.z, p1.x, p1.y, p1.z);
-
-  boolean empty = emptyIntersectionTwoDisks(ca, va, ra, cb, vb, rb);
-  if (empty) println("empty intersection");
-  else println("non-empty intersection");
-  return;
+  float avg = average(times, n, 1, n);
+  System.out.format("Generate a convex hull for %d points (%d tests)," +
+                    " average time (ignore the first one) = %f ms.\n", m, n, avg);
 }
 
 
-void oneConvexHullTest() {
+/*
+ * Test the performance of ring set triangulation. n is the number of tests. For
+ * each test, there are nr rings with np points on each ring. attenuation controls
+ * the size of each ring.
+ */
+void convexHullWithHolesTests(int n, int nr, int np, float attenuation) {
+  assert nr >= 3;
+  float[] times = new float[n];
+  int method = 0;
+  for (int i = 0; i < n; ++i) {
+    RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere, nr, np);
+    ringSet.init();
+    ringSet.generatePoints(attenuation);
+    long st = System.nanoTime();
+    ringSet.generateTriangleMesh(method);
+    long ed = System.nanoTime();
+    times[i] = (ed - st) / 1000000.0;
+  }
+  float avgTime = average(times, n, 0, n);
+  switch (method) {
+    case 1:
+      System.out.format("fast triangle mesh generation using 3RT and 2RT trick\n");
+      break;
+    default:
+      System.out.format("convex hull generation\n");
+  }
+  System.out.format("Triangle mesh generation for ring set " +
+                    "(n = %d, nr = %d, np = %d, attenuation = %f): " +
+                    "average time = %f ms.\n", n, nr, np, attenuation, avgTime);
+}
+
+
+/*
+ * Test the performance of three-ring-triangle generation. n is the number of
+ * tests. np is the number of points sampled on each circle. attenuation controls
+ * the size of each circle.
+ */
+void threeRingTriangleTests(int n, int np, float attenuation) {
+  boolean[] successes = new boolean[n];
+  boolean[] valids = new boolean[n];
+  float[] times = new float[n];
+  for (int i = 0; i < n; ++i) {
+    RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere, 3, np);
+    ringSet.init();
+    ringSet.generatePoints(attenuation);
+    ringSet.refConvexHull = new TriangleMesh(ringSet.centers);
+    ringSet.refConvexHull.addTriangle(new Triangle(0, 1, 2));
+    long st = System.nanoTime();
+    ringSet.generateThreeRingTriangles();
+    long ed = System.nanoTime();
+    times[i] = (ed - st) / 1000000.0;
+    pt[] points = ringSet.get1DPointArray();
+    if (ringSet.threeRingTriangles.get(0) == null) {
+      successes[i] = false;
+      System.out.format("%d fails\n", i);
+    } else {
+      valids[i] = true;
+      boolean success = passQualityTest(ringSet.threeRingTriangles, points, points.length);
+      successes[i] = success;
+    }
+    if (successes[i] == false && saveFailures) {
+      if (valids[i]) ringSet.save("data/tmp/rs_3rt_low_quality_" + i);
+      else ringSet.save("data/tmp/rs_3rt_null_" + i);
+    }
+  }
+  float avgTime = average(times, n, 0, n);
+  float succRate = accuracy(successes, n, 0, n, null);
+  float succRateValid = accuracy(successes, n, 0, n, valids);
+  switch (method3RT) {
+    case 1:
+      System.out.format("Heuristic Search method:\n");
+      break;
+    case 2:
+      System.out.format("Breadth First Search method:\n");
+      break;
+    case 3:
+      System.out.format("Breadth First Search method with heuristics:\n");
+      break;
+    case 4:
+      System.out.format("Approximated Extreme Plane method:\n");
+      break;
+    default:
+      System.out.format("Naive method: \n");
+  }
+  System.out.format("Three-ring triangle generation " +
+                    "(n = %d, np = %d, attenuation = %f): " +
+                    "success rate = %f, success rate (valid) = %f, " +
+                    "average time = %f ms, times to use backup method = %d.\n",
+                    n, np, attenuation, succRate, succRateValid, avgTime, numBackup3RT);
+}
+
+/*
+ * Test the performance of extreme-plane generation. n is the number of tests.
+ * attenuation controls the size of each circle.
+ */
+void extremePlaneTests(int n, float attenuation) {
+  float[] times = new float[n];
+  for (int i = 0; i < n; ++i) {
+    RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere, 3, 3);
+    ringSet.init();
+    ringSet.generatePoints(attenuation);
+    long st = System.nanoTime();
+    ringSet.generateExtremePlaneThreeRings(0, 1, 2);
+    long ed = System.nanoTime();
+    times[i] = (ed - st) / 1000000.0;
+  }
+  float avgTime = average(times, n, 0, n);
+  switch (methodEP) {
+    case 1:
+      System.out.format("Heuristic initialization using normal defined by 3 centers\n");
+      break;
+    case 2:
+      System.out.format("Heuristic initialization using plane defined by 3 centers\n");
+      break;
+    default:
+      System.out.format("Basic initialization using 3 x-axes\n");
+  }
+  System.out.format("Extreme plane generation (n = %d, attenuation = %f): " +
+                    "average time = %f ms.\n", n, attenuation, avgTime);
+}
+
+
+/* Single-test functions below. */
+
+
+void convexHullTest() {
   if (showPointSet) {
     fill(green);
     P.drawBalls(2);
@@ -221,7 +240,7 @@ void oneConvexHullTest() {
   }
 }
 
-void oneConvexHullWithHolesTest() {
+void convexHullWithHolesTest() {
   rs.generatePoints(attenuation);
   if (showRingSet) rs.showRings();
   if (generateCH) {
@@ -241,21 +260,22 @@ void oneConvexHullWithHolesTest() {
   }
 }
 
-void oneFastConvexHullWithHolesTest() {
-  rs.generatePoints(attenuation);
+void fastConvexHullWithHolesTest() {
+  rs.generatePoints(attenuation); //<>//
   if (showRingSet) rs.showRings();
   if (generateCH) {
     pt[] pointArray = rs.get1DPointArray();
     if (regenerateCH) {
       long startTime = System.nanoTime();
-      rs.generateTriangleMesh(methodTM);
+      rs.generateTriangleMesh(methodTM); //<>//
       long endTime = System.nanoTime();
       timeCH = (endTime - startTime) / 1000000.0;
     }
     numTriangles = 0;
 
     if (methodTM == 1) {
-      if (rs.threeRingTriangles != null) {
+      if (show3RT) {
+        assert rs.threeRingTriangles != null;
         fill(red);
         stroke(0);
         strokeWeight(2);
@@ -265,7 +285,8 @@ void oneFastConvexHullWithHolesTest() {
         showTriangleNormals(rs.threeRingTriangles, pointArray);
         numTriangles += rs.threeRingTriangles.size();
       }
-      if (rs.twoRingTriangles != null) {
+      if (show2RT) {
+        assert rs.twoRingTriangles != null;
         fill(blue);
         stroke(0);
         showTriangles(rs.twoRingTriangles, pointArray);
@@ -299,7 +320,7 @@ void oneFastConvexHullWithHolesTest() {
   }
 }
 
-void oneSubdivisionTest() {
+void subdivisionTest() {
   debugCH = false;
   rs.generatePoints(attenuation);
   if (showRingSet) rs.showRings();
@@ -316,7 +337,7 @@ void oneSubdivisionTest() {
     TriangleMesh triMesh = new TriangleMesh(positions, triangles);
     triMesh.subdivide(subdivisionTimes, centerOfSphere, radiusOfSphere);
     endTime = System.nanoTime();
-    timeSB = (endTime - startTime) / 1000000.0;
+    timeSD = (endTime - startTime) / 1000000.0;
 
     triMesh.showTriangleMesh(red, true);
     // triMesh.showCornerPairs(blue, 3);
@@ -327,13 +348,12 @@ void oneSubdivisionTest() {
   }
 }
 
-void oneHubTest() {
+void hubTest() {
   hub.showHub(red, 150);
   hub.showBoundingBall(blue, 100);
 }
 
-
-void onePivotPlaneAroundLineHitCircleTest() {
+void pivotPlaneAroundLineHitCircleTest() {
   assert rs.nRings >= 3;
   rs.generatePoints(attenuation);
   assert rs.points != null && rs.centers != null && rs.radii != null;
@@ -449,31 +469,4 @@ void exactCHThreeCirclesTest() {
                       c1, r1, n1, vi1, null,
                       c2, r2, n2, vi2, null);
 
-}
-
-void testCirclePlaneIntersection() {
-  assert rs.nRings >= 3;
-  pt p0 = new pt();
-  pt p1 = new pt();
-  rs.generatePoints(attenuation);
-
-  pt c0 = rs.centers[0];
-  float r0 = rs.radii[0];
-  vec n0 = rs.normals[0];
-  pt c1 = rs.centers[1];
-  pt c2 = rs.centers[2];
-  vec d = normalToTriangle(c0, c1, c2);
-
-  fill(orange, 100);
-  // showTriangle(c0, c1, c2);
-  showPlane(c0, d, r0);
-  fill(red, 100);
-  disk(c0, n0, r0);
-
-  if (intersectionCirclePlane(c0, r0, n0, c0, d, p0, p1)) {
-    fill(green, 100);
-    show(p0, 3);
-    fill(blue, 100);
-    show(p1, 3);
-  }
 }
