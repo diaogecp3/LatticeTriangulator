@@ -1,9 +1,16 @@
-/*********************************************************
+/******************************************************************************
  * Test functions.
- *********************************************************/
+ ******************************************************************************/
 
 
-int numTests = 10000;
+/*
+ * TODO:
+ * 1). For multiple-tests functions, it may be better to reuse the random inputs
+ *     on different methods.
+ */
+
+
+int numTests = 100;
 int numBackup3RT = 0;
 int numPointsPerTest = 64;
 boolean saveFailures = false;
@@ -74,6 +81,10 @@ boolean passQualityTest(ArrayList<Triangle> triangles, pt[] G, int nv) {
   return true;
 }
 
+
+/* Multiple-tests functions below. */
+
+
 /*
  * Test the performance of convex hull generation for points on a sphere. The
  * number of tests is n. For each test, input size is m.
@@ -101,7 +112,7 @@ void convexHullTests(int n, int m) {
  * each test, there are nr rings with np points on each ring. attenuation controls
  * the size of each ring.
  */
-void convexHullWithHolesTests(int n, int nr, int np, float attenuation) {
+void ringSetTriangulationTests(int n, int nr, int np, float attenuation) {
   assert nr >= 3;
   float[] times = new float[n];
   int method = 0;
@@ -193,14 +204,17 @@ void threeRingTriangleTests(int n, int np, float attenuation) {
  */
 void extremePlaneTests(int n, float attenuation) {
   float[] times = new float[n];
+  int[] iters = new int[n];
   for (int i = 0; i < n; ++i) {
     RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere, 3, 3);
     ringSet.init();
     ringSet.generatePoints(attenuation);
+    DebugEPInfo dInfo = new DebugEPInfo();
     long st = System.nanoTime();
-    ringSet.generateExtremePlaneThreeRings(0, 1, 2);
+    ringSet.generateExtremePlaneThreeRings(0, 1, 2, dInfo);
     long ed = System.nanoTime();
     times[i] = (ed - st) / 1000000.0;
+    iters[i] = dInfo.iter;
   }
   float avgTime = average(times, n, 0, n);
   switch (methodEP) {
@@ -215,6 +229,13 @@ void extremePlaneTests(int n, float attenuation) {
   }
   System.out.format("Extreme plane generation (n = %d, attenuation = %f): " +
                     "average time = %f ms.\n", n, attenuation, avgTime);
+
+  int max = 0;
+  for (int i = 0; i < n; ++i) {
+    //System.out.format("%d-th: %d\n", i, iters[i]);
+    if (iters[i] > max) max = iters[i];
+  }
+  System.out.format("max number of iterations = %d\n", max);
 }
 
 
@@ -230,7 +251,7 @@ void convexHullTest() {
     long startTime = System.nanoTime();
     ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
     long endTime = System.nanoTime();
-    timeCH = (endTime - startTime) / 1000000.0;
+    timeTM = (endTime - startTime) / 1000000.0;
     fill(red);
     stroke(0);
     numTriangles = triangles.size();
@@ -249,7 +270,7 @@ void convexHullWithHolesTest() {
       long startTime = System.nanoTime();
       rs.generateTriangleMesh(0);
       long endTime = System.nanoTime();
-      timeCH = (endTime - startTime) / 1000000.0;
+      timeTM = (endTime - startTime) / 1000000.0;
     }
     fill(red);
     stroke(0);
@@ -260,16 +281,16 @@ void convexHullWithHolesTest() {
   }
 }
 
-void fastConvexHullWithHolesTest() {
-  rs.generatePoints(attenuation); //<>//
+void ringSetTriangulationTest() {
+  rs.generatePoints(attenuation);
   if (showRingSet) rs.showRings();
   if (generateCH) {
     pt[] pointArray = rs.get1DPointArray();
     if (regenerateCH) {
       long startTime = System.nanoTime();
-      rs.generateTriangleMesh(methodTM); //<>//
+      rs.generateTriangleMesh(methodTM);
       long endTime = System.nanoTime();
-      timeCH = (endTime - startTime) / 1000000.0;
+      timeTM = (endTime - startTime) / 1000000.0;
     }
     numTriangles = 0;
 
@@ -331,7 +352,7 @@ void subdivisionTest() {
                                                        rs.getNumRings(),
                                                        rs.getNumPointsPerRing());
     long endTime = System.nanoTime();
-    timeCH = (endTime - startTime) / 1000000.0;
+    timeTM = (endTime - startTime) / 1000000.0;
 
     startTime = System.nanoTime();
     TriangleMesh triMesh = new TriangleMesh(positions, triangles);
@@ -400,44 +421,32 @@ void pivotPlaneAroundLineHitCircleTest() {
 void tangentPlaneThreeCirclesTest() {
   assert rs.nRings >= 3;
   rs.generatePoints(attenuation);
-  assert rs.points != null && rs.centers != null && rs.radii != null;
+  assert rs.points != null && rs.centers != null &&
+         rs.radii != null && rs.sameRadius == false;
 
-  pt c0 = rs.centers[0];
-  pt c1 = rs.centers[1];
-  pt c2 = rs.centers[2];
-  float r0 = rs.radii[0];
-  float r1 = rs.radii[1];
-  float r2 = rs.radii[2];
-  vec n0 = U(rs.c, c0);
-  vec n1 = U(rs.c, c1);
-  vec n2 = U(rs.c, c2);
-  vec vi0 = rs.xAxes[0];
-  vec vi1 = rs.xAxes[1];
-  vec vi2 = rs.xAxes[2];
-  pt[] ps = tangentPlaneThreeCircles(c0, r0, n0, vi0, null,
-                                     c1, r1, n1, vi1, null,
-                                     c2, r2, n2, vi2, null);
   {
     fill(red);
-    //show(ps[0], 3);
-    disk(c0, n0, r0);
+    disk(rs.centers[0], rs.normals[0], rs.radii[0]);
     fill(green);
-    //show(ps[1], 3);
-    disk(c1, n1, r1);
+    disk(rs.centers[1], rs.normals[1], rs.radii[1]);
     fill(blue);
-    //show(ps[2], 3);
-    disk(c2, n2, r2);
+    disk(rs.centers[2], rs.normals[2], rs.radii[2]);
   }
+
+  pt[] ps = tangentPlaneThreeCircles(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
+                                     rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1],
+                                     rs.centers[2], rs.radii[2], rs.normals[2], rs.xAxes[2], rs.yAxes[2],
+                                     null);
   {
     fill(orange, 180);
     showTriangle(ps[0], ps[1], ps[2]);
     fill(cyan, 100);
     showNormalToTriangle(ps[0], ps[1], ps[2], 20, 4);
   }
-
-  ps = tangentPlaneThreeCircles(c0, r0, n0, vi0, null,
-                                c2, r2, n2, vi2, null,
-                                c1, r1, n1, vi1, null);
+  ps = tangentPlaneThreeCircles(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
+                                rs.centers[2], rs.radii[2], rs.normals[2], rs.xAxes[2], rs.yAxes[2],
+                                rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1],
+                                null);
   {
     fill(purple, 180);
     showTriangle(ps[0], ps[1], ps[2]);
@@ -451,22 +460,35 @@ void tangentPlaneThreeCirclesTest() {
 void exactCHThreeCirclesTest() {
   assert rs.nRings >= 3;
   rs.generatePoints(attenuation);
-  assert rs.points != null && rs.centers != null && rs.radii != null;
+  assert rs.points != null && rs.centers != null &&
+         rs.radii != null && rs.sameRadius == false;
+  exactCHThreeCircles(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
+                      rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1],
+                      rs.centers[2], rs.radii[2], rs.normals[2], rs.xAxes[2], rs.yAxes[2]);
+}
 
-  pt c0 = rs.centers[0];
-  pt c1 = rs.centers[1];
-  pt c2 = rs.centers[2];
-  float r0 = rs.radii[0];
-  float r1 = rs.radii[1];
-  float r2 = rs.radii[2];
-  vec n0 = U(rs.c, c0);
-  vec n1 = U(rs.c, c1);
-  vec n2 = U(rs.c, c2);
-  vec vi0 = rs.xAxes[0];
-  vec vi1 = rs.xAxes[1];
-  vec vi2 = rs.xAxes[2];
-  exactCHThreeCircles(c0, r0, n0, vi0, null,
-                      c1, r1, n1, vi1, null,
-                      c2, r2, n2, vi2, null);
-
+void threeRingTriangleTest() {
+  rs.generatePoints(attenuation);
+  if (showRingSet) rs.showRings();
+  if (generateCH) {
+    pt[] pointArray = rs.get1DPointArray();
+    if (regenerateCH) {
+      long startTime = System.nanoTime();
+      rs.generateThreeRingTriangles();
+      long endTime = System.nanoTime();
+      timeTM = (endTime - startTime) / 1000000.0;
+    }
+    numTriangles = 0;
+    assert rs.threeRingTriangles != null;
+    fill(red);
+    stroke(0);
+    strokeWeight(2);
+    showTriangles(rs.threeRingTriangles, pointArray);
+    fill(#0AED62, 100);  // light green
+    noStroke();
+    showTriangleNormals(rs.threeRingTriangles, pointArray);
+    numTriangles += rs.threeRingTriangles.size();
+  } else {
+    numTriangles = -1;
+  }
 }

@@ -7,9 +7,13 @@
  ******************************************************************************/
 
 
-boolean show3T = true;
-boolean show2T = true;
 int methodEP = 0;  // 0: basic, 1: heuristic normal, 2: heuristic plane
+
+
+class DebugEPInfo {
+  int iter = 0;
+  DebugEPInfo() {}
+}
 
 
 /*
@@ -253,7 +257,8 @@ pt[] pivotPlaneAroundLineHitCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec
  */
 pt[] tangentPlaneThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
                               pt c1, float r1, vec n1, vec vi1, vec vj1,
-                              pt c2, float r2, vec n2, vec vi2, vec vj2) {
+                              pt c2, float r2, vec n2, vec vi2, vec vj2,
+                              DebugEPInfo dInfo) {
   if (vi0 == null) vi0 = constructNormal(n0);
   if (vj0 == null) vj0 = N(n0, vi0);
   if (vi1 == null) vi1 = constructNormal(n1);
@@ -349,6 +354,8 @@ pt[] tangentPlaneThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     iter++;
   }  // end while
   // println("iter =", iter);
+  if (dInfo != null) dInfo.iter = iter;
+
   pt[] ps = new pt[3];
   ps[0] = p0;
   ps[1] = p1;
@@ -373,9 +380,9 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
 
   ArrayList<pt> points = new ArrayList<pt>();
   pt[] ps;
-  ps = tangentPlaneThreeCircles(c0, r0, n0, vi0, vj0, c1, r1, n1, vi1, vj1, c2, r2, n2, vi2, vj2);
+  ps = tangentPlaneThreeCircles(c0, r0, n0, vi0, vj0, c1, r1, n1, vi1, vj1, c2, r2, n2, vi2, vj2, null);
   for (pt p : ps) points.add(p);
-  ps = tangentPlaneThreeCircles(c0, r0, n0, vi0, vj0, c2, r2, n2, vi2, vj2, c1, r1, n1, vi1, vj1);
+  ps = tangentPlaneThreeCircles(c0, r0, n0, vi0, vj0, c2, r2, n2, vi2, vj2, c1, r1, n1, vi1, vj1, null);
   for (pt p : ps) points.add(p);
 
   int[] oppo = {3, 5, 4};
@@ -441,7 +448,7 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     disk(c2, n2, r2);
   }
   assert points.size() == 6 * nSamples;
-  if (show3T) {
+  if (show3RT) {
     fill(orange, 100);
     showTriangle(points.get(0), points.get(1), points.get(2));
     showTriangle(points.get(3), points.get(4), points.get(5));
@@ -449,7 +456,7 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     showNormalToTriangle(points.get(0), points.get(1), points.get(2), 20, 2);
     showNormalToTriangle(points.get(3), points.get(4), points.get(5), 20, 2);
   }
-  if (show2T) {
+  if (show2RT) {
     fill(purple, 100);
     stroke(0);
     strokeWeight(2);

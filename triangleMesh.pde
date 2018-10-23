@@ -2,6 +2,7 @@
  * Triangle mesh processing.
  ******************************************************************************/
 
+
 int nextCorner(int cid) {
     return cid - (cid % 3) + (cid + 1) % 3;
 }
@@ -45,15 +46,6 @@ class TriangleMesh {
     nt = this.triangles.size();
     setupOppositeTable();
   }
-
-  // TriangleMesh(ArrayList<pt> positions, ArrayList<Triangle> triangles,
-  //              ArrayList<Integer> oppositeTable) {
-  //   this.positions = positions;
-  //   this.triangles = triangles;
-  //   nv = this.positions.size();
-  //   nt = this.triangles.size();
-  //   this.oppositeTable = oppositeTable;
-  // }
 
   TriangleMesh(pt[] positionArray, ArrayList<Triangle> triangles) {
     nv = positionArray.length;

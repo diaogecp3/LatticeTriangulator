@@ -4,25 +4,26 @@ import processing.pdf.*;
 /*
  * 0: one convex-hull test
  * 1: one convex-hull-with-holes test
- * 2: one fast-convex-hull-with-holes test
+ * 2: one ring-set-triangulation test (2 methods)
  * 3: one subdivision test
  * 4: one hub test
  * 5: one pivot-plane-around-line-until-hit-circle test
- * 6: one tangent-plane-of-three-circles test
+ * 6: one tangent-plane-of-three-circles test (3 initialization methods)
  * 7: one exact-convex-hull-for-three-circles test
+ * 8: one three-ring-triangle test
  * ...
  * 10: many convex-hull tests
- * 11: many convex-hull-with-holes tests
+ * 11: many ring-set-triangulation tests
  * 12: many three-ring-triangle tests
  * 13: many extreme-plane tests
  * ...
  * 20: one circle-plane-intersection test
  */
-int test = 2;
+int test = 13;
 
-int inputMethodPointSet = 1;  // 0: read from file, 1: generate randomly
-int inputMethodRingSet = 1;  // 0: read from file, 1: generate randomly
-int inputMethodHub = 1;  // 0: read from file, 1: generate randomly
+int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
+int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
+int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
 
 boolean showYellowSphere = false;
 boolean generateCH = false;
@@ -63,7 +64,7 @@ int nNeighbors = 2;
 Hub hub;
 
 int numTriangles = -1;
-float timeCH = 0.0;
+float timeTM = 0.0;
 float timeSD = 0.0;
 
 void setup() {
@@ -97,8 +98,8 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-      rs.load("data/rs_unnamed");
-      //rs.load("data/ring_set/rs_medium_0");
+      //rs.load("data/rs_unnamed");
+      rs.load("data/ring_set/rs_medium_0");
       //rs.loadRings("data/ring_set/rs_3rt_bfs_null_1");
       //rs.loadRings("data/ring_set/rs_3rt_penetration_1");
       //rs.loadRings("data/ring_set/rs_3rt_wrong_fix_2");
@@ -189,7 +190,7 @@ void draw() {
       convexHullWithHolesTest();
       break;
     case 2:
-      fastConvexHullWithHolesTest();
+      ringSetTriangulationTest();
       break;
     case 3:
       subdivisionTest();
@@ -206,12 +207,14 @@ void draw() {
     case 7:
       exactCHThreeCirclesTest();
       break;
-
+    case 8:
+      threeRingTriangleTest();
+      break;
     case 10:  // many convex-hull tests
       convexHullTests(numTests, numPointsPerTest);
       break;
-    case 11:  // many convex-hull-with-holes tests
-      convexHullWithHolesTests(numTests, numRings, numPointsPerRing, attenuation);
+    case 11:  // many ring-set-triangulation tests
+      ringSetTriangulationTests(numTests, numRings, numPointsPerRing, attenuation);
       break;
     case 12:  // many three-ring-triangle tests
       threeRingTriangleTests(numTests, numPointsPerRing, attenuation);
@@ -253,7 +256,7 @@ void draw() {
   scribeHeader("number of faces I enter = " + numFaces, 3);
   if (numTriangles != -1) {
     scribeHeader("number of triangles = " + numTriangles, 4);
-    scribeHeader("time for convex hull generation = " + timeCH + "ms", 5);
+    scribeHeader("time for triangle mesh generation = " + timeTM + "ms", 5);
   }
   if (test == 3 && subdivisionTimes > 0) {
     scribeHeader("time for subdivision = " + timeSD + "ms", 6);
@@ -262,7 +265,7 @@ void draw() {
     scribeHeader("number of steps for a three-ring triangle = " + numSteps3RT, 7);
   }
   scribeHeader("regenerate = " + str(regenerateCH), 8);
-  scribeHeader("fix penetration among 3-ring triangles = " + str(fix3RTPenetration), 9);
+  scribeHeader("fix penetration among 3-ring triangles = " + str(fix3RT), 9);
   // show menu at bottom, only if not filming
   if (scribeText && !filming) displayFooter();
   if (animating) {  // periodic change of time
@@ -365,19 +368,21 @@ void keyPressed() {
   }
   if (key == '2') {
     show2RT = !show2RT;
-    if (show2RT) fix3RTPenetration = true;
-    else fix3RTPenetration = false;
-    show2T = !show2T;
+    fix3RT = show2RT;
   }
   if (key == '3') {
     show3RT = !show3RT;
-    fix3RTPenetration = !fix3RTPenetration;
-    show3T = !show3T;
   }
 
   if (key == '[') attenuation = min(1.0, attenuation + attenuationDelta);
   if (key == ']') attenuation = max(attenuationMin, attenuation - attenuationDelta);
-  if (key == 'g') { showRingSet = !showRingSet; showPointSet = !showPointSet; }
+  if (key == 'g') {
+    showRingSet = !showRingSet;
+    showPointSet = !showPointSet;
+  }
+  if (key == 'f' && test == 8) {
+    fix3RT = !fix3RT;
+  }
   if (key == 'm') {
     if (methodTM == 0) methodTM = 1;
     else {

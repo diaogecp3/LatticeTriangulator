@@ -12,7 +12,7 @@ import java.util.Queue;
 
 boolean debug3RT = false;
 boolean debug2RT = false;
-boolean fix3RTPenetration = false;
+boolean fix3RT = false;
 boolean show2RT = false;
 boolean show3RT = true;
 int numFaces3RT = 1;
@@ -466,7 +466,8 @@ class RingSet {
     vec[] vjs = {yAxes[rid0], yAxes[rid1], yAxes[rid2]};
     pt[] ps = tangentPlaneThreeCircles(cs[0], rs[0], ns[0], vis[0], vjs[0],
                                        cs[1], rs[1], ns[1], vis[1], vjs[1],
-                                       cs[2], rs[2], ns[2], vis[2], vjs[2]);
+                                       cs[2], rs[2], ns[2], vis[2], vjs[2],
+                                       null);
 
     float da = TWO_PI / nPointsPerRing;
     int[][] candidates = new int[3][2];
@@ -748,7 +749,7 @@ class RingSet {
       }
     }  // end for
 
-    if (fix3RTPenetration) {
+    if (fix3RT) {
       fixPenetration3RT();
     }
   }
@@ -834,8 +835,8 @@ class RingSet {
     triangles = generateConvexHull(points, nRings, nPointsPerRing);
   }
 
-  private void generateTriangleMeshFast() { //<>//
-    if (!debug2RT || show2RT) fix3RTPenetration = true;
+  private void generateTriangleMeshFast() {
+    if (!debug2RT || show2RT) fix3RT = true;
     generateThreeRingTriangles();
     if (!debug2RT || show2RT) {
       generateTwoRingTriangles();
@@ -865,25 +866,11 @@ class RingSet {
   /*
    * Generate an extreme triangle touching three rings given the three ring IDs.
    */
-  pt[] generateExtremePlaneThreeRings(int rid0, int rid1, int rid2) {
-    pt c0 = centers[rid0];
-    pt c1 = centers[rid1];
-    pt c2 = centers[rid2];
-    float r0 = radii[rid0];
-    float r1 = radii[rid1];
-    float r2 = radii[rid2];
-    vec n0 = normals[rid0];
-    vec n1 = normals[rid1];
-    vec n2 = normals[rid2];
-    vec vi0 = xAxes[0];
-    vec vi1 = xAxes[1];
-    vec vi2 = xAxes[2];
-    vec vj0 = yAxes[0];
-    vec vj1 = yAxes[1];
-    vec vj2 = yAxes[2];
-    return tangentPlaneThreeCircles(c0, r0, n0, vi0, vj0,
-                                    c1, r1, n1, vi1, vj1,
-                                    c2, r2, n2, vi2, vj2);
+  pt[] generateExtremePlaneThreeRings(int i, int j, int k, DebugEPInfo dInfo) {
+    return tangentPlaneThreeCircles(centers[i], radii[i], normals[i], xAxes[i], yAxes[i],
+                                    centers[j], radii[j], normals[j], xAxes[j], yAxes[j],
+                                    centers[k], radii[k], normals[k], xAxes[k], yAxes[k],
+                                    dInfo);
   }
 
   void showRings() {
