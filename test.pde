@@ -377,21 +377,23 @@ void hubTest() {
 void pivotPlaneAroundLineHitCircleTest() {
   assert rs.nRings >= 3;
   rs.generatePoints(attenuation);
-  assert rs.points != null && rs.centers != null && rs.radii != null;
+  assert rs.points != null && rs.centers != null && rs.normals != null && rs.radii != null;
   pt c = rs.centers[0];
   float r = rs.radii[0];
-  vec n = U(rs.c, c);
+  vec n = rs.normals[0];
   pt a = rs.points[1][0];
   pt b = rs.points[2][0];
-  pt[] contacts = pivotPlaneAroundLineHitCircle(c, r, n, a, b, null, null);
+  pt[] contacts = pivotPlaneAroundLineHitCircle(c, r, n, a, b, rs.xAxes[0], rs.yAxes[0]);
   assert contacts != null && contacts.length == 2;
 
-  vec t0 = U(N(n, V(c, contacts[0])));
-  vec t1 = U(N(n, V(c, contacts[1])));
-  vec n0 = U(N(a, b, contacts[0]));
-  vec n1 = U(N(a, b, contacts[1]));
-  println("dot(n0, t0) =", dot(n0, t0), "(shoule be close to 0)");
-  println("dot(n1, t1) =", dot(n1, t1), "(shoule be close to 0)");
+  {
+    vec t0 = U(N(n, V(c, contacts[0])));
+    vec t1 = U(N(n, V(c, contacts[1])));
+    vec n0 = U(N(a, b, contacts[0]));
+    vec n1 = U(N(a, b, contacts[1]));
+    println("dot(n0, t0) =", dot(n0, t0), "(shoule be close to 0)");
+    println("dot(n1, t1) =", dot(n1, t1), "(shoule be close to 0)");
+  }
 
   fill(orange, 100);
   showTriangle(a, b, contacts[0]);
@@ -416,6 +418,29 @@ void pivotPlaneAroundLineHitCircleTest() {
     // vec normal1 = A(cp1, alpha1, n);
     // showPlane(contacts[1], normal1, 20);
   }
+}
+
+void exactCHEdgeCircleTest() {
+  // assert rs.nRings >= 3;
+  // rs.generatePoints(attenuation);
+  // assert rs.points != null && rs.centers != null && rs.normals != null &&
+  //        rs.radii != null && rs.sameRadius == false;
+  // exactCHEdgeCircle(rs.points[1][0], rs.points[2][0], rs.centers[0], rs.radii[0],
+  //                   rs.normals[0], rs.xAxes[0], rs.yAxes[0]);
+
+  {
+    assert ec != null;
+    exactCHEdgeCircle(ec.a, ec.b, ec.c, ec.r, ec.n, ec.vi, ec.vj);
+  }
+}
+
+void exactCHTwoCirclesTest() {
+  assert rs.nRings >= 2;
+  rs.generatePoints(attenuation);
+  assert rs.points != null && rs.centers != null && rs.normals != null &&
+         rs.radii != null && rs.sameRadius == false;
+  exactCHTwoCircles(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
+                      rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1]);
 }
 
 void tangentPlaneThreeCirclesTest() {

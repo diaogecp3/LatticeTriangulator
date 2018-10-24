@@ -282,3 +282,53 @@ class vec2 {
     return this;
   }
 }
+
+class EdgeCircle {
+  pt a, b, c;
+  float r;
+  vec n, vi, vj;
+  EdgeCircle() {}
+  void init() {
+    c = generateOnePointOnSphere(centerOfSphere, 0.5 * radiusOfSphere);
+    n = U(centerOfSphere, c);
+    r = random(30, 50);
+    a = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
+    while (isAbsZero(dot(V(c, a), n))) a = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
+    b = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
+    while (isAbsZero(dot(V(c, b), n))) b = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
+    vi = constructNormal(n);
+    vj = N(n, vi);
+  }
+
+  void save(String file) {
+    String[] lines = new String[7];
+    int i = 0;
+    lines[i++] = str(a.x) + "," + str(a.y) + "," + str(a.z);
+    lines[i++] = str(b.x) + "," + str(b.y) + "," + str(b.z);
+    lines[i++] = str(c.x) + "," + str(c.y) + "," + str(c.z);
+    lines[i++] = str(r);
+    lines[i++] = str(n.x) + "," + str(n.y) + "," + str(n.z);
+    lines[i++] = str(vi.x) + "," + str(vi.y) + "," + str(vi.z);
+    lines[i++] = str(vj.x) + "," + str(vj.y) + "," + str(vj.z);
+    saveStrings(file, lines);
+    return;
+  }
+
+  void load(String file) {
+    String[] lines = loadStrings(file);
+    int i = 0;
+    float[] tmp = float(split(lines[i++], ","));
+    a = new pt(tmp[0], tmp[1], tmp[2]);
+    tmp = float(split(lines[i++], ","));
+    b = new pt(tmp[0], tmp[1], tmp[2]);
+    tmp = float(split(lines[i++], ","));
+    c = new pt(tmp[0], tmp[1], tmp[2]);
+    r = float(lines[i++]);
+    tmp = float(split(lines[i++], ","));
+    n = new vec(tmp[0], tmp[1], tmp[2]);
+    tmp = float(split(lines[i++], ","));
+    vi = new vec(tmp[0], tmp[1], tmp[2]);
+    tmp = float(split(lines[i++], ","));
+    vj = new vec(tmp[0], tmp[1], tmp[2]);
+  }
+}

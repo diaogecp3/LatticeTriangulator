@@ -51,3 +51,6 @@ the plane is wrong, why?
 
 In rs_3rt_bfs_null_1:
 naive 3RT method fails.
+
+In rs_exact_CH_edge_circle_0, 1:
+the generated CH is wrong

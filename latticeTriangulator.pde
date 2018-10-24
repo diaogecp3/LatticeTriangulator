@@ -8,22 +8,26 @@ import processing.pdf.*;
  * 3: one subdivision test
  * 4: one hub test
  * 5: one pivot-plane-around-line-until-hit-circle test
- * 6: one tangent-plane-of-three-circles test (3 initialization methods)
- * 7: one exact-convex-hull-for-three-circles test
- * 8: one three-ring-triangle test
+ * 6: one exact-convex-hull-for-edge-circle test
+ * 7: one exact-convex-hull-for-two-circles test
+ * 8: one tangent-plane-of-three-circles test (3 initialization methods)
+ * 9: one exact-convex-hull-for-three-circles test
+ * 10: one three-ring-triangle test
  * ...
- * 10: many convex-hull tests
- * 11: many ring-set-triangulation tests
- * 12: many three-ring-triangle tests
- * 13: many extreme-plane tests
+ * 100: many convex-hull tests
+ * 101: many ring-set-triangulation tests
+ * 102: many three-ring-triangle tests
+ * 103: many extreme-plane tests
  * ...
  * 20: one circle-plane-intersection test
  */
-int test = 13;
+int test = 6;
+
 
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
-int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
+int inputMethodRingSet = 1;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
+int inputMethodEdgeCircle = 0;  // 0: read from file, 1: generate randomly
 
 boolean showYellowSphere = false;
 boolean generateCH = false;
@@ -54,14 +58,16 @@ float rMax = 50;
 float attenuationMin = 0.05;
 float attenuationDelta = 0.05;
 float attenuation = 1.0;
-int numRings = 8;
-int numPointsPerRing = 8;
+int numRings = 4;
+int numPointsPerRing = 6;
 RingSet rs;
 
 float r0 = 20;
 float r1 = 80;
 int nNeighbors = 2;
 Hub hub;
+
+EdgeCircle ec;
 
 int numTriangles = -1;
 float timeTM = 0.0;
@@ -76,7 +82,7 @@ void setup() {
 
   P.declare();
 
-  if (test >= 10 && test < 20) {
+  if (test >= 100) {
     noLoop();
     debugCH = false;
     debug3RT = false;
@@ -99,13 +105,13 @@ void setup() {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
       //rs.load("data/rs_unnamed");
-      rs.load("data/ring_set/rs_medium_0");
-      //rs.loadRings("data/ring_set/rs_3rt_bfs_null_1");
-      //rs.loadRings("data/ring_set/rs_3rt_penetration_1");
-      //rs.loadRings("data/ring_set/rs_3rt_wrong_fix_2");
-      //rs.loadRings("data/ring_set/rs_2rt_fail");
-      //rs.loadRings("data/ring_set/rs_plane_line_circle_0");
-      //rs.loadRings("data/ring_set/rs_exact_CH_0");
+      //rs.load("data/ring_set/rs_medium_0");
+      //rs.load("data/ring_set/rs_3rt_bfs_null_1");
+      //rs.load("data/ring_set/rs_3rt_penetration_1");
+      //rs.load("data/ring_set/rs_3rt_wrong_fix_2");
+      //rs.load("data/ring_set/rs_2rt_fail");
+      //rs.load("data/ring_set/rs_plane_line_circle_0");
+      rs.load("data/ring_set/rs_exact_CH_edge_circle_0");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,
@@ -124,6 +130,20 @@ void setup() {
       break;
     case 1:  // generate randomly
       hub = generateHub(centerOfSphere, r0, r1, nNeighbors);
+      break;
+    default:
+      println("Please use a valid input method for hub");
+      exit();
+  }
+
+  switch (inputMethodEdgeCircle) {
+    case 0:
+      ec = new EdgeCircle();
+      ec.load("data/edge_circle/ec_0");
+      break;
+    case 1:
+      ec = new EdgeCircle();
+      ec.init();
       break;
     default:
       println("Please use a valid input method for hub");
@@ -202,24 +222,31 @@ void draw() {
       pivotPlaneAroundLineHitCircleTest();
       break;
     case 6:
-      tangentPlaneThreeCirclesTest();
+      exactCHEdgeCircleTest();
       break;
     case 7:
-      exactCHThreeCirclesTest();
+      exactCHTwoCirclesTest();
       break;
     case 8:
+      tangentPlaneThreeCirclesTest();
+      break;
+    case 9:
+      exactCHThreeCirclesTest();
+      break;
+    case 10:
       threeRingTriangleTest();
       break;
-    case 10:  // many convex-hull tests
+
+    case 100:  // many convex-hull tests
       convexHullTests(numTests, numPointsPerTest);
       break;
-    case 11:  // many ring-set-triangulation tests
+    case 101:  // many ring-set-triangulation tests
       ringSetTriangulationTests(numTests, numRings, numPointsPerRing, attenuation);
       break;
-    case 12:  // many three-ring-triangle tests
+    case 102:  // many three-ring-triangle tests
       threeRingTriangleTests(numTests, numPointsPerRing, attenuation);
       break;
-    case 13:  // many extreme-plane(-of-three-circles) tests
+    case 103:  // many extreme-plane(-of-three-circles) tests
       extremePlaneTests(numTests, attenuation);
       break;
 
@@ -302,11 +329,13 @@ void keyPressed() {
     P.savePts("data/pts_unnamed");
     rs.save("data/rs_unnamed");
     hub.save("data/hub_unnamed");
+    ec.save("data/ec_unnamed");
   }
   if (key == 'l') {  // load data
     P.loadPts("data/pts_unnamed");
     rs.load("data/rs_unnamed");
     hub.load("data/hub.unnamed");
+    ec.load("data/ec_unnamed");
   }
   // if (key == 'a') animating = !animating; // toggle animation
   if (key == ',') viewpoint = true;
@@ -380,7 +409,7 @@ void keyPressed() {
     showRingSet = !showRingSet;
     showPointSet = !showPointSet;
   }
-  if (key == 'f' && test == 8) {
+  if (key == 'f' && test == 10) {
     fix3RT = !fix3RT;
   }
   if (key == 'm') {

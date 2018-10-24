@@ -12,6 +12,20 @@ pt generateOnePointOnSphere(pt c, float r) {
   return new pt(c.x + dx, c.y + dy, c.z + dz);
 }
 
+pt generateOnePointInsideSphere(pt c, float r) {
+  pt p = new pt();
+  float r2 = r * r;
+  int k = 100, i = 0;
+  while (i < k) {
+    p.x = random(c.x - r, c.x + r);
+    p.y = random(c.y - r, c.y + r);
+    p.z = random(c.z - r, c.z + r);
+    if (n2(V(c, p)) <= r2) return p;
+    i++;
+  }
+  return p;
+}
+
 pt[] generatePointsOnSphere(pt c, float r, int n) {
   pt[] points = new pt[n];
   for (int i = 0; i < n; ++i) {

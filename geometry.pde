@@ -15,7 +15,6 @@ class DebugEPInfo {
   DebugEPInfo() {}
 }
 
-
 /*
  * Construct the normal to triangle (A, B, C).
  */
@@ -250,6 +249,187 @@ pt[] pivotPlaneAroundLineHitCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec
 }
 
 /*
+ * Construct and show the exact convex hull defined by an edge (a, b) and a
+ * circle (c, r, n). (vi, vj), which is optional, is local frame on the circle.
+ */
+void exactCHEdgeCircle(pt a, pt b, pt c, float r, vec n, vec vi, vec vj) {
+  if (vi == null) vi = constructNormal(n);
+  if (vj == null) vj = N(n, vi);
+  vec ca = V(c, a);
+  vec cb = V(c, b);
+  pt[] ps = pivotPlaneAroundLineHitCircle(c, r, n, a, b, vi, vj);
+
+  int nSamples = 16;
+  float da = TWO_PI / nSamples;
+  int nSamples0 = -1;
+  int nSamples1 = -1;
+  ArrayList<pt> points = new ArrayList<pt>();
+  float dnca = dot(n, ca);
+  float dncb = dot(n, cb);
+  if (dnca * dncb > 0) {  // a and b on the same side of plane (c, n)
+    // println("A and B on the same side of plane (C, N)");
+    if (dnca > 0) {  // a and b on the positive side of plane (c, n)
+      n.rev();
+      vj.rev();
+    }
+    vec ab = V(a, b);
+    if (dot(ab, n) < 0) {  // make sure dot(ab, n) >= 0
+      pt tmp = a;
+      a = b;
+      b = tmp;
+      ab.rev();
+      // Do we need ca and cb any more? If yes, then we need to swap them.
+    }
+    if (dot(ab, N(b, ps[0], ps[1])) < 0) {  // make sure a is on the positive side of plane (b, ps[0], ps[1])
+      pt tmp = ps[0];
+      ps[0] = ps[1];
+      ps[1] = tmp;
+    }
+    vec v0 = V(c, ps[0]);
+    vec v1 = V(c, ps[1]);
+    float angle0 = acos(dot(v0, vi) / r);
+    if (dot(v0, vj) < 0) angle0 = TWO_PI - angle0;
+    float angle1 = acos(dot(v1, vi) / r);
+    if (dot(v1, vj) < 0) angle1 = TWO_PI - angle1;
+    float angle01 = acos(dot(v0, v1) / (r * r));
+    if (dot(N(v0, v1), n) < 0) angle01 = TWO_PI - angle01;
+    float angle10 = TWO_PI - angle01;
+
+    // connect arc ps[1]-ps[0] (w.r.t. -n) to a
+    float angle = angle1;
+    nSamples0 = int(angle01 / da);  // note that here we use angle01
+    for (int i = 1; i < nSamples0; ++i) {  // insert nSamples0 - 1 points
+      angle -= da;  // notice here we use minus!
+      points.add(P(c, r * cos(angle), vi, r * sin(angle), vj));
+    }
+
+    // connect arc ps[0]-ps[1] (w.r.t. -n) to b
+    angle = angle0;
+    nSamples1 = int(angle10 / da);
+    for (int i = 1; i < nSamples1; ++i) {  // insert nSamples1 - 1 points
+      angle -= da;  // notice here we use minus!
+      points.add(P(c, r * cos(angle), vi, r * sin(angle), vj));
+    }
+
+    {
+      fill(magenta, 200);
+      beginShape(TRIANGLE_FAN);
+      vertex(a);
+      vertex(ps[1]);
+      for (int i = 0; i < nSamples0 - 1; ++i) vertex(points.get(i));
+      vertex(ps[0]);
+      endShape();
+      show(ps[1], 5);
+
+      fill(orange, 200);
+      beginShape(TRIANGLE_FAN);
+      vertex(b);
+      vertex(ps[0]);
+      for (int i = nSamples0 - 1; i < points.size(); ++i) vertex(points.get(i));
+      vertex(ps[1]);
+      endShape();
+      show(ps[0], 5);
+
+      fill(cyan, 200);
+      showTriangle(a, b, ps[1]);
+      showTriangle(a, ps[0], b);
+    }
+  } else if (dnca * dncb < 0) {  // a and b on the different side of plane (c, n)
+    if (emptyIntersectionLineDisk(a, b, c, r, n)) {
+      println("A and B on different side of plane (C, N) but AB doesn't intersect disk C");
+      if (dnca > 0) {
+        pt tmp = a;
+        a = b;
+        b = tmp;
+      }
+      vec ab = V(a, b);
+      if (dot(ab, N(b, ps[0], ps[1])) < 0) {  // make sure a is on the positive side of plane (b, ps[0], ps[1])
+        pt tmp = ps[0];
+        ps[0] = ps[1];
+        ps[1] = tmp;
+      }
+      vec v0 = V(c, ps[0]);
+      vec v1 = V(c, ps[1]);
+      float angle0 = acos(dot(v0, vi) / r);
+      if (dot(v0, vj) < 0) angle0 = TWO_PI - angle0;
+      float angle1 = acos(dot(v1, vi) / r);
+      if (dot(v1, vj) < 0) angle1 = TWO_PI - angle1;
+      float angle01 = acos(dot(v0, v1) / (r * r));
+      if (dot(N(v0, v1), n) < 0) angle01 = TWO_PI - angle01;
+
+      // connect arc ps[1]-ps[0] (w.r.t. -n) to a
+      float angle = angle1;
+      nSamples0 = int(angle01 / da);
+      for (int i = 1; i < nSamples0; ++i) {
+        angle -= da;
+        points.add(P(c, r * cos(angle), vi, r * sin(angle), vj));
+      }
+      // connect arc ps[0]-ps[1] (w.r.t. n) to b
+      // reuse the points generated for the previous arc
+
+      {
+        fill(magenta, 200);
+        beginShape(TRIANGLE_FAN);
+        vertex(a);
+        vertex(ps[1]);
+        for (int i = 0; i < nSamples0 - 1; ++i) vertex(points.get(i));
+        vertex(ps[0]);
+        endShape();
+        show(ps[1], 5);
+
+        fill(orange, 200);
+        beginShape(TRIANGLE_FAN);
+        vertex(b);
+        vertex(ps[0]);
+        for (int i = nSamples0 - 2; i >= 0; --i) vertex(points.get(i));
+        vertex(ps[1]);
+        endShape();
+        show(ps[0], 5);
+
+        fill(cyan, 200);
+        showTriangle(a, b, ps[1]);
+        showTriangle(a, ps[0], b);
+      }
+    } else {  // line (a, b) intersects disk (c, r, n)
+      println("A and B on different side of plane (C, N) and AB intersects disk C");
+      if (dnca > 0) {
+        pt tmp = a;
+        a = b;
+        b = tmp;
+      }
+      float angle = 0;
+      for (int i = 0; i < nSamples; ++i, angle += da) {
+        points.add(P(c, r * cos(angle), vi, r * sin(angle), vj));
+      }
+      {
+        fill(magenta, 200);
+        beginShape(TRIANGLE_FAN);
+        vertex(a);
+        for (int i = nSamples - 1; i >= 0; --i) vertex(points.get(i));
+        vertex(points.get(nSamples - 1));
+        endShape();
+
+        fill(orange, 200);
+        beginShape(TRIANGLE_FAN);
+        vertex(b);
+        for (int i = 0; i < nSamples; ++i) vertex(points.get(i));
+        vertex(points.get(0));
+        endShape();
+      }
+    }
+  }
+
+  {
+    fill(red, 200);
+    disk(c, n, r);
+    fill(green, 200);
+    show(a, 5);
+    fill(blue, 200);
+    show(b, 5);
+  }
+}
+
+/*
  * Return the points of contact that define the tangent plane of the three
  * circles (c0, r0, n0), (c1, r1, n1), and (c2, r2, n2). (vi0, vj0), (vi1, vj1),
  * (vi2, vj2), which are optional, are local frames on the three circles,
@@ -364,6 +544,57 @@ pt[] tangentPlaneThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
 }
 
 /*
+ * Construct and show the exact convex hull defined by two circles (c0, r0, n0)
+ * and (c1, r1, n2). (vi0, vj0) and (vi1, vj1), which are optional, are local
+ * frames on the two circles, respectively.
+ */
+void exactCHTwoCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
+                       pt c1, float r1, vec n1, vec vi1, vec vj1) {
+  if (vi0 == null) vi0 = constructNormal(n0);
+  if (vj0 == null) vj0 = N(n0, vi0);
+  if (vi1 == null) vi1 = constructNormal(n1);
+  if (vj1 == null) vj1 = N(n1, vi1);
+
+  int nSamples = 16;
+  ArrayList<pt> points = new ArrayList<pt>();
+  float da = TWO_PI / nSamples;
+  float a = 0;
+  for (int i = 0; i < nSamples; ++i, a += da) {
+    float s = sin(a);
+    float c = cos(a);
+    pt p0 = P(c0, r0 * c, vi0, r0 * s, vj0);
+    pt p1 = P(p0, -r0 * s, vi0, r0 * c, vj0);
+    pt[] candidates = pivotPlaneAroundLineHitCircle(c1, r1, n1, p0, p1, vi1, vj1);
+    pt candidate = candidates[0];
+    if (dot(V(p0, c1), N(p0, candidate, p1)) > 0) {
+      candidate = candidates[1];
+    }
+    points.add(p0);
+    points.add(candidate);
+  }
+
+  assert points.size() == 2 * nSamples;
+
+  // show the mesh
+  {
+    fill(red, 100);
+    disk(c0, n0, r0);
+    fill(green, 100);
+    disk(c1, n1, r1);
+  }
+  {
+    fill(purple, 100);
+    stroke(0);
+    strokeWeight(2);
+    beginShape(QUAD_STRIP);
+    for (pt p : points) vertex(p);
+    vertex(points.get(0));
+    vertex(points.get(1));
+    endShape();
+  }
+}
+
+/*
  * Construct and show the exact convex hull defined by three circles (c0, r0, n0),
  * (c1, r1, n2), and (c2, r2, n2). (vi0, vj0), (vi1, vj1), (vi2, vj2), which are
  * optional, are local frames on the three circles, respectively.
@@ -428,8 +659,8 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     for (int k = 1; k < nSamples; ++k) {
       angle += da;
       float c = cos(angle), s = sin(angle);
-      pt p0 = P(cb, rb * c, vib, rb * s, vjb);
-      pt p1 = P(p0, -rb * s, vib, rb * c, vjb);
+      pt p0 = P(cb, rb * c, vib, rb * s, vjb);  // sampled point
+      pt p1 = P(p0, -rb * s, vib, rb * c, vjb);  // sampled point + tangent at that point
       pt[] candidates = pivotPlaneAroundLineHitCircle(ca, ra, na, p0, p1, via, vja);
       pt candidate = candidates[0];
       if (dot(V(p0, ca), N(p0, candidate, p1)) > 0) {
@@ -461,7 +692,7 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     stroke(0);
     strokeWeight(2);
     for (int i = 0; i < 3; ++i) {
-      beginShape(TRIANGLE_STRIP);
+      beginShape(QUAD_STRIP);
       int ia = correspondences[i][0];
       int ib = correspondences[i][1];
       vertex(points.get(ia));

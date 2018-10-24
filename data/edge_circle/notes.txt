@@ -1,0 +1,3 @@
+ec_0:
+A good example to illustrate the case: A and B on different side of plane (C, N) but
+AB doesn't intersect disk C.
