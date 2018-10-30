@@ -211,7 +211,7 @@ void extremePlaneTests(int n, float attenuation) {
     ringSet.generatePoints(attenuation);
     DebugEPInfo dInfo = new DebugEPInfo();
     long st = System.nanoTime();
-    ringSet.generateExtremePlaneThreeRings(0, 1, 2, dInfo);
+    ringSet.generateExTriThreeRings(0, 1, 2, dInfo);
     long ed = System.nanoTime();
     times[i] = (ed - st) / 1000000.0;
     iters[i] = dInfo.iter;
@@ -386,23 +386,17 @@ void pivotPlaneAroundLineHitCircleTest() {
   pt[] contacts = pivotPlaneAroundLineHitCircle(c, r, n, a, b, rs.xAxes[0], rs.yAxes[0]);
   assert contacts != null && contacts.length == 2;
 
-  {
-    vec t0 = U(N(n, V(c, contacts[0])));
-    vec t1 = U(N(n, V(c, contacts[1])));
-    vec n0 = U(N(a, b, contacts[0]));
-    vec n1 = U(N(a, b, contacts[1]));
-    println("dot(n0, t0) =", dot(n0, t0), "(shoule be close to 0)");
-    println("dot(n1, t1) =", dot(n1, t1), "(shoule be close to 0)");
-  }
 
-  fill(orange, 100);
+
+  fill(purple, 200);
   showTriangle(a, b, contacts[0]);
-  fill(purple, 100);
-  showTriangle(a, b, contacts[1]);
-  fill(red);
+  // fill(purple, 100);
+  // showTriangle(a, b, contacts[1]);
+  fill(red, 200);
   disk(c, n, r);
-  fill(blue);
+  fill(green, 200);
   show(a, 3);
+  fill(blue, 200);
   show(b, 3);
 
   // show the two planes using point-normal method
@@ -417,6 +411,27 @@ void pivotPlaneAroundLineHitCircleTest() {
     // float alpha1 = -dot(cp1, ab) / dot(n, ab);
     // vec normal1 = A(cp1, alpha1, n);
     // showPlane(contacts[1], normal1, 20);
+  }
+
+  // debug/visualize construction
+  {
+    vec t0 = U(N(n, V(c, contacts[0])));
+    vec t1 = U(N(n, V(c, contacts[1])));
+    vec n0 = U(N(a, b, contacts[0]));
+    vec n1 = U(N(a, b, contacts[1]));
+    // println("dot(n0, t0) =", dot(n0, t0), "(shoule be close to 0)");
+    // println("dot(n1, t1) =", dot(n1, t1), "(shoule be close to 0)");
+
+    // show the two planes that pass through (contacts[0], contacts[0] + t0)
+    fill(pink, 200);
+    showPlane(contacts[0], U(c, contacts[0]), r+10);
+    fill(yellow, 200);
+    showPlane(contacts[0], n, r+10);
+
+    fill(cyan, 200);
+    arrow(c, V(20, n), 2);
+    fill(magenta, 200);
+    arrow(c, V(c, contacts[0]), 2);
   }
 }
 
@@ -446,7 +461,7 @@ void exactCHTwoCirclesTest() {
 void tangentPlaneThreeCirclesTest() {
   assert rs.nRings >= 3;
   rs.generatePoints(attenuation);
-  assert rs.points != null && rs.centers != null &&
+  assert rs.points != null && rs.centers != null && rs.normals != null &&
          rs.radii != null && rs.sameRadius == false;
 
   {
@@ -485,7 +500,7 @@ void tangentPlaneThreeCirclesTest() {
 void exactCHThreeCirclesTest() {
   assert rs.nRings >= 3;
   rs.generatePoints(attenuation);
-  assert rs.points != null && rs.centers != null &&
+  assert rs.points != null && rs.centers != null && rs.normals != null &&
          rs.radii != null && rs.sameRadius == false;
   exactCHThreeCircles(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
                       rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1],
@@ -516,4 +531,20 @@ void threeRingTriangleTest() {
   } else {
     numTriangles = -1;
   }
+}
+
+void exactCHAllCirclesTest() {
+  assert rs.nRings >= 3;
+  rs.generatePoints(attenuation);
+  assert rs.points != null && rs.centers != null && rs.normals != null &&
+         rs.radii != null && rs.sameRadius == false;
+
+  long startTime = System.nanoTime();
+  rs.generateExactCH();
+  long endTime = System.nanoTime();
+  timeTM = (endTime - startTime) / 1000000.0;
+
+  if (showCircleSet) rs.showCircles();
+  if (show2RT) rs.showExEdges();
+  if (show3RT) rs.showExTris();
 }

@@ -8,7 +8,7 @@ void snapPicture() {saveFrame("PICTURES/P"+nf(pictureCounter++,3)+".jpg"); }
 // ******************************************COLORS 
 color black=#000000, white=#FFFFFF, // set more colors using Menu >  Tools > Color Selector
    red=#FF0000, green=#00FF01, blue=#0300FF, yellow=#FEFF00, cyan=#00FDFF, magenta=#FF00FB,
-   grey=#818181, orange=#FFA600, brown=#B46005, metal=#B5CCDE, dgreen=#157901, purple=#AD0AFF;
+   grey=#818181, orange=#FFA600, brown=#B46005, metal=#B5CCDE, dgreen=#157901, purple=#AD0AFF, pink=#F293DA;
 void pen(color c, float w) {stroke(c); strokeWeight(w);}
 
 // ******************************** TEXT , TITLE, and USER's GUIDE

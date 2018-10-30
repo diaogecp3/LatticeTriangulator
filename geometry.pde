@@ -237,8 +237,8 @@ pt[] pivotPlaneAroundLineHitCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec
     float fb = dot(vj, v);
     thetas = solveLinearEquationInCosSin(fa, fb, r);
   } else {
-    float fa = r * dot(vi, ab);
-    float fb = r * dot(vj, ab);
+    float fa = dot(vi, ab);
+    float fb = dot(vj, ab);
     thetas = solveLinearEquationInCosSin(fa, fb, 0);
   }
 
@@ -319,7 +319,7 @@ void exactCHEdgeCircle(pt a, pt b, pt c, float r, vec n, vec vi, vec vj) {
       for (int i = 0; i < nSamples0 - 1; ++i) vertex(points.get(i));
       vertex(ps[0]);
       endShape();
-      show(ps[1], 5);
+      show(ps[1], 3);
 
       fill(orange, 200);
       beginShape(TRIANGLE_FAN);
@@ -328,7 +328,7 @@ void exactCHEdgeCircle(pt a, pt b, pt c, float r, vec n, vec vi, vec vj) {
       for (int i = nSamples0 - 1; i < points.size(); ++i) vertex(points.get(i));
       vertex(ps[1]);
       endShape();
-      show(ps[0], 5);
+      show(ps[0], 3);
 
       fill(cyan, 200);
       showTriangle(a, b, ps[1]);
@@ -375,7 +375,7 @@ void exactCHEdgeCircle(pt a, pt b, pt c, float r, vec n, vec vi, vec vj) {
         for (int i = 0; i < nSamples0 - 1; ++i) vertex(points.get(i));
         vertex(ps[0]);
         endShape();
-        show(ps[1], 5);
+        show(ps[1], 3);
 
         fill(orange, 200);
         beginShape(TRIANGLE_FAN);
@@ -384,7 +384,7 @@ void exactCHEdgeCircle(pt a, pt b, pt c, float r, vec n, vec vi, vec vj) {
         for (int i = nSamples0 - 2; i >= 0; --i) vertex(points.get(i));
         vertex(ps[1]);
         endShape();
-        show(ps[0], 5);
+        show(ps[0], 3);
 
         fill(cyan, 200);
         showTriangle(a, b, ps[1]);
@@ -423,9 +423,9 @@ void exactCHEdgeCircle(pt a, pt b, pt c, float r, vec n, vec vi, vec vj) {
     fill(red, 200);
     disk(c, n, r);
     fill(green, 200);
-    show(a, 5);
+    show(a, 3);
     fill(blue, 200);
-    show(b, 5);
+    show(b, 3);
   }
 }
 
@@ -683,9 +683,9 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     fill(orange, 100);
     showTriangle(points.get(0), points.get(1), points.get(2));
     showTriangle(points.get(3), points.get(4), points.get(5));
-    fill(cyan, 100);
-    showNormalToTriangle(points.get(0), points.get(1), points.get(2), 20, 2);
-    showNormalToTriangle(points.get(3), points.get(4), points.get(5), 20, 2);
+    // fill(cyan, 100);
+    // showNormalToTriangle(points.get(0), points.get(1), points.get(2), 20, 2);
+    // showNormalToTriangle(points.get(3), points.get(4), points.get(5), 20, 2);
   }
   if (show2RT) {
     fill(purple, 100);

@@ -15,9 +15,13 @@ Three-ring triangles fail convexity test (now succeed)
 In rs_medium_0:
 Edge flip occurs!
 4 groups are involved.
+Source of picture: CH of two circles 0.
+Source of picture: CH of three circles 0.
 
 In rs_medium_1:
 Three-ring triangles fail convexity test.
+Source of picture: CH of two circles 1.
+Source of picture: CH of three circles 1.
 
 In rs_medium_2:
 Two three-ring triangles intersect. Because the connectivity is no longer correct after we grow rings.

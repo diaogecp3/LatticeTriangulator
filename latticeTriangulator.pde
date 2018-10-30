@@ -13,6 +13,7 @@ import processing.pdf.*;
  * 8: one tangent-plane-of-three-circles test (3 initialization methods)
  * 9: one exact-convex-hull-for-three-circles test
  * 10: one three-ring-triangle test
+ * 11: one exact-convex-hull-for-all-circles test
  * ...
  * 100: many convex-hull tests
  * 101: many ring-set-triangulation tests
@@ -21,18 +22,19 @@ import processing.pdf.*;
  * ...
  * 20: one circle-plane-intersection test
  */
-int test = 6;
+int test = 11;
 
 
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
-int inputMethodRingSet = 1;  // 0: read from file, 1: generate randomly
+int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
-int inputMethodEdgeCircle = 0;  // 0: read from file, 1: generate randomly
+int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
 
 boolean showYellowSphere = false;
 boolean generateCH = false;
 boolean regenerateCH = true;  // for ring set, test shrink/grow
 boolean showRingSet = true;
+boolean showCircleSet = false;
 boolean showPointSet = true;
 int subdivisionTimes = 0;
 
@@ -58,7 +60,7 @@ float rMax = 50;
 float attenuationMin = 0.05;
 float attenuationDelta = 0.05;
 float attenuation = 1.0;
-int numRings = 4;
+int numRings = 8;
 int numPointsPerRing = 6;
 RingSet rs;
 
@@ -105,13 +107,13 @@ void setup() {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
       //rs.load("data/rs_unnamed");
-      //rs.load("data/ring_set/rs_medium_0");
+      rs.load("data/ring_set/rs_medium_0");
       //rs.load("data/ring_set/rs_3rt_bfs_null_1");
       //rs.load("data/ring_set/rs_3rt_penetration_1");
       //rs.load("data/ring_set/rs_3rt_wrong_fix_2");
       //rs.load("data/ring_set/rs_2rt_fail");
       //rs.load("data/ring_set/rs_plane_line_circle_0");
-      rs.load("data/ring_set/rs_exact_CH_edge_circle_0");
+      //rs.load("data/ring_set/rs_exact_CH_edge_circle_0");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,
@@ -194,7 +196,7 @@ void draw() {
   if (showFrame) showFrame(150); // X-red, Y-green, Z-blue arrows
 
   noStroke();
-  fill(magenta); show(centerOfSphere, 4); // show center of the sphere
+  //fill(magenta); show(centerOfSphere, 4); // show center of the sphere
   Pick = pick(mouseX,mouseY);
 
   if (picking) {
@@ -235,6 +237,9 @@ void draw() {
       break;
     case 10:
       threeRingTriangleTest();
+      break;
+    case 11:
+      exactCHAllCirclesTest();
       break;
 
     case 100:  // many convex-hull tests
@@ -279,20 +284,20 @@ void draw() {
     displayHeader();
   }
   // display anything related to my project
-  scribeHeader("debug = " + str(debugCH), 2);
-  scribeHeader("number of faces I enter = " + numFaces, 3);
+  //scribeHeader("debug = " + str(debugCH), 2);
+  //scribeHeader("number of faces I enter = " + numFaces, 3);
   if (numTriangles != -1) {
     scribeHeader("number of triangles = " + numTriangles, 4);
-    scribeHeader("time for triangle mesh generation = " + timeTM + "ms", 5);
   }
+  scribeHeader("time for triangle mesh generation = " + timeTM + "ms", 5);
   if (test == 3 && subdivisionTimes > 0) {
     scribeHeader("time for subdivision = " + timeSD + "ms", 6);
   }
   if (test == 2 && debug3RT) {
     scribeHeader("number of steps for a three-ring triangle = " + numSteps3RT, 7);
   }
-  scribeHeader("regenerate = " + str(regenerateCH), 8);
-  scribeHeader("fix penetration among 3-ring triangles = " + str(fix3RT), 9);
+  //scribeHeader("regenerate = " + str(regenerateCH), 8);
+  //scribeHeader("fix penetration among 3-ring triangles = " + str(fix3RT), 9);
   // show menu at bottom, only if not filming
   if (scribeText && !filming) displayFooter();
   if (animating) {  // periodic change of time
@@ -394,6 +399,7 @@ void keyPressed() {
   if (key == '1') {
     numFaces = 1;
     numSteps3RT = 1;
+    showCircleSet = !showCircleSet;
   }
   if (key == '2') {
     show2RT = !show2RT;

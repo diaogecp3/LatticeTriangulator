@@ -79,6 +79,19 @@ class Edge {
     this.a = a;
     this.b = b;
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (o == this) return true;
+    if (!(o instanceof Edge)) return false;
+    Edge e = (Edge)o;
+    return a == e.a && b == e.b;
+  }
+
+  @Override
+  public int hashCode() {
+    return 31 * (31 + a) + b;
+  }
 }
 
 class FrontEdge {
