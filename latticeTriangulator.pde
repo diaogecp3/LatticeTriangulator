@@ -26,7 +26,7 @@ int test = 11;
 
 
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
-int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
+int inputMethodRingSet = 1;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
 int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
 
@@ -60,7 +60,7 @@ float rMax = 50;
 float attenuationMin = 0.05;
 float attenuationDelta = 0.05;
 float attenuation = 1.0;
-int numRings = 8;
+int numRings = 16;
 int numPointsPerRing = 6;
 RingSet rs;
 

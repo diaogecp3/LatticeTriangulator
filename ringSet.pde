@@ -9,6 +9,7 @@
 
 
 import java.util.Queue;
+import java.util.LinkedHashMap;
 
 boolean debug3RT = false;
 boolean debug2RT = false;
@@ -129,6 +130,16 @@ class RingSet {
     }
   }
 
+  class DoubleEdge {
+    int a, b, c, d;
+    DoubleEdge(int a, int b, int c, int d) {
+      this.a = a;
+      this.b = b;
+      this.c = c;
+      this.d = d;
+    }
+  }
+
   pt c;  // the center of the sphere where the ring set lies
   float r;  // the radius of the sphere where the ring set lies
   int nRings;  // number of rings/circles
@@ -148,11 +159,15 @@ class RingSet {
   ArrayList<Triangle> twoRingTriangles = null;
   ArrayList<ArrayList<Integer>> splitLists = null;
 
-  ArrayList<pt> exTriPoints;  // points for extreme triangles, every 3 consecutive points form a trianle
+  ArrayList<pt> exTriPoints = null;  // points for extreme triangles, every 3 consecutive points form a trianle
   HashMap<Edge, Edge> exTriEdges;  // key: (ring ID a, ring ID b), value: (vertex ID a, vertex ID b)
-  HashMap<Edge, ArrayList<pt>> exEdges;  // key: (ring ID a, ring ID b), value: a list of points sampled from corresponding arcs
   int nSamples;
   float dAngle;
+
+  ArrayList<Integer>[] swingLists = null;  // each ring has a swing list to sort the corners touching it
+  ArrayList<Float>[] angleLists = null;
+  ArrayList<Integer> exTriRIDs = null;
+  LinkedHashMap<DoubleEdge, ArrayList<pt>> exEdges;  // key: (point ID a, point ID b), value: a list of points sampled from corresponding arcs
 
   Debug3RTInfo debug3RTInfo = new Debug3RTInfo();  // for debug
   Debug2RTInfo debug2RTInfo = new Debug2RTInfo();  // for debug
@@ -919,26 +934,67 @@ class RingSet {
     exTriEdges.put(e2, new Edge(vid2, vid0));
   }
 
+  private void updateSwingList(int i, pt p, int pid) {
+    assert swingLists[i] != null && angleLists[i] != null;
+
+    vec vp = V(centers[i], p);
+    float angle = acos(dot(vp, xAxes[i]) / radii[i]);
+    if (dot(vp, yAxes[i]) < 0) angle = TWO_PI - angle;
+
+    int n = angleLists[i].size();
+    int k = 0;
+    for (; k < n; ++k) {  // TODO: may use binary search to accelerate a little bit?
+      if (angleLists[i].get(k) > angle) break;
+    }
+    angleLists[i].add(k, angle);
+    swingLists[i].add(k, pid);
+  }
+
   void generateExTris() {
     exTriPoints = new ArrayList<pt>();
-    exTriEdges = new HashMap<Edge, Edge>();
+    exTriRIDs = new ArrayList<Integer>();
+    swingLists = new ArrayList[nRings];
+    angleLists = new ArrayList[nRings];
+    for (int i = 0; i < nRings; ++i) {
+      swingLists[i] = new ArrayList<Integer>();
+      angleLists[i] = new ArrayList<Float>();
+    }
+    // exTriEdges = new HashMap<Edge, Edge>();
     for (int i = 0; i < nRings; ++i) {
       for (int j = i + 1; j < nRings; ++j) {
         for (int k = j + 1; k < nRings; ++k) {
           pt[] tmp = generateExTriThreeRings(i, j, k, null);
           if (isValidExTri(tmp[0], tmp[1], tmp[2], i, j, k)) {
-            updateExTriEdges(i, j, k);
+            // updateExTriEdges(i, j, k);
+            int pid = exTriPoints.size();
             exTriPoints.add(tmp[0]);
+            exTriRIDs.add(i);
+            updateSwingList(i, tmp[0], pid);
+
             exTriPoints.add(tmp[1]);
+            exTriRIDs.add(j);
+            updateSwingList(j, tmp[1], pid + 1);
+
             exTriPoints.add(tmp[2]);
+            exTriRIDs.add(k);
+            updateSwingList(k, tmp[2], pid + 2);
             // continue;  // should also consider the following case
           }
           tmp = generateExTriThreeRings(i, k, j, null);
           if (isValidExTri(tmp[0], tmp[1], tmp[2], i, k, j)) {
-            updateExTriEdges(i, k, j);
+            // updateExTriEdges(i, k, j);
+            int pid = exTriPoints.size();
             exTriPoints.add(tmp[0]);
+            exTriRIDs.add(i);
+            updateSwingList(i, tmp[0], pid);
+
             exTriPoints.add(tmp[1]);
+            exTriRIDs.add(k);
+            updateSwingList(k, tmp[1], pid + 1);
+
             exTriPoints.add(tmp[2]);
+            exTriRIDs.add(j);
+            updateSwingList(j, tmp[2], pid + 2);
           }
         }
       }
@@ -986,7 +1042,7 @@ class RingSet {
       edgePoints.add(p0);
       edgePoints.add(candidate);
     }
-    exEdges.put(new Edge(u, v), edgePoints);
+    exEdges.put(new DoubleEdge(id, ic, ia, ib), edgePoints);
 
     if (au > 5.0) {
       fill(cyan, 200);
@@ -1002,21 +1058,40 @@ class RingSet {
   }
 
   void generateExEdges() {
-    nSamples = 20;
+    nSamples = 18;
     dAngle = TWO_PI / nSamples;
-    boolean[][] visited = new boolean[nRings][nRings];
-    exEdges = new HashMap<Edge, ArrayList<pt>>();
-    for (Edge edgeRing : exTriEdges.keySet()) {
-      int u = edgeRing.a, v = edgeRing.b;
-      if (visited[u][v] || visited[v][u]) continue;
-      Edge edgePos = exTriEdges.get(edgeRing);
-      int vida = edgePos.a, vidb = edgePos.b;
-      Edge oppoEdgeRing = new Edge(v, u);
-      assert exTriEdges.containsKey(oppoEdgeRing);
-      Edge oppoEdgePos = exTriEdges.get(oppoEdgeRing);
-      int vidc = oppoEdgePos.a, vidd = oppoEdgePos.b;
-      fillExEdge(u, v, vida, vidb, vidc, vidd);
-      visited[u][v] = visited[v][u] = true;
+    int nExTriPoints = exTriPoints.size();
+    boolean[][] visited = new boolean[nExTriPoints][nExTriPoints];
+
+    exEdges = new LinkedHashMap<DoubleEdge, ArrayList<pt>>();
+
+    // for (Edge edgeRing : exTriEdges.keySet()) {
+    //   int u = edgeRing.a, v = edgeRing.b;
+    //   if (visited[u][v] || visited[v][u]) continue;
+    //   Edge edgePos = exTriEdges.get(edgeRing);
+    //   int vida = edgePos.a, vidb = edgePos.b;
+    //   Edge oppoEdgeRing = new Edge(v, u);
+    //   assert exTriEdges.containsKey(oppoEdgeRing);
+    //   Edge oppoEdgePos = exTriEdges.get(oppoEdgeRing);
+    //   int vidc = oppoEdgePos.a, vidd = oppoEdgePos.b;
+    //   fillExEdge(u, v, vida, vidb, vidc, vidd);
+    //   visited[u][v] = visited[v][u] = true;
+    // }
+    for (int i = 0; i < nRings; ++i) {
+      ArrayList<Integer> swingList = swingLists[i];
+      int n = swingList.size();
+      for (int j = 0; j < n; ++j) {
+        int pidD = swingList.get(j);
+        int pidC = int(pidD / 3) * 3 + (pidD + 2) % 3;
+        if (visited[pidD][pidC] || visited[pidC][pidD]) continue;
+        int pidA = swingList.get((j + 1) % n);
+        int pidB = int(pidA / 3) * 3 + (pidA + 1) % 3;
+        int u = exTriRIDs.get(pidD);
+        int v = exTriRIDs.get(pidC);
+        fillExEdge(u, v, pidA, pidB, pidC, pidD);
+        visited[pidD][pidC] = visited[pidC][pidD] = true;
+        visited[pidA][pidB] = visited[pidB][pidA] = true;
+      }
     }
   }
 
@@ -1067,25 +1142,22 @@ class RingSet {
     stroke(0);
     strokeWeight(2);
     fill(blue, 200);
-    for (Edge edgeRing : exEdges.keySet()) {
-      int u = edgeRing.a, v = edgeRing.b;
-      Edge edgePos = exTriEdges.get(edgeRing);
-      int ia = edgePos.a, ib = edgePos.b;
-      edgePos = exTriEdges.get(new Edge(v, u));
-      int ic = edgePos.a, id = edgePos.b;
-      pt pa = exTriPoints.get(ia);
-      pt pb = exTriPoints.get(ib);
-      pt pc = exTriPoints.get(ic);
-      pt pd = exTriPoints.get(id);
-      ArrayList<pt> edgePoints = exEdges.get(edgeRing);
+    for (DoubleEdge edge : exEdges.keySet()) {
+      // System.out.format("(%d, %d, %d, %d)\n", edge.a, edge.b, edge.c, edge.d);
+      pt pa = exTriPoints.get(edge.a);
+      pt pb = exTriPoints.get(edge.b);
+      pt pc = exTriPoints.get(edge.c);
+      pt pd = exTriPoints.get(edge.d);
+      ArrayList<pt> edgePoints = exEdges.get(edge);
       beginShape(QUAD_STRIP);
-      vertex(pd);
-      vertex(pc);
-      for (pt p : edgePoints) vertex(p);
       vertex(pa);
       vertex(pb);
+      for (pt p : edgePoints) vertex(p);
+      vertex(pc);
+      vertex(pd);
       endShape(QUAD_STRIP);
     }
+    // println("ExEdges size = ", exEdges.size());
   }
 
   void showExTris() {
