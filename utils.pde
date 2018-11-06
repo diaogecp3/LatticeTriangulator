@@ -132,7 +132,10 @@ float[] solveQuadraticEquation(float a, float b, float c) {
  * be in [0, 2pi].
  */
 float[] solveLinearEquationInCosSin(float a, float b, float c) {
-  assert a * a + b * b > 0.0000001;  // at least one of {a, b} is non-zero
+  // assert a * a + b * b > 0.0000001;  // at least one of {a, b} is non-zero
+  if (a * a + b * b < 0.0000001) {
+    println("In a*cos(theta) + b*sin(theta) = c, a and b might be too small!");
+  }
   float[] thetas = new float[2];
   if (notAbsZero(a) && notAbsZero(b)) {  // a != 0 and b != 0
     // println("a = ", a, "b = ", b);
@@ -144,12 +147,12 @@ float[] solveLinearEquationInCosSin(float a, float b, float c) {
     thetas[1] = PI - tmp0 - tmp1;  // (0, 2pi)
     thetas[0] = thetas[0] < 0 ? thetas[0] + TWO_PI : thetas[0];  // [0, pi), (pi, 2pi)
   } else if (isAbsZero(a)) {  // a == 0 and b != 0
-    println("a == 0");
+    println("In solving a*cos(theta) + b*sin(theta) = c: a == 0");
     thetas[0] = asin(c/b);  // [-pi/2, pi/2]
     thetas[1] = PI - thetas[0];  // [pi/2, 3pi/2]
     if (thetas[0] < 0) thetas[0] += TWO_PI;  // [3pi/2, 0), [0, pi/2]
   } else {  // a != 0 and b == 0
-    println("b == 0");
+    println("In solving a*cos(theta) + b*sin(theta) = c: b == 0");
     thetas[0] = acos(c/a);  // [0, pi]
     thetas[1] = TWO_PI - thetas[0];  // [pi, 2pi]
   }

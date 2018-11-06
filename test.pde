@@ -10,7 +10,7 @@
  */
 
 
-int numTests = 100;
+int numTests = 10;
 int numBackup3RT = 0;
 int numPointsPerTest = 64;
 boolean saveFailures = false;
@@ -239,6 +239,30 @@ void extremePlaneTests(int n, float attenuation) {
 }
 
 
+void exactCHAllCirclesTests(int n, int nRings) {
+  float[] times = new float[n];
+  int f = 2 * nRings - 4;
+  int m = 0;  // number of examples that don't satisfy F = 2V - 4
+  for (int i = 0; i < n; ++i) {
+    RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere, nRings, 3);
+    ringSet.init();
+    ringSet.generatePoints(1.0);
+    long st = System.nanoTime();
+    ringSet.generateExTris();
+    long ed = System.nanoTime();
+    times[i] = (ed - st) / 1000000.0;
+    if (int(ringSet.exTriPoints.size() / 3) != f) {
+      m++;
+      ringSet.save("data/tmp/rs_wrong_number_ex_tris_"+str(i));
+    }
+  }
+  float avgTime = average(times, n, 0, n);
+  System.out.format("number of tests = %d, number of circles = %d, average time = %f, " +
+                    "number of examples that don't satisfy Euler's formula = %d\n",
+                    n, nRings, avgTime, m);
+}
+
+
 /* Single-test functions below. */
 
 
@@ -458,7 +482,7 @@ void exactCHTwoCirclesTest() {
                       rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1]);
 }
 
-void tangentPlaneThreeCirclesTest() {
+void tangentPlaneThreeCirclesIterTest() {
   assert rs.nRings >= 3;
   rs.generatePoints(attenuation);
   assert rs.points != null && rs.centers != null && rs.normals != null &&
@@ -473,7 +497,7 @@ void tangentPlaneThreeCirclesTest() {
     disk(rs.centers[2], rs.normals[2], rs.radii[2]);
   }
 
-  pt[] ps = tangentPlaneThreeCircles(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
+  pt[] ps = tangentPlaneThreeCirclesIter(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
                                      rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1],
                                      rs.centers[2], rs.radii[2], rs.normals[2], rs.xAxes[2], rs.yAxes[2],
                                      null);
@@ -483,7 +507,7 @@ void tangentPlaneThreeCirclesTest() {
     fill(cyan, 100);
     showNormalToTriangle(ps[0], ps[1], ps[2], 20, 4);
   }
-  ps = tangentPlaneThreeCircles(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
+  ps = tangentPlaneThreeCirclesIter(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
                                 rs.centers[2], rs.radii[2], rs.normals[2], rs.xAxes[2], rs.yAxes[2],
                                 rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1],
                                 null);
@@ -545,6 +569,7 @@ void exactCHAllCirclesTest() {
   timeTM = (endTime - startTime) / 1000000.0;
 
   if (showCircleSet) rs.showCircles();
+  if (showDiskSet) rs.showDisks();
   if (show2RT) rs.showExEdges();
   if (show3RT) rs.showExTris();
 }

@@ -26,7 +26,7 @@ int test = 11;
 
 
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
-int inputMethodRingSet = 1;  // 0: read from file, 1: generate randomly
+int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
 int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
 
@@ -35,7 +35,9 @@ boolean generateCH = false;
 boolean regenerateCH = true;  // for ring set, test shrink/grow
 boolean showRingSet = true;
 boolean showCircleSet = false;
+boolean showDiskSet = false;
 boolean showPointSet = true;
+
 int subdivisionTimes = 0;
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
@@ -60,7 +62,7 @@ float rMax = 50;
 float attenuationMin = 0.05;
 float attenuationDelta = 0.05;
 float attenuation = 1.0;
-int numRings = 16;
+int numRings = 6;
 int numPointsPerRing = 6;
 RingSet rs;
 
@@ -107,7 +109,8 @@ void setup() {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
       //rs.load("data/rs_unnamed");
-      rs.load("data/ring_set/rs_medium_0");
+      rs.load("data/tmp/rs_wrong_number_ex_tris_0");
+      //rs.load("data/ring_set/rs_easy_5");
       //rs.load("data/ring_set/rs_3rt_bfs_null_1");
       //rs.load("data/ring_set/rs_3rt_penetration_1");
       //rs.load("data/ring_set/rs_3rt_wrong_fix_2");
@@ -204,6 +207,13 @@ void draw() {
     picking = false;
   }
 
+  // Show the big yellow sphere
+  if (showYellowSphere) {
+    fill(yellow, 50);
+    noStroke();
+    show(centerOfSphere, radiusOfSphere);
+  }
+
   switch (test) {
     case 0:
       convexHullTest();
@@ -230,7 +240,7 @@ void draw() {
       exactCHTwoCirclesTest();
       break;
     case 8:
-      tangentPlaneThreeCirclesTest();
+      tangentPlaneThreeCirclesIterTest();
       break;
     case 9:
       exactCHThreeCirclesTest();
@@ -254,6 +264,9 @@ void draw() {
     case 103:  // many extreme-plane(-of-three-circles) tests
       extremePlaneTests(numTests, attenuation);
       break;
+    case 104:
+      exactCHAllCirclesTests(numTests, numRings);
+      break;
 
     case 20:
       testIntersectionCirclePlane();
@@ -263,12 +276,7 @@ void draw() {
       exit();
   }
 
-  // Show the big yellow sphere
-  if (showYellowSphere) {
-    fill(yellow, 100);
-    noStroke();
-    show(centerOfSphere, radiusOfSphere);
-  }
+
 
   if (exitDraw) noLoop();
 
@@ -289,7 +297,8 @@ void draw() {
   if (numTriangles != -1) {
     scribeHeader("number of triangles = " + numTriangles, 4);
   }
-  scribeHeader("time for triangle mesh generation = " + timeTM + "ms", 5);
+
+  //scribeHeader("time for triangle mesh generation = " + timeTM + "ms", 5);
   if (test == 3 && subdivisionTimes > 0) {
     scribeHeader("time for subdivision = " + timeSD + "ms", 6);
   }
@@ -298,6 +307,13 @@ void draw() {
   }
   //scribeHeader("regenerate = " + str(regenerateCH), 8);
   //scribeHeader("fix penetration among 3-ring triangles = " + str(fix3RT), 9);
+
+  if (test == 11) {
+    if (rs.exTriPoints != null) {
+      scribeHeader("#triangles =" + int(rs.exTriPoints.size() / 3) + " #vertices =" + rs.nRings, 10);
+    }
+  }
+
   // show menu at bottom, only if not filming
   if (scribeText && !filming) displayFooter();
   if (animating) {  // periodic change of time
@@ -399,7 +415,7 @@ void keyPressed() {
   if (key == '1') {
     numFaces = 1;
     numSteps3RT = 1;
-    showCircleSet = !showCircleSet;
+    showDiskSet = !showDiskSet;
   }
   if (key == '2') {
     show2RT = !show2RT;
@@ -414,6 +430,7 @@ void keyPressed() {
   if (key == 'g') {
     showRingSet = !showRingSet;
     showPointSet = !showPointSet;
+    showCircleSet = !showCircleSet;
   }
   if (key == 'f' && test == 10) {
     fix3RT = !fix3RT;

@@ -12,6 +12,12 @@ Subdivision doesn't work well.
 In rs_easy_3:
 Three-ring triangles fail convexity test (now succeed)
 
+In rs_easy_4:
+source of figure 1 in paper.
+
+In rs_easy_5:
+fail on generating the extreme triangle for 3 circles
+
 In rs_medium_0:
 Edge flip occurs!
 4 groups are involved.
@@ -25,6 +31,7 @@ Source of picture: CH of three circles 1.
 
 In rs_medium_2:
 Two three-ring triangles intersect. Because the connectivity is no longer correct after we grow rings.
+Source of picture: CH of many circles in paper draft.
 
 In rs_medium_3:
 Two three-ring triangles intersect.

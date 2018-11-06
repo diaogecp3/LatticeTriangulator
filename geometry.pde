@@ -433,12 +433,12 @@ void exactCHEdgeCircle(pt a, pt b, pt c, float r, vec n, vec vi, vec vj) {
  * Return the points of contact that define the tangent plane of the three
  * circles (c0, r0, n0), (c1, r1, n1), and (c2, r2, n2). (vi0, vj0), (vi1, vj1),
  * (vi2, vj2), which are optional, are local frames on the three circles,
- * respectively.
+ * respectively. This function uses an iterative method.
  */
-pt[] tangentPlaneThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
-                              pt c1, float r1, vec n1, vec vi1, vec vj1,
-                              pt c2, float r2, vec n2, vec vi2, vec vj2,
-                              DebugEPInfo dInfo) {
+pt[] tangentPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
+                                  pt c1, float r1, vec n1, vec vi1, vec vj1,
+                                  pt c2, float r2, vec n2, vec vi2, vec vj2,
+                                  DebugEPInfo dInfo) {
   if (vi0 == null) vi0 = constructNormal(n0);
   if (vj0 == null) vj0 = N(n0, vi0);
   if (vi1 == null) vi1 = constructNormal(n1);
@@ -611,9 +611,9 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
 
   ArrayList<pt> points = new ArrayList<pt>();
   pt[] ps;
-  ps = tangentPlaneThreeCircles(c0, r0, n0, vi0, vj0, c1, r1, n1, vi1, vj1, c2, r2, n2, vi2, vj2, null);
+  ps = tangentPlaneThreeCirclesIter(c0, r0, n0, vi0, vj0, c1, r1, n1, vi1, vj1, c2, r2, n2, vi2, vj2, null);
   for (pt p : ps) points.add(p);
-  ps = tangentPlaneThreeCircles(c0, r0, n0, vi0, vj0, c2, r2, n2, vi2, vj2, c1, r1, n1, vi1, vj1, null);
+  ps = tangentPlaneThreeCirclesIter(c0, r0, n0, vi0, vj0, c2, r2, n2, vi2, vj2, c1, r1, n1, vi1, vj1, null);
   for (pt p : ps) points.add(p);
 
   int[] oppo = {3, 5, 4};

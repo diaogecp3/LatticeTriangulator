@@ -159,14 +159,12 @@ class RingSet {
   ArrayList<Triangle> twoRingTriangles = null;
   ArrayList<ArrayList<Integer>> splitLists = null;
 
+  int nSamples = 30;
+  float dAngle = 0;
   ArrayList<pt> exTriPoints = null;  // points for extreme triangles, every 3 consecutive points form a trianle
-  HashMap<Edge, Edge> exTriEdges;  // key: (ring ID a, ring ID b), value: (vertex ID a, vertex ID b)
-  int nSamples;
-  float dAngle;
-
+  ArrayList<Integer> exTriRIDs = null;
   ArrayList<Integer>[] swingLists = null;  // each ring has a swing list to sort the corners touching it
   ArrayList<Float>[] angleLists = null;
-  ArrayList<Integer> exTriRIDs = null;
   LinkedHashMap<DoubleEdge, ArrayList<pt>> exEdges;  // key: (point ID a, point ID b), value: a list of points sampled from corresponding arcs
 
   Debug3RTInfo debug3RTInfo = new Debug3RTInfo();  // for debug
@@ -485,7 +483,7 @@ class RingSet {
     vec[] ns = {normals[rid0], normals[rid1], normals[rid2]};
     vec[] vis = {xAxes[rid0], xAxes[rid1], xAxes[rid2]};
     vec[] vjs = {yAxes[rid0], yAxes[rid1], yAxes[rid2]};
-    pt[] ps = tangentPlaneThreeCircles(cs[0], rs[0], ns[0], vis[0], vjs[0],
+    pt[] ps = tangentPlaneThreeCirclesIter(cs[0], rs[0], ns[0], vis[0], vjs[0],
                                        cs[1], rs[1], ns[1], vis[1], vjs[1],
                                        cs[2], rs[2], ns[2], vis[2], vjs[2],
                                        null);
@@ -888,10 +886,74 @@ class RingSet {
    * Generate an extreme triangle touching three rings given the three ring IDs.
    */
   pt[] generateExTriThreeRings(int i, int j, int k, DebugEPInfo dInfo) {
-    return tangentPlaneThreeCircles(centers[i], radii[i], normals[i], xAxes[i], yAxes[i],
-                                    centers[j], radii[j], normals[j], xAxes[j], yAxes[j],
-                                    centers[k], radii[k], normals[k], xAxes[k], yAxes[k],
-                                    dInfo);
+    // return tangentPlaneThreeCirclesIter(centers[i], radii[i], normals[i], xAxes[i], yAxes[i],
+    //                                 centers[j], radii[j], normals[j], xAxes[j], yAxes[j],
+    //                                 centers[k], radii[k], normals[k], xAxes[k], yAxes[k],
+    //                                 dInfo);
+
+    float s1 = radii[i] / r, s2 = radii[j] / r, s3 = radii[k] / r;
+    float a1 = asin(s1), a2 = asin(s2), a3 = asin(s3);  // TODO: may store these half-angles?
+    float c1 = cos(a1), c2 = cos(a2), c3 = cos(a3);
+    float x1 = normals[i].x, y1 = normals[i].y, z1 = normals[i].z;
+    float x2 = normals[j].x, y2 = normals[j].y, z2 = normals[j].z;
+    float x3 = normals[k].x, y3 = normals[k].y, z3 = normals[k].z;
+
+    float DD = -x3*y2*z1 + x2*y3*z1 + x3*y1*z2 - x1*y3*z2 - x2*y1*z3 + x1*y2*z3;
+    float A1 = (-c3*y2*z1 + c2*y3*z1 + c3*y1*z2 - c1*y3*z2 - c2*y1*z3 + c1*y2*z3) / DD;
+    float B1 = (s3*y2*z1 - s2*y3*z1 - s3*y1*z2 + s1*y3*z2 + s2*y1*z3 - s1*y2*z3) / DD;
+    float A2 = (c3*x2*z1 - c2*x3*z1 - c3*x1*z2 + c1*x3*z2 + c2*x1*z3 - c1*x2*z3) / DD;
+    float B2 = (-s3*x2*z1 + s2*x3*z1 + s3*x1*z2 - s1*x3*z2 - s2*x1*z3 + s1*x2*z3) / DD;
+    float A3 = (-c3*x2*y1 + c2*x3*y1 + c3*x1*y2 - c1*x3*y2 - c2*x1*y3 + c1*x2*y3) / DD;
+    float B3 = (s3*x2*y1 - s2*x3*y1 - s3*x1*y2 + s1*x3*y2 + s2*x1*y3 - s1*x2*y3) / DD;
+
+    float AB = 2 * (A1*B1 + A2*B2 + A3*B3);
+    float AA = A1*A1 + A2*A2 + A3*A3 - 1.0;
+    float BB = B1*B1 + B2*B2 + B3*B3 - 1.0;
+
+    float[] sols = solveQuadraticEquation(BB, AB, AA);
+    assert sols != null && sols.length == 2;
+    float t = sols[0];
+    float t2 = t * t;
+    float cosa = 1 / sqrt(1 + t2), sina = t / sqrt(1 + t2);
+    vec n = V(cosa * A1 + sina * B1, cosa * A2 + sina * B2, cosa * A3 + sina * B3);
+    pt p = P(c, r * cosa, n);  // center of the tangent circle
+    vec nijk = N(centers[i], centers[j], centers[k]);
+    if (dot(nijk, V(centers[i], p)) < 0) {
+      t = sols[1];
+      t2 = t * t;
+      cosa = 1 / sqrt(1 + t2);
+      sina = t / sqrt(1 + t2);
+      n.set(cosa * A1 + sina * B1, cosa * A2 + sina * B2, cosa * A3 + sina * B3);
+      p = P(c, r * cosa, n);
+    }
+
+    if (dot(nijk, n) < 0) n.rev();
+
+    // Find contact points on the 3 circles
+    pt[] ps = new pt[3];
+    vec n1 = U(N(normals[i], n));
+    vec d1 = N(n1, normals[i]);
+    ps[0] = P(centers[i], radii[i], d1);
+    vec n2 = U(N(normals[j], n));
+    vec d2 = N(n2, normals[j]);
+    ps[1] = P(centers[j], radii[j], d2);
+    vec n3 = U(N(normals[k], n));
+    vec d3 = N(n3, normals[k]);
+    ps[2] = P(centers[k], radii[k], d3);
+
+    {
+      // float radius = r * sina;
+      // fill(cyan, 100);
+      // disk(p, n, radius);
+      // fill(dgreen, 100);
+      // arrow(p, V(50, n), 5);
+
+      // fill(magenta, 100);
+      // arrow(centers[i], V(radii[i], d1), 5);
+      // arrow(centers[j], V(radii[j], d2), 5);
+      // arrow(centers[k], V(radii[k], d3), 5);
+    }
+    return ps;
   }
 
   private boolean isValidExTri(pt pa, pt pb, pt pc, int ia, int ib, int ic) {
@@ -919,21 +981,6 @@ class RingSet {
     return true;
   }
 
-  private void updateExTriEdges(int i, int j, int k) {
-    int vid0 = exTriPoints.size();
-    int vid1 = vid0 + 1;
-    int vid2 = vid0 + 2;
-    Edge e0 = new Edge(i, j);
-    Edge e1 = new Edge(j, k);
-    Edge e2 = new Edge(k, i);
-    // if (exTriEdges.containsKey(e0)) System.out.format("Edge (%d, %d) is used more than once!", i, j);
-    // if (exTriEdges.containsKey(e1)) System.out.format("Edge (%d, %d) is used more than once!", j, k);
-    // if (exTriEdges.containsKey(e2)) System.out.format("Edge (%d, %d) is used more than once!", k, i);
-    exTriEdges.put(e0, new Edge(vid0, vid1));
-    exTriEdges.put(e1, new Edge(vid1, vid2));
-    exTriEdges.put(e2, new Edge(vid2, vid0));
-  }
-
   private void updateSwingList(int i, pt p, int pid) {
     assert swingLists[i] != null && angleLists[i] != null;
 
@@ -942,12 +989,21 @@ class RingSet {
     if (dot(vp, yAxes[i]) < 0) angle = TWO_PI - angle;
 
     int n = angleLists[i].size();
-    int k = 0;
-    for (; k < n; ++k) {  // TODO: may use binary search to accelerate a little bit?
-      if (angleLists[i].get(k) > angle) break;
+    // int k = 0;
+    // for (; k < n; ++k) {  // linear search
+    //   if (angleLists[i].get(k) > angle) break;
+    // }
+    // angleLists[i].add(k, angle);
+    // swingLists[i].add(k, pid);
+
+    int lo = 0, hi = n - 1, mid;
+    while (lo <= hi) {  // binary search
+      mid = (lo + hi) / 2;
+      if (angleLists[i].get(mid) > angle) hi = mid - 1;
+      else lo = mid + 1;
     }
-    angleLists[i].add(k, angle);
-    swingLists[i].add(k, pid);
+    angleLists[i].add(lo, angle);
+    swingLists[i].add(lo, pid);
   }
 
   void generateExTris() {
@@ -959,13 +1015,11 @@ class RingSet {
       swingLists[i] = new ArrayList<Integer>();
       angleLists[i] = new ArrayList<Float>();
     }
-    // exTriEdges = new HashMap<Edge, Edge>();
     for (int i = 0; i < nRings; ++i) {
       for (int j = i + 1; j < nRings; ++j) {
         for (int k = j + 1; k < nRings; ++k) {
           pt[] tmp = generateExTriThreeRings(i, j, k, null);
           if (isValidExTri(tmp[0], tmp[1], tmp[2], i, j, k)) {
-            // updateExTriEdges(i, j, k);
             int pid = exTriPoints.size();
             exTriPoints.add(tmp[0]);
             exTriRIDs.add(i);
@@ -978,11 +1032,9 @@ class RingSet {
             exTriPoints.add(tmp[2]);
             exTriRIDs.add(k);
             updateSwingList(k, tmp[2], pid + 2);
-            // continue;  // should also consider the following case
           }
           tmp = generateExTriThreeRings(i, k, j, null);
           if (isValidExTri(tmp[0], tmp[1], tmp[2], i, k, j)) {
-            // updateExTriEdges(i, k, j);
             int pid = exTriPoints.size();
             exTriPoints.add(tmp[0]);
             exTriRIDs.add(i);
@@ -1001,36 +1053,15 @@ class RingSet {
     }
   }
 
-  private void fillExEdge(int u, int v, int ia, int ib, int ic, int id) {
-    pt pa = exTriPoints.get(ia);
-    pt pb = exTriPoints.get(ib);
-    pt pc = exTriPoints.get(ic);
-    pt pd = exTriPoints.get(id);
-
+  private ArrayList<pt> fillExEdgeWithPoints(float angle, float da, int n, int u, int v) {
+    ArrayList<pt> edgePoints = new ArrayList<pt>();
     pt cu = centers[u], cv = centers[v];
     float ru = radii[u], rv = radii[v];
     vec nu = normals[u], nv = normals[v];
-
-    // compute angle for arc DA and arc BC, w.r.t. corresponding ring orientations
-    float au = acos(dot(V(cu, pa), V(cu, pd)) / (ru * ru));  // [0, PI]
-    if (dot(nu, N(cu, pd, pa)) < 0) au = TWO_PI - au;
-    float av = acos(dot(V(cv, pb), V(cv, pc)) / (rv * rv));
-    if (dot(nv, N(cv, pb, pc)) < 0) av = TWO_PI - av;
-
-    // TODO: may pick the arc with bigger angle to subdivide
-    // Assume that arc DA has a bigger angle than arc BC
-    vec viu = xAxes[u], vju = yAxes[u];
-    vec viv = xAxes[v], vjv = yAxes[v];
-
-    vec vd = V(cu, pd);
-    float angle = acos(dot(vd, viu) / ru);  // starting angle for D w.r.t. ring u
-    if (dot(vd, vju) < 0) angle = TWO_PI - angle;
-
-    ArrayList<pt> edgePoints = new ArrayList<pt>();  // store the points that will be sampled/computed
-    int n = int(au / dAngle);  // split arc into n pieces by inserting n-1 points
-
+    vec viu = xAxes[u], viv = xAxes[v];
+    vec vju = yAxes[u], vjv = yAxes[v];
     for (int k = 1; k < n; ++k) {
-      angle += dAngle;
+      angle += da;
       float c = cos(angle), s = sin(angle);
       pt p0 = P(cu, ru * c, viu, ru * s, vju);  // sampled point
       pt p1 = P(p0, -ru * s, viu, ru * c, vju);  // sampled point + tangent at that point
@@ -1042,48 +1073,56 @@ class RingSet {
       edgePoints.add(p0);
       edgePoints.add(candidate);
     }
-    exEdges.put(new DoubleEdge(id, ic, ia, ib), edgePoints);
+    return edgePoints;
+  }
 
-    if (au > 5.0) {
-      fill(cyan, 200);
-      show(pd, 5);
-      fill(magenta, 200);
-      show(pa, 5);
-      fill(orange, 200);
-      show(pc, 5);
-      fill(purple, 200);
-      show(pb, 5);
+  private void fillExEdge(int u, int v, int ia, int ib, int ic, int id) {
+    pt pa = exTriPoints.get(ia);
+    pt pb = exTriPoints.get(ib);
+    pt pc = exTriPoints.get(ic);
+    pt pd = exTriPoints.get(id);
+
+    pt cu = centers[u], cv = centers[v];
+    float ru = radii[u], rv = radii[v];
+    vec nu = normals[u], nv = normals[v];
+
+    // compute angle for arc DA and arc BC, w.r.t. corresponding ring orientations
+    vec va = V(cu, pa), vd = V(cu, pd);
+    vec vb = V(cv, pb), vc = V(cv, pc);
+    float au = acos(dot(va, vd) / (ru * ru));  // [0, PI]
+    if (dot(nu, N(vd, va)) < 0) au = TWO_PI - au;
+    float av = acos(dot(vb, vc) / (rv * rv));
+    if (dot(nv, N(vb, vc)) < 0) av = TWO_PI - av;
+
+    // Sample points from the bigger arc
+    if (au > av) {
+      float angle = acos(dot(vd, xAxes[u]) / ru);  // starting angle for D w.r.t. ring u
+      if (dot(vd, yAxes[u]) < 0) angle = TWO_PI - angle;
+      int n = int(au / dAngle);  // split arc into n pieces by inserting n-1 points
+      ArrayList<pt> edgePoints = fillExEdgeWithPoints(angle, dAngle, n, u, v);
+      exEdges.put(new DoubleEdge(id, ic, ia, ib), edgePoints);
+    } else {
+      float angle = acos(dot(vb, xAxes[v]) / rv);
+      if (dot(vb, yAxes[v]) < 0) angle = TWO_PI - angle;
+      int n = int(av / dAngle);
+      ArrayList<pt> edgePoints = fillExEdgeWithPoints(angle, dAngle, n, v, u);
+      exEdges.put(new DoubleEdge(ib, ia, ic, id), edgePoints);
     }
-
   }
 
   void generateExEdges() {
-    nSamples = 18;
+    assert nSamples >= 1;
     dAngle = TWO_PI / nSamples;
     int nExTriPoints = exTriPoints.size();
     boolean[][] visited = new boolean[nExTriPoints][nExTriPoints];
-
     exEdges = new LinkedHashMap<DoubleEdge, ArrayList<pt>>();
-
-    // for (Edge edgeRing : exTriEdges.keySet()) {
-    //   int u = edgeRing.a, v = edgeRing.b;
-    //   if (visited[u][v] || visited[v][u]) continue;
-    //   Edge edgePos = exTriEdges.get(edgeRing);
-    //   int vida = edgePos.a, vidb = edgePos.b;
-    //   Edge oppoEdgeRing = new Edge(v, u);
-    //   assert exTriEdges.containsKey(oppoEdgeRing);
-    //   Edge oppoEdgePos = exTriEdges.get(oppoEdgeRing);
-    //   int vidc = oppoEdgePos.a, vidd = oppoEdgePos.b;
-    //   fillExEdge(u, v, vida, vidb, vidc, vidd);
-    //   visited[u][v] = visited[v][u] = true;
-    // }
     for (int i = 0; i < nRings; ++i) {
       ArrayList<Integer> swingList = swingLists[i];
       int n = swingList.size();
       for (int j = 0; j < n; ++j) {
         int pidD = swingList.get(j);
         int pidC = int(pidD / 3) * 3 + (pidD + 2) % 3;
-        if (visited[pidD][pidC] || visited[pidC][pidD]) continue;
+        if (visited[pidD][pidC]) continue;
         int pidA = swingList.get((j + 1) % n);
         int pidB = int(pidA / 3) * 3 + (pidA + 1) % 3;
         int u = exTriRIDs.get(pidD);
@@ -1130,18 +1169,34 @@ class RingSet {
   }
 
   void showCircles() {
+    stroke(0);
+    strokeWeight(3);
+    noFill();
+    float da = TWO_PI / 36;
+    for (int i = 0; i < nRings; ++i) {
+      float a = 0;
+      beginShape();
+      for (int j = 0; j < 36; ++j, a += da) {
+        vertex(P(centers[i], radii[i] * cos(a), xAxes[i], radii[i] * sin(a), yAxes[i]));
+      }
+      endShape(CLOSE);
+    }
+  }
+
+  void showDisks() {
     noStroke();
     fill(red, 200);
     for (int i = 0; i < nRings; ++i) {
-      disk(centers[i], normals[i], radii[i]);
+      disk(centers[i], xAxes[i], yAxes[i], radii[i]);
     }
   }
 
   void showExEdges() {
     if (exTriPoints == null || exEdges == null) return;
-    stroke(0);
-    strokeWeight(2);
-    fill(blue, 200);
+     stroke(0);
+     strokeWeight(2);
+    //noStroke();
+    fill(green, 200);
     for (DoubleEdge edge : exEdges.keySet()) {
       // System.out.format("(%d, %d, %d, %d)\n", edge.a, edge.b, edge.c, edge.d);
       pt pa = exTriPoints.get(edge.a);
@@ -1163,7 +1218,7 @@ class RingSet {
   void showExTris() {
     if (exTriPoints == null) return;
     noStroke();
-    fill(green, 200);
+    fill(blue, 200);
     beginShape(TRIANGLES);
     for (int i = 0; i < exTriPoints.size(); i += 3) {
       vertex(exTriPoints.get(i));
