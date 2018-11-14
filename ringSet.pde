@@ -11,6 +11,7 @@
 import java.util.Queue;
 import java.util.LinkedHashMap;
 
+boolean debugST = false;
 boolean debug3RT = false;
 boolean debug2RT = false;
 boolean fix3RT = false;
@@ -49,6 +50,16 @@ int methodTM = 1;
  * rings lie on a sphere.
  */
 class RingSet {
+  /*
+   * Debug info about supporting triangle/plane of 3 given disjoint circles on a sphere.
+   */
+  class DebugSTInfo {
+    ArrayList<pt> circumcenters = new ArrayList<pt>();
+    ArrayList<Float> circumradii = new ArrayList<Float>();
+    ArrayList<vec> normals = new ArrayList<vec>();
+    DebugSTInfo() {}
+  }
+
   /*
    * Debug info about three-ring-triangle generation, used in heuristic search.
    */
@@ -169,6 +180,7 @@ class RingSet {
 
   Debug3RTInfo debug3RTInfo = new Debug3RTInfo();  // for debug
   Debug2RTInfo debug2RTInfo = new Debug2RTInfo();  // for debug
+  DebugSTInfo debugSTInfo = new DebugSTInfo();
 
   RingSet(pt c, float r) {
     this.c = c;
@@ -192,6 +204,32 @@ class RingSet {
     sameRadius = true;
     radii = new float[1];
     radii[0] = rMax;
+  }
+
+  RingSet(pt c, float r, pt[] ps, int nv) {  // the ring set may not be valid
+    this.c = c;
+    this.r = r;
+    this.nRings = int(nv / 2);
+    this.nPointsPerRing = 3;  // default
+    sameRadius = false;
+    float rr = r + r;
+    float r2 = r * r;
+    contacts = new pt[nRings];
+    centers = new pt[nRings];
+    radii = new float[nRings];
+    normals = new vec[nRings];
+    xAxes = new vec[nRings];
+    yAxes = new vec[nRings];
+    for (int i = 0; i < nv; i += 2) {
+      int j = i / 2;
+      contacts[j] = ps[i];
+      float d = d(ps[i], ps[i+1]);
+      radii[j] = d * sqrt((rr-d)*(rr+d)) / rr;
+      normals[j] = U(c, ps[i]);
+      xAxes[j] = constructNormal(normals[j]);
+      yAxes[j] = N(normals[j], xAxes[j]);
+      centers[j] = P(c, sqrt(r2 - radii[j] * radii[j]), normals[j]);
+    }
   }
 
   private void generateXYAxes() {
@@ -884,13 +922,116 @@ class RingSet {
 
   /*
    * Generate an extreme triangle touching three rings given the three ring IDs.
+   * Two such extreme triangles will be generated, i.e. 6 points will be returned.
+   */
+  private pt[] generateExTriThreeRingsTwo(int i, int j, int k) {
+    float s1 = radii[i] / r, s2 = radii[j] / r, s3 = radii[k] / r;
+    float a1 = asin(s1), a2 = asin(s2), a3 = asin(s3);  // TODO: may store these half-angles?
+    float c1 = cos(a1), c2 = cos(a2), c3 = cos(a3);
+
+    vec n23 = N(normals[j], normals[k]);
+    vec n31 = N(normals[k], normals[i]);
+    vec n12 = N(normals[i], normals[j]);
+    float mix = d(normals[i], n23);
+    if (isAbsZero(mix)) {
+      println("mix product is 0");
+      return null;
+    }
+    float invMix = 1.0 / mix;
+    n23 = V(invMix, n23);
+    n31 = V(invMix, n31);
+    n12 = V(invMix, n12);
+    vec va = V(c1, n23, c2, n31, c3, n12);
+    vec vb = V(s1, n23, s2, n31, s3, n12);
+    float bb = dot(vb, vb);
+    float bb1 = bb - 1;
+    if (isAbsZero(bb1)) {
+      println("dot(b, b) = 1");
+      return null;
+    }
+    float aa = dot(va, va);
+    float ab = dot(va, vb);
+    float det = ab * ab - (aa - 1) * bb1;
+    if (det < 0) {
+      println("determinant < 0");
+      return null;
+    }
+    float sqrtDet = sqrt(det);
+    float[] ts = new float[2];
+    ts[0] = (ab + sqrtDet) / bb1;
+    ts[1] = (ab - sqrtDet) / bb1;
+    vec[] ns = new vec[2];  // the 2 normals
+    pt[] ps = new pt[2];  // the 2 centers
+    for (int ii = 0; ii < 2; ++ii) {
+      float cosa = 1.0 / sqrt(1 + ts[ii] * ts[ii]);
+      ns[ii] = V(cosa, A(va, -ts[ii], vb));
+      ps[ii] = P(c, r * cosa, ns[ii]);
+    }
+    vec nijk = N(centers[i], centers[j], centers[k]);
+    if (dot(nijk, V(centers[i], ps[0])) < 0) {  // make sure ps[0], ns[0] match orientation (i, j, k)
+      pt p = ps[0];  // TODO: no need to swap ps[0] and ps[1] since they are not used later
+      ps[0] = ps[1];
+      ps[1] = p;
+      vec v = ns[0];
+      ns[0] = ns[1];
+      ns[1] = v;
+      float f = ts[0];  // TODO: no need to swap ts[0] and ts[1] since they are not used later
+      ts[0] = ts[1];
+      ts[1] = f;
+    }
+    if (dot(nijk, ns[0]) < 0) ns[0].rev();
+    if (dot(nijk, ns[1]) > 0) ns[1].rev();
+
+    if (debug3RT) {
+      tan0 = ts[0];
+      tan1 = ts[1];
+    }
+
+    pt[] pointsTangency = new pt[6];
+    // triangle (i, j, k)
+    vec n1 = U(N(normals[i], ns[0]));
+    vec d1 = N(n1, normals[i]);
+    pointsTangency[0] = P(centers[i], radii[i], d1);
+    vec n2 = U(N(normals[j], ns[0]));
+    vec d2 = N(n2, normals[j]);
+    pointsTangency[1] = P(centers[j], radii[j], d2);
+    vec n3 = U(N(normals[k], ns[0]));
+    vec d3 = N(n3, normals[k]);
+    pointsTangency[2] = P(centers[k], radii[k], d3);
+
+    // triangle (i, k, j)
+    vec n4 = U(N(normals[i], ns[1]));
+    vec d4 = N(n4, normals[i]);
+    pointsTangency[3] = P(centers[i], radii[i], d4);
+    vec n5 = U(N(normals[k], ns[1]));
+    vec d5 = N(n5, normals[k]);
+    pointsTangency[4] = P(centers[k], radii[k], d5);
+    vec n6 = U(N(normals[j], ns[1]));
+    vec d6 = N(n6, normals[j]);
+    pointsTangency[5] = P(centers[j], radii[j], d6);
+
+    if (debugST) {
+      for (int ii = 0; ii < 2; ++ii) {
+        debugSTInfo.circumcenters.add(ps[ii]);
+        /*
+         * atan(x) is in [-PI/2, PI/2].
+         * If atan(x) is in [-PI/2, 0], then sin(atan(x)) < 0, then radius < 0.
+         */
+        float radius = r * sin(atan(ts[ii]));
+        if (radius < 0) println("negative sin(atan(x)) and negative radius!");
+        debugSTInfo.circumradii.add(radius);
+        debugSTInfo.normals.add(ns[ii]);
+      }
+    }
+
+    return pointsTangency;
+  }
+
+  /*
+   * Generate an extreme triangle touching three rings given the three ring IDs.
+   * TODO: this function is deprecated.
    */
   pt[] generateExTriThreeRings(int i, int j, int k, DebugEPInfo dInfo) {
-    // return tangentPlaneThreeCirclesIter(centers[i], radii[i], normals[i], xAxes[i], yAxes[i],
-    //                                 centers[j], radii[j], normals[j], xAxes[j], yAxes[j],
-    //                                 centers[k], radii[k], normals[k], xAxes[k], yAxes[k],
-    //                                 dInfo);
-
     float s1 = radii[i] / r, s2 = radii[j] / r, s3 = radii[k] / r;
     float a1 = asin(s1), a2 = asin(s2), a3 = asin(s3);  // TODO: may store these half-angles?
     float c1 = cos(a1), c2 = cos(a2), c3 = cos(a3);
@@ -899,6 +1040,12 @@ class RingSet {
     float x3 = normals[k].x, y3 = normals[k].y, z3 = normals[k].z;
 
     float DD = -x3*y2*z1 + x2*y3*z1 + x3*y1*z2 - x1*y3*z2 - x2*y1*z3 + x1*y2*z3;
+
+    if (isAbsZero(DD)) {
+      println("3 normals are coplanar.");
+      return null;
+    }
+
     float A1 = (-c3*y2*z1 + c2*y3*z1 + c3*y1*z2 - c1*y3*z2 - c2*y1*z3 + c1*y2*z3) / DD;
     float B1 = (s3*y2*z1 - s2*y3*z1 - s3*y1*z2 + s1*y3*z2 + s2*y1*z3 - s1*y2*z3) / DD;
     float A2 = (c3*x2*z1 - c2*x3*z1 - c3*x1*z2 + c1*x3*z2 + c2*x1*z3 - c1*x2*z3) / DD;
@@ -911,7 +1058,10 @@ class RingSet {
     float BB = B1*B1 + B2*B2 + B3*B3 - 1.0;
 
     float[] sols = solveQuadraticEquation(BB, AB, AA);
-    assert sols != null && sols.length == 2;
+    if (sols == null) {
+      println("No solutions found!");
+      return null;
+    }
     float t = sols[0];
     float t2 = t * t;
     float cosa = 1 / sqrt(1 + t2), sina = t / sqrt(1 + t2);
@@ -926,8 +1076,9 @@ class RingSet {
       n.set(cosa * A1 + sina * B1, cosa * A2 + sina * B2, cosa * A3 + sina * B3);
       p = P(c, r * cosa, n);
     }
-
+    // println("t = ", t);
     if (dot(nijk, n) < 0) n.rev();
+    // System.out.format("n = (%f, %f, %f), p = (%f, %f, %f)\n", n.x, n.y, n.z, p.x, p.y, p.z);
 
     // Find contact points on the 3 circles
     pt[] ps = new pt[3];
@@ -989,12 +1140,6 @@ class RingSet {
     if (dot(vp, yAxes[i]) < 0) angle = TWO_PI - angle;
 
     int n = angleLists[i].size();
-    // int k = 0;
-    // for (; k < n; ++k) {  // linear search
-    //   if (angleLists[i].get(k) > angle) break;
-    // }
-    // angleLists[i].add(k, angle);
-    // swingLists[i].add(k, pid);
 
     int lo = 0, hi = n - 1, mid;
     while (lo <= hi) {  // binary search
@@ -1006,6 +1151,12 @@ class RingSet {
     swingLists[i].add(lo, pid);
   }
 
+  private void insertExTriPoint(int rid, pt p, int pid) {
+    exTriPoints.add(p);
+    exTriRIDs.add(rid);
+    updateSwingList(rid, p, pid);
+  }
+
   void generateExTris() {
     exTriPoints = new ArrayList<pt>();
     exTriRIDs = new ArrayList<Integer>();
@@ -1015,38 +1166,60 @@ class RingSet {
       swingLists[i] = new ArrayList<Integer>();
       angleLists[i] = new ArrayList<Float>();
     }
+    if (debugST) {
+      debugSTInfo.circumcenters.clear();
+      debugSTInfo.circumradii.clear();
+      debugSTInfo.normals.clear();
+    }
     for (int i = 0; i < nRings; ++i) {
       for (int j = i + 1; j < nRings; ++j) {
         for (int k = j + 1; k < nRings; ++k) {
-          pt[] tmp = generateExTriThreeRings(i, j, k, null);
+          // pt[] tmp = generateExTriThreeRings(i, j, k, null);
+          // if (isValidExTri(tmp[0], tmp[1], tmp[2], i, j, k)) {
+          //   int pid = exTriPoints.size();
+          //   exTriPoints.add(tmp[0]);
+          //   exTriRIDs.add(i);
+          //   updateSwingList(i, tmp[0], pid);
+
+          //   exTriPoints.add(tmp[1]);
+          //   exTriRIDs.add(j);
+          //   updateSwingList(j, tmp[1], pid + 1);
+
+          //   exTriPoints.add(tmp[2]);
+          //   exTriRIDs.add(k);
+          //   updateSwingList(k, tmp[2], pid + 2);
+          // }
+          // tmp = generateExTriThreeRings(i, k, j, null);
+          // if (isValidExTri(tmp[0], tmp[1], tmp[2], i, k, j)) {
+          //   int pid = exTriPoints.size();
+          //   exTriPoints.add(tmp[0]);
+          //   exTriRIDs.add(i);
+          //   updateSwingList(i, tmp[0], pid);
+
+          //   exTriPoints.add(tmp[1]);
+          //   exTriRIDs.add(k);
+          //   updateSwingList(k, tmp[1], pid + 1);
+
+          //   exTriPoints.add(tmp[2]);
+          //   exTriRIDs.add(j);
+          //   updateSwingList(j, tmp[2], pid + 2);
+          // }
+
+          pt[] tmp = generateExTriThreeRingsTwo(i, j, k);
+          if (tmp == null || tmp.length != 6) {
+            System.out.format("No ex tris among (%d, %d, %d)\n", i, j, k);
+          }
           if (isValidExTri(tmp[0], tmp[1], tmp[2], i, j, k)) {
             int pid = exTriPoints.size();
-            exTriPoints.add(tmp[0]);
-            exTriRIDs.add(i);
-            updateSwingList(i, tmp[0], pid);
-
-            exTriPoints.add(tmp[1]);
-            exTriRIDs.add(j);
-            updateSwingList(j, tmp[1], pid + 1);
-
-            exTriPoints.add(tmp[2]);
-            exTriRIDs.add(k);
-            updateSwingList(k, tmp[2], pid + 2);
+            insertExTriPoint(i, tmp[0], pid);
+            insertExTriPoint(j, tmp[1], pid + 1);
+            insertExTriPoint(k, tmp[2], pid + 2);
           }
-          tmp = generateExTriThreeRings(i, k, j, null);
-          if (isValidExTri(tmp[0], tmp[1], tmp[2], i, k, j)) {
+          if (isValidExTri(tmp[3], tmp[4], tmp[5], i, k, j)) {
             int pid = exTriPoints.size();
-            exTriPoints.add(tmp[0]);
-            exTriRIDs.add(i);
-            updateSwingList(i, tmp[0], pid);
-
-            exTriPoints.add(tmp[1]);
-            exTriRIDs.add(k);
-            updateSwingList(k, tmp[1], pid + 1);
-
-            exTriPoints.add(tmp[2]);
-            exTriRIDs.add(j);
-            updateSwingList(j, tmp[2], pid + 2);
+            insertExTriPoint(i, tmp[3], pid);
+            insertExTriPoint(k, tmp[4], pid + 1);
+            insertExTriPoint(j, tmp[5], pid + 2);
           }
         }
       }
@@ -1193,9 +1366,8 @@ class RingSet {
 
   void showExEdges() {
     if (exTriPoints == null || exEdges == null) return;
-     stroke(0);
-     strokeWeight(2);
-    //noStroke();
+    stroke(0);
+    strokeWeight(2);
     fill(green, 200);
     for (DoubleEdge edge : exEdges.keySet()) {
       // System.out.format("(%d, %d, %d, %d)\n", edge.a, edge.b, edge.c, edge.d);
@@ -1212,7 +1384,6 @@ class RingSet {
       vertex(pd);
       endShape(QUAD_STRIP);
     }
-    // println("ExEdges size = ", exEdges.size());
   }
 
   void showExTris() {

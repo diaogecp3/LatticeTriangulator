@@ -12,9 +12,6 @@ Subdivision doesn't work well.
 In rs_easy_3:
 Three-ring triangles fail convexity test (now succeed)
 
-In rs_easy_4:
-source of figure 1 in paper.
-
 In rs_easy_5:
 fail on generating the extreme triangle for 3 circles
 

@@ -1,0 +1,8 @@
+ps_arcs_1:
+source of figure {input and output} in paper draft
+
+ps_arcs_2:
+source of figure {blue green} in paper draft
+
+ps_arcs_3:
+fail

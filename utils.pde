@@ -255,6 +255,44 @@ void showPlane(pt p, vec n, float s) {
   endShape();
 }
 
+/*
+ * Show the circle defined by (c, n, r) where c is the center, n is the normal,
+ * r is the radius.
+ */
+void showCircle(pt c, vec n, float r) {
+  stroke(0);
+  strokeWeight(3);
+  float a = 0;
+  float da = TWO_PI / 36;
+  vec vi = constructNormal(n);
+  vec vj = N(n, vi);
+  beginShape();
+  for (int i = 0; i < 36; ++i, a += da) {
+    vertex(P(c, r * cos(a), vi, r * sin(a), vj));
+  }
+  endShape(CLOSE);
+}
+
+/*
+ * Show some arcs on sphere (c, r). Each arc is (ps[i], ps[i+1]) with weight w.
+ */
+void showArcs(pt[] ps, int nv, pt c, float r, float w0, float w1, float w2) {
+  assert nv % 2 == 0;
+  fill(red);
+  for (int i = 0; i < nv; i += 2) {
+    show(ps[i], w0);
+  }
+
+  fill(green);
+  for (int i = 0; i < nv; i += 2) {
+    drawArc(ps[i], c, ps[i+1], r, w1);
+  }
+
+  fill(blue);
+  for (int i = 1; i < nv; i += 2) {
+    show(ps[i], w2);
+  }
+}
 
 /* Misc functions below. */
 

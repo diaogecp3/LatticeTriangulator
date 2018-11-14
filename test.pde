@@ -573,3 +573,59 @@ void exactCHAllCirclesTest() {
   if (show2RT) rs.showExEdges();
   if (show3RT) rs.showExTris();
 }
+
+void tangentCircleTest() {
+  if (P.nv < 6) {
+    println("Should use at least 6 points.");
+    return;
+  }
+
+  int nv = P.nv - P.nv % 2;
+  RingSet rs = new RingSet(centerOfSphere, radiusOfSphere, P.G, nv);
+
+  if (!rs.isValid()) {
+    println("The ring set is not valid.");
+    return;
+  } else {
+    println("The ring set is valid.");
+  }
+
+  if (showCircleSet) {
+    rs.showCircles();
+  }
+
+  if (showDiskSet) {
+    rs.showDisks();
+  }
+
+  if (showAuxPlane) {
+    fill(grey, 100);
+    showPlane(centerOfSphere, new vec(0, 0, 1), radiusOfSphere + 5);
+  }
+
+  rs.generateExTris();
+  if (show3RT) {
+    rs.showExTris();
+    numTriangles = rs.exTriPoints.size() / 3;
+    numRings = rs.nRings;
+  }
+
+  if (debugST) {  // show circumcircles, normals of supporting triangles
+    fill(magenta);
+    ArrayList<pt> centers = rs.debugSTInfo.circumcenters;
+    ArrayList<Float> radii = rs.debugSTInfo.circumradii;
+    ArrayList<vec> normals = rs.debugSTInfo.normals;
+    for (int i = 0; i < centers.size(); ++i) {
+      disk(centers.get(i), normals.get(i), radii.get(i));
+    }
+    fill(cyan);
+    for (int i = 0; i < centers.size(); ++i) {
+      arrow(centers.get(i), V(30, normals.get(i)), 4);
+    }
+  }
+
+  rs.generateExEdges();
+  if (show2RT) {
+    rs.showExEdges();
+  }
+}

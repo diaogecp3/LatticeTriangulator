@@ -10,10 +10,11 @@ import processing.pdf.*;
  * 5: one pivot-plane-around-line-until-hit-circle test
  * 6: one exact-convex-hull-for-edge-circle test
  * 7: one exact-convex-hull-for-two-circles test
- * 8: one tangent-plane-of-three-circles test (3 initialization methods)
+ * 8: one tangent-plane-of-three-circles-iter test (iterative method with 3 different initializations)
  * 9: one exact-convex-hull-for-three-circles test
  * 10: one three-ring-triangle test
  * 11: one exact-convex-hull-for-all-circles test
+ * 12: one tangent-circle/triangle test (allow interaction)
  * ...
  * 100: many convex-hull tests
  * 101: many ring-set-triangulation tests
@@ -22,15 +23,18 @@ import processing.pdf.*;
  * ...
  * 20: one circle-plane-intersection test
  */
-int test = 11;
+int test = 12;
 
+float tan0 = 0, tan1 = 0;  // for debugging supporting triangle of 3 circles
 
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
 int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
 
-boolean showYellowSphere = false;
+boolean showSphere = true;
+boolean showArcSet = true;
+boolean showAuxPlane = true;
 boolean generateCH = false;
 boolean regenerateCH = true;  // for ring set, test shrink/grow
 boolean showRingSet = true;
@@ -62,7 +66,7 @@ float rMax = 50;
 float attenuationMin = 0.05;
 float attenuationDelta = 0.05;
 float attenuation = 1.0;
-int numRings = 6;
+int numRings = 5;
 int numPointsPerRing = 6;
 RingSet rs;
 
@@ -84,7 +88,7 @@ void setup() {
   size(900, 900, P3D); // P3D means that we will do 3D graphics
   noSmooth();  // LEAVE HERE FOR 3D PICK TO WORK!!!
 
-  P.declare();
+  P.declare();  // some points on a sphere
 
   if (test >= 100) {
     noLoop();
@@ -95,7 +99,9 @@ void setup() {
 
   switch (inputMethodPointSet) {
     case 0:  // read from file
-      P.loadPts("data/point_set/ps_easy_0");
+      //P.loadPts("data/point_set/ps_easy_0");
+      P.loadPts("data/point_set/ps_arcs_3");
+      //P.loadPts("data/pts_unnamed");
       break;
     case 1:  // generate randomly
       generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, 10);
@@ -180,7 +186,7 @@ void draw() {
   background(255);
 
   pushMatrix();  // to ensure that we can restore the standard view before writing on the canvas
-  if (snappingPDF) beginRecord(PDF, "PDFimages/P" + nf(pictureCounter++,3) + ".pdf");
+  if (snappingPDF) beginRecord(PDF, "PDFimages/P" + nf(pictureCounter++, 3) + ".pdf");
 
   // SET PERSPECTIVE
   float fov = PI / 3.0;
@@ -199,20 +205,8 @@ void draw() {
   if (showFrame) showFrame(150); // X-red, Y-green, Z-blue arrows
 
   noStroke();
-  //fill(magenta); show(centerOfSphere, 4); // show center of the sphere
-  Pick = pick(mouseX,mouseY);
-
-  if (picking) {
-    P.setPickToIndexOfVertexClosestTo(Pick); // id of vertex of P with closest screen projection to mouse (us in keyPressed 'x'...
-    picking = false;
-  }
-
-  // Show the big yellow sphere
-  if (showYellowSphere) {
-    fill(yellow, 50);
-    noStroke();
-    show(centerOfSphere, radiusOfSphere);
-  }
+  fill(black);
+  show(centerOfSphere, 3); // show center of the sphere
 
   switch (test) {
     case 0:
@@ -251,6 +245,9 @@ void draw() {
     case 11:
       exactCHAllCirclesTest();
       break;
+    case 12:
+      tangentCircleTest();
+      break;
 
     case 100:  // many convex-hull tests
       convexHullTests(numTests, numPointsPerTest);
@@ -276,7 +273,28 @@ void draw() {
       exit();
   }
 
+  // Show the big yellow sphere
+  if (showSphere) {
+    fill(yellow, 100);
+    noStroke();
+    show(centerOfSphere, radiusOfSphere);  // this should be before pick
+    Pick = pick(mouseX, mouseY);
+  }
 
+  if (picking) {
+    P.setPickToIndexOfVertexClosestTo(Pick); // id of vertex of P with closest screen projection to mouse (us in keyPressed 'x'...
+    picking = false;
+  }
+
+  if (showSphere && showArcSet) {
+    noStroke();
+    int nv = P.nv - P.nv % 2;
+    showArcs(P.G, nv, centerOfSphere, radiusOfSphere, 4, 3, 4);
+    fill(red, 100);
+    P.showPicked(6); // show currently picked vertex of P
+    fill(orange, 100);
+    show(pick(mouseX,mouseY), 5);  // show mouse position on the sphere
+  }
 
   if (exitDraw) noLoop();
 
@@ -295,7 +313,13 @@ void draw() {
   //scribeHeader("debug = " + str(debugCH), 2);
   //scribeHeader("number of faces I enter = " + numFaces, 3);
   if (numTriangles != -1) {
-    scribeHeader("number of triangles = " + numTriangles, 4);
+    if (test != 12) {
+      scribeHeader("#triangles =" + numTriangles, 4);
+    } else {
+      scribeHeader("T = 2V - 4, #triangles =" + numTriangles + ", #rings =" + numRings, 4);
+      scribeHeader("tan0 = " + tan0 + ", tan1 = " + tan1, 5);
+      scribeHeader("arctan0 = " + atan(tan0) + ", arctan1 = " + atan(tan1), 6);
+    }
   }
 
   //scribeHeader("time for triangle mesh generation = " + timeTM + "ms", 5);
@@ -343,7 +367,10 @@ void keyPressed() {
   // if (key == 'x' || key == 'z' || key == 'd' || key == 'a') P.setPickedIndexTo(pp); // picks the vertex of P that has closest projeciton to mouse
   if (key == 'x' || key == 'z' || key == 'd' || key == 'a') P.setPickToIndexOfVertexClosestTo(Pick);  // picks the vertex of P that has closest projeciton to mouse
   if (key == 'd') P.deletePicked();
-  if (key == 'i') P.insertClosestProjection(Pick);  // Inserts new vertex in P that is the closeset projection of O
+  if (key == 'i') {
+    // P.insertClosestProjection(Pick);  // insert the new vertex Pick in P
+    P.addPt(Pick);  // append the new vertex Pick in P
+  }
   if (key == 'W') { P.savePts("data/pts"); Q.savePts("data/pts2"); }  // save vertices to pts2
   if (key == 'L') { P.loadPts("data/pts"); Q.loadPts("data/pts2"); }  // loads saved model
   if (key == 'w') {  // save data
@@ -368,8 +395,9 @@ void keyPressed() {
     debugCH = !debugCH;
     debug3RT = !debug3RT;
     debug2RT = !debug2RT;
+    debugST = !debugST;
   }
-  if (key == 'o') showYellowSphere = !showYellowSphere;
+  if (key == 'o') showSphere = !showSphere;
   if (key == 'h') generateCH = !generateCH;
   if (key == 'r') {
     regenerateCH = !regenerateCH;
@@ -424,6 +452,9 @@ void keyPressed() {
   if (key == '3') {
     show3RT = !show3RT;
   }
+
+  if (test == 12 && key == '8') showArcSet = !showArcSet;
+  if (test == 12 && key == '9') showAuxPlane = !showAuxPlane;
 
   if (key == '[') attenuation = min(1.0, attenuation + attenuationDelta);
   if (key == ']') attenuation = max(attenuationMin, attenuation - attenuationDelta);
