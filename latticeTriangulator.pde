@@ -34,7 +34,7 @@ int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
 
 boolean showSphere = true;
 boolean showArcSet = true;
-boolean showAuxPlane = true;
+boolean showAuxPlane = false;
 boolean generateCH = false;
 boolean regenerateCH = true;  // for ring set, test shrink/grow
 boolean showRingSet = true;

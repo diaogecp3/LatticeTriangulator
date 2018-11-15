@@ -141,9 +141,12 @@ class RingSet {
     }
   }
 
-  class DoubleEdge {
+  /*
+   * A corridor has four vertices with ID a, b, c, d, respectively.
+   */
+  class Corridor {
     int a, b, c, d;
-    DoubleEdge(int a, int b, int c, int d) {
+    Corridor(int a, int b, int c, int d) {
       this.a = a;
       this.b = b;
       this.c = c;
@@ -176,7 +179,7 @@ class RingSet {
   ArrayList<Integer> exTriRIDs = null;
   ArrayList<Integer>[] swingLists = null;  // each ring has a swing list to sort the corners touching it
   ArrayList<Float>[] angleLists = null;
-  LinkedHashMap<DoubleEdge, ArrayList<pt>> exEdges;  // key: (point ID a, point ID b), value: a list of points sampled from corresponding arcs
+  LinkedHashMap<Corridor, ArrayList<pt>> exEdges;  // key: (pid a, b, c, d), value: a list of points sampled from corresponding arcs
 
   Debug3RTInfo debug3RTInfo = new Debug3RTInfo();  // for debug
   Debug2RTInfo debug2RTInfo = new Debug2RTInfo();  // for debug
@@ -962,34 +965,27 @@ class RingSet {
     ts[1] = (ab - sqrtDet) / bb1;
     vec[] ns = new vec[2];  // the 2 normals
     pt[] ps = new pt[2];  // the 2 centers
+
+    /* Compute the 2 centers and 2 normals. */
     for (int ii = 0; ii < 2; ++ii) {
-      float cosa = 1.0 / sqrt(1 + ts[ii] * ts[ii]);
+      float cosa = 1.0 / sqrt(1 + ts[ii] * ts[ii]);  // cosa > 0
       ns[ii] = V(cosa, A(va, -ts[ii], vb));
       ps[ii] = P(c, r * cosa, ns[ii]);
     }
-    vec nijk = N(centers[i], centers[j], centers[k]);
-    if (dot(nijk, V(centers[i], ps[0])) < 0) {  // make sure ps[0], ns[0] match orientation (i, j, k)
-      pt p = ps[0];  // TODO: no need to swap ps[0] and ps[1] since they are not used later
-      ps[0] = ps[1];
-      ps[1] = p;
-      vec v = ns[0];
-      ns[0] = ns[1];
-      ns[1] = v;
-      float f = ts[0];  // TODO: no need to swap ts[0] and ts[1] since they are not used later
-      ts[0] = ts[1];
-      ts[1] = f;
-    }
-    if (dot(nijk, ns[0]) < 0) ns[0].rev();
-    if (dot(nijk, ns[1]) > 0) ns[1].rev();
 
-    if (debug3RT) {
-      tan0 = ts[0];
-      tan1 = ts[1];
+    /*
+     * For each computed circle, check if all input circles on its negative side.
+     * Since all input circles are already on the same side, we just need to
+     * check if one input circle is on its negative side.
+     */
+    for (int ii = 0; ii < 2; ++ii) {
+      vec v = V(ps[ii], centers[i]);
+      if (dot(v, ns[ii]) > 0) ns[ii].rev();
     }
 
     pt[] pointsTangency = new pt[6];
-    // triangle (i, j, k)
-    vec n1 = U(N(normals[i], ns[0]));
+    // first triangle (i, j, k)
+    vec n1 = U(N(normals[i], ns[0]));  // the tangent at the contact point
     vec d1 = N(n1, normals[i]);
     pointsTangency[0] = P(centers[i], radii[i], d1);
     vec n2 = U(N(normals[j], ns[0]));
@@ -998,27 +994,48 @@ class RingSet {
     vec n3 = U(N(normals[k], ns[0]));
     vec d3 = N(n3, normals[k]);
     pointsTangency[2] = P(centers[k], radii[k], d3);
-
-    // triangle (i, k, j)
+    // second triangle (i, j, k)
     vec n4 = U(N(normals[i], ns[1]));
     vec d4 = N(n4, normals[i]);
     pointsTangency[3] = P(centers[i], radii[i], d4);
-    vec n5 = U(N(normals[k], ns[1]));
-    vec d5 = N(n5, normals[k]);
-    pointsTangency[4] = P(centers[k], radii[k], d5);
-    vec n6 = U(N(normals[j], ns[1]));
-    vec d6 = N(n6, normals[j]);
-    pointsTangency[5] = P(centers[j], radii[j], d6);
+    vec n5 = U(N(normals[j], ns[1]));
+    vec d5 = N(n5, normals[j]);
+    pointsTangency[4] = P(centers[j], radii[j], d5);
+    vec n6 = U(N(normals[k], ns[1]));
+    vec d6 = N(n6, normals[k]);
+    pointsTangency[5] = P(centers[k], radii[k], d6);
+
+    /* Make sure the first center/normal corresponds to orientation (i, j, k). */
+    if (dot(N(pointsTangency[0], pointsTangency[1], pointsTangency[2]), ns[0]) > 0) {
+      pt p = pointsTangency[4];
+      pointsTangency[4] = pointsTangency[5];
+      pointsTangency[5] = p;
+    } else {  // flip the first triplet, swap the two triplets
+      println("swap the two triplets");
+      pt[] tmpPointsTangency = new pt[6];
+      tmpPointsTangency[0] = pointsTangency[3];
+      tmpPointsTangency[1] = pointsTangency[4];
+      tmpPointsTangency[2] = pointsTangency[5];
+      tmpPointsTangency[3] = pointsTangency[0];
+      tmpPointsTangency[4] = pointsTangency[2];
+      tmpPointsTangency[5] = pointsTangency[1];
+      pointsTangency = tmpPointsTangency;
+    }
 
     if (debugST) {
+      tan0 = ts[0];
+      tan1 = ts[1];
       for (int ii = 0; ii < 2; ++ii) {
         debugSTInfo.circumcenters.add(ps[ii]);
-        /*
-         * atan(x) is in [-PI/2, PI/2].
-         * If atan(x) is in [-PI/2, 0], then sin(atan(x)) < 0, then radius < 0.
-         */
-        float radius = r * sin(atan(ts[ii]));
-        if (radius < 0) println("negative sin(atan(x)) and negative radius!");
+        float a = atan(ts[ii]);  // [-PI/2, PI/2]
+        if (a < 0) {
+          a += PI;  // [PI/2, PI]
+          System.out.format("%d: half angle > PI/2\n", ii);
+          fill(pink);
+          show(ps[ii], 5);
+        }
+        float radius = r * sin(a);
+        assert radius >= 0;
         debugSTInfo.circumradii.add(radius);
         debugSTInfo.normals.add(ns[ii]);
       }
@@ -1273,13 +1290,13 @@ class RingSet {
       if (dot(vd, yAxes[u]) < 0) angle = TWO_PI - angle;
       int n = int(au / dAngle);  // split arc into n pieces by inserting n-1 points
       ArrayList<pt> edgePoints = fillExEdgeWithPoints(angle, dAngle, n, u, v);
-      exEdges.put(new DoubleEdge(id, ic, ia, ib), edgePoints);
+      exEdges.put(new Corridor(id, ic, ia, ib), edgePoints);
     } else {
       float angle = acos(dot(vb, xAxes[v]) / rv);
       if (dot(vb, yAxes[v]) < 0) angle = TWO_PI - angle;
       int n = int(av / dAngle);
       ArrayList<pt> edgePoints = fillExEdgeWithPoints(angle, dAngle, n, v, u);
-      exEdges.put(new DoubleEdge(ib, ia, ic, id), edgePoints);
+      exEdges.put(new Corridor(ib, ia, ic, id), edgePoints);
     }
   }
 
@@ -1288,7 +1305,7 @@ class RingSet {
     dAngle = TWO_PI / nSamples;
     int nExTriPoints = exTriPoints.size();
     boolean[][] visited = new boolean[nExTriPoints][nExTriPoints];
-    exEdges = new LinkedHashMap<DoubleEdge, ArrayList<pt>>();
+    exEdges = new LinkedHashMap<Corridor, ArrayList<pt>>();
     for (int i = 0; i < nRings; ++i) {
       ArrayList<Integer> swingList = swingLists[i];
       int n = swingList.size();
@@ -1369,7 +1386,7 @@ class RingSet {
     stroke(0);
     strokeWeight(2);
     fill(green, 200);
-    for (DoubleEdge edge : exEdges.keySet()) {
+    for (Corridor edge : exEdges.keySet()) {
       // System.out.format("(%d, %d, %d, %d)\n", edge.a, edge.b, edge.c, edge.d);
       pt pa = exTriPoints.get(edge.a);
       pt pb = exTriPoints.get(edge.b);

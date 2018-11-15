@@ -608,19 +608,31 @@ void tangentCircleTest() {
     rs.showExTris();
     numTriangles = rs.exTriPoints.size() / 3;
     numRings = rs.nRings;
+
+    fill(cyan);
+    showNormalToTriangle(rs.exTriPoints.get(0), rs.exTriPoints.get(1), rs.exTriPoints.get(2), 20, 4);
+    showNormalToTriangle(rs.exTriPoints.get(3), rs.exTriPoints.get(4), rs.exTriPoints.get(5), 20, 4);
   }
 
   if (debugST) {  // show circumcircles, normals of supporting triangles
-    fill(magenta);
     ArrayList<pt> centers = rs.debugSTInfo.circumcenters;
     ArrayList<Float> radii = rs.debugSTInfo.circumradii;
     ArrayList<vec> normals = rs.debugSTInfo.normals;
     for (int i = 0; i < centers.size(); ++i) {
+      if (i % 2 == 0) fill(green, 100);
+      else fill(blue, 100);
       disk(centers.get(i), normals.get(i), radii.get(i));
     }
-    fill(cyan);
+    fill(cyan, 100);
     for (int i = 0; i < centers.size(); ++i) {
       arrow(centers.get(i), V(30, normals.get(i)), 4);
+    }
+
+    {  // show the plane defined by centers[0, 1, 2]
+      pt c = P(rs.centers[0], rs.centers[1], rs.centers[2]);
+      vec n = U(N(rs.centers[0], rs.centers[1], rs.centers[2]));
+      fill(magenta, 100);
+      showPlane(c, n, 70);
     }
   }
 
