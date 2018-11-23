@@ -23,11 +23,33 @@ vec normalToTriangle(pt A, pt B, pt C) {
 }
 
 /*
+ * Compute the circumradius of a triangle (pa, pb, pc).
+ */
+float circumradiusOfTriangle(pt pa, pt pb, pt pc) {
+  float a = d(pa, pb);
+  float b = d(pb, pc);
+  float c = d(pc, pa);
+  return (a*b*c)/(sqrt((a+b+c)*(-a+b+c)*(a-b+c)*(a+b-c)));
+}
+
+/*
+ * Compute the circumcenter of a triangle (pa, pb, pc).
+ */
+pt circumcenterOfTriangle(pt pa, pt pb, pt pc) {
+  vec ab = V(pa, pb);
+  vec ac = V(pa, pc);
+  vec abac = N(ab, ac);
+  vec v = V(n2(ac), N(abac, ab), n2(ab), N(ac, abac));
+  v.div(2 * n2(abac));
+  return P(pa, v);
+}
+
+/*
  * Construct a vector normal to given vector v. v is not necessarily a unit
  * vector. A unit vector will be returned.
  */
 vec constructNormal(vec v) {
-  if (isAbsZero(v.y) && isAbsZero(v.z)) {  // v is parallel to (1, 0, 0)
+  if (isZero(v.y) && isZero(v.z)) {  // v is parallel to (1, 0, 0)
     return U(new vec(-v.z, 0.0, v.x));  // cross product of v and (0, 1, 0)
   } else {
     return U(new vec(0.0, v.z, -v.y));  // cross product of v and (1, 0, 0)
@@ -62,7 +84,7 @@ boolean intersectionTwoPlanes(pt A,                                     // in
                               pt p0,                                    // out
                               pt p1) {                                  // out
   vec a, b, c, d;
-  if (notAbsZero(C.y * D.z - D.y * C.z)) {
+  if (notZero(C.y * D.z - D.y * C.z)) {
     vec2 yz0 = new vec2(), yz1 = new vec2();
     a = new vec(A.x, A.y, A.z);
     b = new vec(B.x, B.y, B.z);
@@ -71,7 +93,7 @@ boolean intersectionTwoPlanes(pt A,                                     // in
     constructAndSolveLE(a, b, c, d, yz0, yz1);
     p0.set(0.0, yz0.x, yz0.y);
     p1.set(1.0, yz1.x, yz1.y);
-  } else if (notAbsZero(C.x * D.z - D.x * C.z)) {
+  } else if (notZero(C.x * D.z - D.x * C.z)) {
     vec2 xz0 = new vec2(), xz1 = new vec2();
     a = new vec(A.y, A.x, A.z);
     b = new vec(B.y, B.x, B.z);
@@ -80,7 +102,7 @@ boolean intersectionTwoPlanes(pt A,                                     // in
     constructAndSolveLE(a, b, c, d, xz0, xz1);
     p0.set(xz0.x, 0.0, xz0.y);
     p1.set(xz1.x, 1.0, xz1.y);
-  } else if (notAbsZero(C.x * D.y - D.x * C.y)) {
+  } else if (notZero(C.x * D.y - D.x * C.y)) {
     vec2 xy0 = new vec2(), xy1 = new vec2();
     a = new vec(A.z, A.x, A.y);
     b = new vec(B.z, B.x, B.y);
@@ -115,7 +137,7 @@ float distanceToLine(pt P, pt A, pt B) {
  */
 boolean emptyIntersectionTwoDisks(pt ca, vec va, float ra, pt cb, vec vb, float rb) {
   if (parallel(va, vb)) {  // two planes are parallel
-    if (isAbsZero(dot(V(ca, cb), va))) {  // two disks on the same plane
+    if (isZero(dot(V(ca, cb), va))) {  // two disks on the same plane
       if (d(ca, cb) > ra + rb) return true;
       else return false;
     } else {
@@ -168,13 +190,13 @@ boolean emptyIntersectionLineDisk(pt a, pt b, pt c, float r, vec n) {
   vec ac = V(a, c);
   float dnab = dot(n, ab);
   float dnac = dot(n, ac);
-  if (notAbsZero(dnab)) {  // dot(N, AB) != 0
+  if (notZero(dnab)) {  // dot(N, AB) != 0
     float t = dnac / dnab;
     pt p = P(a, t, ab);
     if (d(p, c) <= r) return false;
     else return true;
   } else {  // dot(N, AB) == 0
-    if (notAbsZero(dnac)) {  // dot(N, AC) != 0
+    if (notZero(dnac)) {  // dot(N, AC) != 0
       return true;  // line AB parallel to the supporting plane of circle C
     } else {  // line AB is on the same plane as circle C
       if (distanceToLine(c, a, b) <= r) return false;
@@ -223,7 +245,7 @@ pt[] pivotPlaneAroundLineHitCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec
   if (vi == null) vi = constructNormal(n);
   float dnab = dot(n, ab);
   float dnca = dot(n, ca);
-  if (isAbsZero(dnab) && isAbsZero(dnca)) {
+  if (isZero(dnab) && isZero(dnca)) {
     println("Line AB is on the supporting plane of Circle C");
     ps[0] = P(c, r, vi);
     ps[1] = P(c, -r, vi);
@@ -231,7 +253,7 @@ pt[] pivotPlaneAroundLineHitCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec
   }
   if (vj == null) vj = N(n, vi);  // cross product
   float[] thetas;
-  if (notAbsZero(dnab)) {
+  if (notZero(dnab)) {
     vec v = A(ca, -dnca/dnab, ab);
     float fa = dot(vi, v);
     float fb = dot(vj, v);
@@ -489,7 +511,7 @@ pt[] tangentPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
   while (iter < maxIter) {
     boolean update = false;
     // move A, pivot around BC
-    if (notAbsZero(dot(n, t0)) || dot(n, V(p1, c0)) > 0) {
+    if (notZero(dot(n, t0)) || dot(n, V(p1, c0)) > 0) {
       pt[] candidates = pivotPlaneAroundLineHitCircle(c0, r0, n0, p1, p2, vi0, vj0);
       p0 = candidates[0];
       n = N(p1, p2, p0);
@@ -503,7 +525,7 @@ pt[] tangentPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
     }
 
     // move B, pivot around CA
-    if (notAbsZero(dot(n, t1)) || dot(n, V(p2, c1)) > 0) {
+    if (notZero(dot(n, t1)) || dot(n, V(p2, c1)) > 0) {
       pt[] candidates = pivotPlaneAroundLineHitCircle(c1, r1, n1, p2, p0, vi1, vj1);
       p1 = candidates[0];
       n = N(p2, p0, p1);
@@ -517,7 +539,7 @@ pt[] tangentPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
     }
 
     // move C, pivot around AB
-    if (notAbsZero(dot(n, t2)) || dot(n, V(p0, c2)) > 0) {
+    if (notZero(dot(n, t2)) || dot(n, V(p0, c2)) > 0) {
       pt[] candidates = pivotPlaneAroundLineHitCircle(c2, r2, n2, p0, p1, vi2, vj2);
       p2 = candidates[0];
       n = N(p0, p1, p2);
@@ -583,7 +605,7 @@ void exactCHTwoCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     disk(c1, n1, r1);
   }
   {
-    fill(purple, 100);
+    fill(violet, 100);
     stroke(0);
     strokeWeight(2);
     beginShape(QUAD_STRIP);
@@ -688,7 +710,7 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     // showNormalToTriangle(points.get(3), points.get(4), points.get(5), 20, 2);
   }
   if (show2RT) {
-    fill(purple, 100);
+    fill(violet, 100);
     stroke(0);
     strokeWeight(2);
     for (int i = 0; i < 3; ++i) {

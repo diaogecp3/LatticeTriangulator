@@ -265,7 +265,7 @@ void arrow(pt P, vec V, float r) {
 // **************************** PRIMITIVE
 void showFrame(float d) {
   noStroke();
-  fill(metal); sphere(d/10);
+  fill(snow); sphere(d/10);
   fill(blue);  showArrow(d,d/10);
   fill(red); pushMatrix(); rotateY(PI/2); showArrow(d,d/10); popMatrix();
   fill(green); pushMatrix(); rotateX(-PI/2); showArrow(d,d/10); popMatrix();

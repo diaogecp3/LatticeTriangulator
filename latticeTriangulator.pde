@@ -14,7 +14,8 @@ import processing.pdf.*;
  * 9: one exact-convex-hull-for-three-circles test
  * 10: one three-ring-triangle test
  * 11: one exact-convex-hull-for-all-circles test
- * 12: one tangent-circle/triangle test (allow interaction)
+ * 12: one tangent-triangles-naive test (allow interaction)
+ * 13: one tangent-triangles-incremental test (allow interaction)
  * ...
  * 100: many convex-hull tests
  * 101: many ring-set-triangulation tests
@@ -23,9 +24,11 @@ import processing.pdf.*;
  * ...
  * 20: one circle-plane-intersection test
  */
-int test = 12;
+int test = 13;
 
 float tan0 = 0, tan1 = 0;  // for debugging supporting triangle of 3 circles
+float gaa = 0, gbb = 0, gab = 0;  // for debugging supporting triangle of 3 circles
+boolean validRS = false;
 
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
@@ -35,6 +38,7 @@ int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
 boolean showSphere = true;
 boolean showArcSet = true;
 boolean showAuxPlane = false;
+int approxMethodCorridor = 0;
 boolean generateCH = false;
 boolean regenerateCH = true;  // for ring set, test shrink/grow
 boolean showRingSet = true;
@@ -100,7 +104,7 @@ void setup() {
   switch (inputMethodPointSet) {
     case 0:  // read from file
       //P.loadPts("data/point_set/ps_easy_0");
-      P.loadPts("data/point_set/ps_arcs_3");
+      P.loadPts("data/point_set/ps_arcs_8");
       //P.loadPts("data/pts_unnamed");
       break;
     case 1:  // generate randomly
@@ -246,7 +250,10 @@ void draw() {
       exactCHAllCirclesTest();
       break;
     case 12:
-      tangentCircleTest();
+      tangentTrianglesNaiveTest();
+      break;
+    case 13:
+      tangentTrianglesIncrementalTest();
       break;
 
     case 100:  // many convex-hull tests
@@ -312,13 +319,17 @@ void draw() {
   // display anything related to my project
   //scribeHeader("debug = " + str(debugCH), 2);
   //scribeHeader("number of faces I enter = " + numFaces, 3);
+  if (test == 12 || test == 13) {
+    scribeHeader("valid ring set? " + (validRS ? "yes" : "no"), 3);
+  }
   if (numTriangles != -1) {
-    if (test != 12) {
+    if (test != 12 && test != 13) {
       scribeHeader("#triangles =" + numTriangles, 4);
     } else {
-      scribeHeader("T = 2V - 4, #triangles =" + numTriangles + ", #rings =" + numRings, 4);
+      scribeHeader("#triangles =" + numTriangles + "(expect " + str(2 * numRings - 4) + "), #rings =" + numRings, 4);
       scribeHeader("tan0 = " + tan0 + ", tan1 = " + tan1, 5);
       scribeHeader("arctan0 = " + atan(tan0) + ", arctan1 = " + atan(tan1), 6);
+      scribeHeader("aa = " + gaa + ", bb = " + gbb + ", ab = " + gab, 7);
     }
   }
 
@@ -366,7 +377,10 @@ void keyPressed() {
   if (key == 't') tracking = !tracking; // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
   // if (key == 'x' || key == 'z' || key == 'd' || key == 'a') P.setPickedIndexTo(pp); // picks the vertex of P that has closest projeciton to mouse
   if (key == 'x' || key == 'z' || key == 'd' || key == 'a') P.setPickToIndexOfVertexClosestTo(Pick);  // picks the vertex of P that has closest projeciton to mouse
-  if (key == 'd') P.deletePicked();
+  if (key == 'd') {
+    // P.deletePicked();
+    P.deletePickedPair();
+  }
   if (key == 'i') {
     // P.insertClosestProjection(Pick);  // insert the new vertex Pick in P
     P.addPt(Pick);  // append the new vertex Pick in P
@@ -453,8 +467,12 @@ void keyPressed() {
     show3RT = !show3RT;
   }
 
-  if (test == 12 && key == '8') showArcSet = !showArcSet;
-  if (test == 12 && key == '9') showAuxPlane = !showAuxPlane;
+  if ((test == 12 || test == 13) && key == '7') {
+    approxMethodCorridor++;
+    if (approxMethodCorridor > 2) approxMethodCorridor = 0;
+  }
+  if ((test == 12 || test == 13) && key == '8') showArcSet = !showArcSet;
+  if ((test == 12 || test == 13) && key == '9') showAuxPlane = !showAuxPlane;
 
   if (key == '[') attenuation = min(1.0, attenuation + attenuationDelta);
   if (key == ']') attenuation = max(attenuationMin, attenuation - attenuationDelta);

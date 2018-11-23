@@ -68,6 +68,16 @@ class pts { // class for manipulaitng and sisplaying polyloops
     }
 
   pts deletePicked() {for(int i=pv; i<nv; i++) G[i].setTo(G[i+1]); pv=max(0,pv-1); nv--;  return this;}
+  pts deletePickedPair() {
+    if (nv == 0 || nv % 2 == 1) return this;
+    int j = pv - pv % 2;
+    for (int i = j; i < nv - 2; ++i) {
+      G[i].setTo(G[i+2]);
+    }
+    pv = max(0, j - 1);
+    nv -= 2;
+    return this;
+  }
   pts setPt(pt P, int i) { G[i].setTo(P); return this;}
   pts setPickedTo(pt P) { G[pv].setTo(P); return this;}
   pts showPicked() {show(G[pv],13); return this;}

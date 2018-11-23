@@ -52,14 +52,14 @@ float accuracy(boolean[] a, int n, int start, int end, boolean[] valids) {
 /*
  * Return true iff |x| is not close to 0.
  */
-boolean notAbsZero(float x) {
+boolean notZero(float x) {
   return x <= -0.00001 || x >= 0.00001;
 }
 
 /*
  * Return true iff |x| is close to 0.
  */
-boolean isAbsZero(float x) {
+boolean isZero(float x) {
   return x > -0.00001 && x < 0.00001;
 }
 
@@ -107,7 +107,7 @@ vec random3(float n) {
  */
 vec2 solveLinearEquationsInTwoVars(float a, float b, float c, float d, float e, float f) {
   float det = a * d - b * c;
-  if (isAbsZero(det)) return null;
+  if (isZero(det)) return null;
   float x =(d * e - b * f) / det;
   float y = (a * f - c * e) / det;
   return new vec2(x, y);
@@ -137,7 +137,7 @@ float[] solveLinearEquationInCosSin(float a, float b, float c) {
     println("In a*cos(theta) + b*sin(theta) = c, a and b might be too small!");
   }
   float[] thetas = new float[2];
-  if (notAbsZero(a) && notAbsZero(b)) {  // a != 0 and b != 0
+  if (notZero(a) && notZero(b)) {  // a != 0 and b != 0
     // println("a = ", a, "b = ", b);
     /* How to decide (the sign of) tmp0 here? According to the sign of b. */
     float tmp0 = asin(c / (sqrt(a * a + b * b)));  // [-pi/2, pi/2]
@@ -146,7 +146,7 @@ float[] solveLinearEquationInCosSin(float a, float b, float c) {
     thetas[0] = tmp0 - tmp1;  // (-pi, pi)
     thetas[1] = PI - tmp0 - tmp1;  // (0, 2pi)
     thetas[0] = thetas[0] < 0 ? thetas[0] + TWO_PI : thetas[0];  // [0, pi), (pi, 2pi)
-  } else if (isAbsZero(a)) {  // a == 0 and b != 0
+  } else if (isZero(a)) {  // a == 0 and b != 0
     println("In solving a*cos(theta) + b*sin(theta) = c: a == 0");
     thetas[0] = asin(c/b);  // [-pi/2, pi/2]
     thetas[1] = PI - thetas[0];  // [pi/2, 3pi/2]
@@ -271,6 +271,16 @@ void showCircle(pt c, vec n, float r) {
     vertex(P(c, r * cos(a), vi, r * sin(a), vj));
   }
   endShape(CLOSE);
+}
+
+/*
+ * Show the circumcircle defined by triangle (pa, pb, pc).
+ */
+void showCircumcircleOfTriangle(pt pa, pt pb, pt pc, pt center, vec normal, Float radius) {
+  if (center == null) center = circumcenterOfTriangle(pa, pb, pc);
+  if (normal == null) normal = normalToTriangle(pa, pb, pc);
+  if (radius == null) radius = d(center, pa);
+  showCircle(center, normal, radius);
 }
 
 /*

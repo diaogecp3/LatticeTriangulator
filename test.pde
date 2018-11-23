@@ -248,7 +248,7 @@ void exactCHAllCirclesTests(int n, int nRings) {
     ringSet.init();
     ringSet.generatePoints(1.0);
     long st = System.nanoTime();
-    ringSet.generateExTris();
+    ringSet.generateExTrisNaive();
     long ed = System.nanoTime();
     times[i] = (ed - st) / 1000000.0;
     if (int(ringSet.exTriPoints.size() / 3) != f) {
@@ -412,9 +412,9 @@ void pivotPlaneAroundLineHitCircleTest() {
 
 
 
-  fill(purple, 200);
+  fill(violet, 200);
   showTriangle(a, b, contacts[0]);
-  // fill(purple, 100);
+  // fill(violet, 100);
   // showTriangle(a, b, contacts[1]);
   fill(red, 200);
   disk(c, n, r);
@@ -512,7 +512,7 @@ void tangentPlaneThreeCirclesIterTest() {
                                 rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1],
                                 null);
   {
-    fill(purple, 180);
+    fill(violet, 180);
     showTriangle(ps[0], ps[1], ps[2]);
     fill(magenta, 100);
     showNormalToTriangle(ps[0], ps[1], ps[2], 20, 4);
@@ -574,7 +574,7 @@ void exactCHAllCirclesTest() {
   if (show3RT) rs.showExTris();
 }
 
-void tangentCircleTest() {
+void tangentTrianglesNaiveTest() {
   if (P.nv < 6) {
     println("Should use at least 6 points.");
     return;
@@ -584,10 +584,10 @@ void tangentCircleTest() {
   RingSet rs = new RingSet(centerOfSphere, radiusOfSphere, P.G, nv);
 
   if (!rs.isValid()) {
-    println("The ring set is not valid.");
+    validRS = false;
     return;
   } else {
-    println("The ring set is valid.");
+    validRS = true;
   }
 
   if (showCircleSet) {
@@ -599,19 +599,20 @@ void tangentCircleTest() {
   }
 
   if (showAuxPlane) {
-    fill(grey, 100);
+    fill(gray, 100);
     showPlane(centerOfSphere, new vec(0, 0, 1), radiusOfSphere + 5);
   }
 
-  rs.generateExTris();
+  rs.generateExTrisNaive();
   if (show3RT) {
     rs.showExTris();
     numTriangles = rs.exTriPoints.size() / 3;
     numRings = rs.nRings;
 
     fill(cyan);
-    showNormalToTriangle(rs.exTriPoints.get(0), rs.exTriPoints.get(1), rs.exTriPoints.get(2), 20, 4);
-    showNormalToTriangle(rs.exTriPoints.get(3), rs.exTriPoints.get(4), rs.exTriPoints.get(5), 20, 4);
+    for (int i = 0; i < rs.exTriPoints.size(); i += 3) {
+      showNormalToTriangle(rs.exTriPoints.get(i), rs.exTriPoints.get(i + 1), rs.exTriPoints.get(i + 2), 20, 3);
+    }
   }
 
   if (debugST) {  // show circumcircles, normals of supporting triangles
@@ -640,4 +641,49 @@ void tangentCircleTest() {
   if (show2RT) {
     rs.showExEdges();
   }
+
+  rs.showApproxCorridors(approxMethodCorridor);
+}
+
+void tangentTrianglesIncrementalTest() {
+  if (P.nv < 6) {
+    println("Should use at least 6 points.");
+    return;
+  }
+
+  int nv = P.nv - P.nv % 2;
+  RingSet rs = new RingSet(centerOfSphere, radiusOfSphere, P.G, nv);
+
+  if (!rs.isValid()) {
+    validRS = false;
+    return;
+  } else {
+    validRS = true;
+  }
+
+  if (showCircleSet) {
+    rs.showCircles();
+  }
+
+  if (showDiskSet) {
+    rs.showDisks();
+  }
+
+  if (showAuxPlane) {
+    fill(gray, 100);
+    showPlane(centerOfSphere, new vec(0, 0, 1), radiusOfSphere + 5);
+  }
+
+  rs.generateExTrisIncremental();
+  // if (show3RT) {
+  //   rs.showExTris();
+  //   numTriangles = rs.exTriPoints.size() / 3;
+  //   numRings = rs.nRings;
+
+  //   fill(cyan);
+  //   for (int i = 0; i < rs.exTriPoints.size(); i += 3) {
+  //     showNormalToTriangle(rs.exTriPoints.get(i), rs.exTriPoints.get(i + 1), rs.exTriPoints.get(i + 2), 20, 3);
+  //   }
+  // }
+
 }

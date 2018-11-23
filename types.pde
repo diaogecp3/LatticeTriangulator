@@ -306,9 +306,9 @@ class EdgeCircle {
     n = U(centerOfSphere, c);
     r = random(30, 50);
     a = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
-    while (isAbsZero(dot(V(c, a), n))) a = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
+    while (isZero(dot(V(c, a), n))) a = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
     b = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
-    while (isAbsZero(dot(V(c, b), n))) b = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
+    while (isZero(dot(V(c, b), n))) b = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
     vi = constructNormal(n);
     vj = N(n, vi);
   }

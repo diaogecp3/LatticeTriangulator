@@ -5,4 +5,21 @@ ps_arcs_2:
 source of figure {blue green} in paper draft
 
 ps_arcs_3:
-fail
+fail, now succeed
+tangent alpha: one positive, one negative
+
+ps_arcs_4:
+tangent alpha: two positives
+
+ps_acrs_5:
+tangent alpha: two negatives
+
+ps_arcs_6:
+mix product is almost zero
+
+ps_acrs_7:
+one invalid triangle doesn't get rejected
+update: allowing half angle > PI/2 fixes this issue
+
+ps_arcs_8:
+two big circles on left and right, one small in the middle.

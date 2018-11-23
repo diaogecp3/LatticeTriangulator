@@ -1,14 +1,23 @@
-// ************************************ IMAGES & VIDEO 
+// ************************************ IMAGES & VIDEO
 int pictureCounter=0, frameCounter=0;
 Boolean filming=false, change=false;
 PImage face0; // picture of first author's face, should be under data/ in sketch folder
 PImage face1; // picture of second author's face, should be under data/ in sketch folder
 void snapPicture() {saveFrame("PICTURES/P"+nf(pictureCounter++,3)+".jpg"); }
 
-// ******************************************COLORS 
-color black=#000000, white=#FFFFFF, // set more colors using Menu >  Tools > Color Selector
-   red=#FF0000, green=#00FF01, blue=#0300FF, yellow=#FEFF00, cyan=#00FDFF, magenta=#FF00FB,
-   grey=#818181, orange=#FFA600, brown=#B46005, metal=#B5CCDE, dgreen=#157901, purple=#AD0AFF, pink=#F293DA;
+// ******************************************COLORS
+// For more color and color names, see https://htmlcolorcodes.com/color-names/
+color red = #FF0000, darkRed = #8B0000, firebrick = #B22222;
+color pink = #FFC0CB, deepPink = #FF1493, hotPink = #FF69B4;
+color orange = #FFA500, tomato = #FF6347, lightSalmon = #FFA07A;
+color yellow = #FFFF00, gold = #FFD700, khaki = #F0E68C;
+color violet = #EE82EE, magenta = #FF00FF, purple = #800080;
+color green = #008000, lime = #00FF00, springGreen = #00FF7F;
+color blue = #0000FF, cyan = #00FFFF, navy = #000080;
+color brown = #A52A2A, chocolate = #D2691E, sandyBrown = #F4A460;
+color white = #FFFFFF, snow = #FFFAFA, ivory = #FFFFF0;
+color black = #000000, gray = #808080, silver = #C0C0C0;
+
 void pen(color c, float w) {stroke(c); strokeWeight(w);}
 
 // ******************************** TEXT , TITLE, and USER's GUIDE
@@ -20,10 +29,10 @@ void scribeFooter(String S, int i) {fill(0); text(S,10,height-10-i*20); noFill()
 void scribeAtMouse(String S) {fill(0); text(S,mouseX,mouseY); noFill();} // writes on screen near mouse
 void scribeMouseCoordinates() {fill(black); text("("+mouseX+","+mouseY+")",mouseX+7,mouseY+25); noFill();}
 
-// **************************** FILE SELECTION FOR SAVING AND LOADING MODELS 
+// **************************** FILE SELECTION FOR SAVING AND LOADING MODELS
 //String fileName="data/points";
 
-//String path="data/pts"; 
+//String path="data/pts";
 //void saveToFile(File selection) {
 //  if (selection == null) println("Window was closed or the user hit cancel.");
 //  else path=selection.getAbsolutePath();

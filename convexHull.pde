@@ -95,7 +95,7 @@ boolean findFirstTriangle(ArrayList<Vertex> vertices,                // in/out
     if (i == a || i == b) continue;
     Vertex vi = vertices.get(i);
     vec N = N(va.position, vb.position, vi.position);
-    
+
     int j = 0;
     for (; j < n; ++j) {
       if (j != a && j != b && j != i) break;
@@ -115,7 +115,7 @@ boolean findFirstTriangle(ArrayList<Vertex> vertices,                // in/out
         break;
       }
     }
-    
+
     if (isValid == true) {
       c = i;
       if (sign) {
@@ -155,7 +155,7 @@ boolean findFirstTriangle(ArrayList<Vertex> vertices,                // in/out
  * Initialize data structures (e.g. fronts, manifoldMask) related to convex
  * hull generation.
  */
-void initFronts(int nGroups,                                         // in    
+void initFronts(int nGroups,                                         // in
                 int nPointsPerGroup,                                 // in
                 ArrayList<Vertex> vertices,                          // in/out
                 Front[] fronts,                                      // out
@@ -166,13 +166,13 @@ void initFronts(int nGroups,                                         // in
     HashSet<Integer> groupIDs = new HashSet<Integer>();
     groupIDs.add(new Integer(i));
     int head = i * nPointsPerGroup;
-    
+
     // Compute the normal of current face
     pt A = vertices.get(head).position;
     pt B = vertices.get(head + 1).position;
     pt C = vertices.get(head + 2).position;
     vec N = normalToTriangle(A, B, C);
-    
+
     for (int j = 0; j < nPointsPerGroup - 1; ++j) {
       int current = head + j;
       int next = current + 1;
@@ -203,7 +203,7 @@ int pivot(FrontEdge e,                                               // in/out
   Vertex va = vertices.get(a), vb = vertices.get(b);
   pt A = va.position, B = vb.position;
   vec normalABC = e.N;
-  
+
   float maxCosTheta = -2.0f;
   int d = -1, gid = -1;
   int nv = vertices.size();
@@ -244,7 +244,7 @@ boolean generateConvexHullWithFronts(ArrayList<Vertex> vertices,     // in/out
     if (!e.isValid) continue;
     vec normalADB = new vec();
     int d = pivot(e, vertices, manifoldMask, normalADB);
-    
+
     if (d < 0) {
       if (debugCH) println("No hit found, number of steps = " + debugInfo.numFaces);
       else println("No hit found");
@@ -260,14 +260,14 @@ boolean generateConvexHullWithFronts(ArrayList<Vertex> vertices,     // in/out
     if (debugCH) {
       debugInfo.a = a;  // for debugging
       debugInfo.b = b;  // for debugging
-      debugInfo.d = d;  // for debugging      
+      debugInfo.d = d;  // for debugging
     }
 
     triangles.add(new Triangle(a, d, b));  // create a new triangle face
     e.isValid = false;
     va.outEdges.remove(vb);  // remove edge ab
     manifoldMask[a][d] = manifoldMask[d][b] = manifoldMask[b][a] = true;
-    
+
     // Check if there is a front edge connecting va and vd
     FrontEdge e0 = null;
     if (vd.outEdges.containsKey(va)) {
@@ -279,7 +279,7 @@ boolean generateConvexHullWithFronts(ArrayList<Vertex> vertices,     // in/out
       va.outEdges.put(vd, e0);
       curFront.add(e0);
     }
-    
+
     // Check if current front touches a new front
     if (vd.groupID != -1 && !curFront.containGroupID(vd.groupID)) {
       curFront.mergeWithFront(vd, fronts);
@@ -306,10 +306,10 @@ boolean generateConvexHullWithFronts(ArrayList<Vertex> vertices,     // in/out
     if (!e0.isValid && !e1.isValid) {
       if (curFront.isInnerVertex(vd)) vd.isInner = true;
     }
-    
+
     if (debugCH) debugInfo.numFaces++;
   }
-  
+
   return true;
 }
 
@@ -364,11 +364,11 @@ ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
     fill(black); showInnerVertices(vertices, G);
     fill(#9AFF05); showManifoldEdges(manifoldMask, G, nv);  // light green
     fill(cyan); showTriangleNormals(triangles, G);
-    if (debugInfo.a >= 0) { fill(#970EED, 160); show(G[debugInfo.a], 3); }  // purple
+    if (debugInfo.a >= 0) { fill(#970EED, 160); show(G[debugInfo.a], 3); }  // violet
     if (debugInfo.b >= 0) { fill(#21C2FA, 160); show(G[debugInfo.b], 3); }  // light blue
     if (debugInfo.d >= 0) { fill(#FFF705, 160); show(G[debugInfo.d], 3); }  // light yellow
   }
-  
+
   return triangles;
 }
 
@@ -377,7 +377,7 @@ ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
  * is nGroup by nPointsPerGroup. Assume that all input points will be
  * on the surface of the convex hull.
  */
-ArrayList<Triangle> generateConvexHull(pt[][] points,                // in      
+ArrayList<Triangle> generateConvexHull(pt[][] points,                // in
                                        int nGroup,                   // in
                                        int nPointsPerGroup) {        // in
   ArrayList<Vertex> vertices;
@@ -395,7 +395,7 @@ ArrayList<Triangle> generateConvexHull(pt[][] points,                // in
     manifoldMask = new boolean[nv][nv];
     debugInfo = new DebugCHInfo();
     initFronts(nGroup, nPointsPerGroup, vertices, fronts, manifoldMask,
-               debugInfo);    
+               debugInfo);
     boolean successCH = generateConvexHullWithFronts(vertices, triangles,
                                                      fronts, manifoldMask,
                                                      debugInfo);
@@ -414,16 +414,16 @@ ArrayList<Triangle> generateConvexHull(pt[][] points,                // in
   if (k >= 1) System.out.format("number of times tried = %d\n", k + 1);
   if (debugCH) {
     fill(blue); fronts[0].showEdges(G);
-    fill(#A08888);  // light grey
+    fill(#A08888);  // light gray
     for (int i = 1; i < nGroup; ++i) {
       if (fronts[i].size() > 0) fronts[i].showEdges(G);
     }
     fill(black); showInnerVertices(vertices, G);
     fill(#9AFF05); showManifoldEdges(manifoldMask, G, nv);  // light green
-    if (debugInfo.a >= 0) { fill(#970EED, 160); show(G[debugInfo.a], 3); }  // purple
+    if (debugInfo.a >= 0) { fill(#970EED, 160); show(G[debugInfo.a], 3); }  // violet
     if (debugInfo.b >= 0) { fill(#21C2FA, 160); show(G[debugInfo.b], 3); }  // light blue
     if (debugInfo.d >= 0) { fill(#FFF705, 160); show(G[debugInfo.d], 3); }  // light yellow
   }
-  
+
   return triangles;
 }
