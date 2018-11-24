@@ -10,6 +10,7 @@
 
 import java.util.Queue;
 import java.util.LinkedHashMap;
+import java.util.Collections;
 
 boolean debugST = false;
 boolean debug3RT = false;
@@ -271,8 +272,8 @@ class RingSet {
       // fill(blue, 100);
       showTriangle(vertices[0].position, vertices[1].position, vertices[2].position);
       // fill(cyan, 100);
-      arrow(P(vertices[0].position, vertices[1].position, vertices[2].position),
-            V(20, normal), 3);
+      // arrow(P(vertices[0].position, vertices[1].position, vertices[2].position),
+      //       V(20, normal), 3);
     }
   }
 
@@ -288,11 +289,13 @@ class RingSet {
   class IncCorridor extends IncFace {
     IncVertex[] vertices;
     IncEdge[] edges;
-    vec[] normals;
-    float[] angles;
-    IncCorridor() {
-      // println("r = ", r);
-    }
+    vec[] appNormals;  // 2 normals, one for ABC, one for CDA
+    float[] appAngles;  // 2 half-angles, one for ABC, one for CDA
+
+    float dAngle = TWO_PI / 20;
+    ArrayList<pt> samples;  // samples.size = 2 * (numSegments - 1), where numSegments = int(angle of bigger arc / dAngle)
+
+    IncCorridor() {}
     IncCorridor(IncVertex v0, IncVertex v1, IncVertex v2, IncVertex v3) {
       vertices = new IncVertex[4];
       edges = new IncEdge[2];
@@ -304,27 +307,46 @@ class RingSet {
       edges[0].setEndPoints(v1, v2);  // BC
       edges[1].setEndPoints(v3, v0);  // DA
       setupNormalsAndAngles();
+      generateSamples();
     }
 
     /*
      * Compute the normal and circumradius of triangle ABC/CDA.
      */
     private void setupNormalsAndAngles() {
-      normals = new vec[2];
-      angles = new float[2];
-      normals[0] = normalToTriangle(vertices[0].position, vertices[1].position,
+      appNormals = new vec[2];
+      appAngles = new float[2];
+      appNormals[0] = normalToTriangle(vertices[0].position, vertices[1].position,
                                     vertices[2].position);
-      normals[1] = normalToTriangle(vertices[2].position, vertices[3].position,
+      appNormals[1] = normalToTriangle(vertices[2].position, vertices[3].position,
                                     vertices[0].position);
       float r0 = circumradiusOfTriangle(vertices[0].position, vertices[1].position,
                                         vertices[2].position);
-      angles[0] = asin(r0 / r);  // r, i.e. the radius of the sphere, can be accessed!
-      if (angles[0] < 0) angles[0] += PI;
+      vec v = V(vertices[0].position, c);  // the vector from A to the center of the sphere
+      appAngles[0] = asin(r0 / r);  // r, i.e. the radius of the sphere, can be accessed!
+      // if (angles[0] < 0) {
+      //   println("negative angle, make it positive by adding PI");
+      //   angles[0] += PI;
+      // }
+      if (dot(v, appNormals[0]) > 0) {  // if the center is on the positive side
+        appAngles[0] = PI - appAngles[0];  // the angle should be > PI/2
+      }
       float r1 = circumradiusOfTriangle(vertices[2].position, vertices[3].position,
                                         vertices[0].position);
-      angles[1] = asin(r1 / r);
-      if (angles[1] < 0) angles[1] += PI;
-      assert isZero(normals[0].norm() - 1) && isZero(normals[1].norm() - 1);
+      appAngles[1] = asin(r1 / r);
+      // if (angles[1] < 0) {
+      //   println("negative angle, make it positive by adding PI");
+      //   angles[1] += PI;
+      // }
+      if (dot(v, appNormals[1]) > 0) {  // if the center is on the positive side
+        appAngles[1] = PI - appAngles[1];  // the angle should be > PI/2
+      }
+      assert isZero(appNormals[0].norm() - 1) && isZero(appNormals[1].norm() - 1);
+      // System.out.format("cor normal0 = (%f, %f, %f), cor normal1 = (%f, %f, %f).\n",
+      //                    normals[0].x, normals[0].y, normals[0].z,
+      //                    normals[1].x, normals[1].y, normals[1].z);
+      // System.out.format("r0 = %f, r1 = %f, r = %f\n", r0, r1, r);
+      // System.out.format("cor a0 = %f, a1 = %f\n", appAngles[0], appAngles[1]);
     }
 
     void setAdjFace(IncFace adjFace, int i) {
@@ -332,9 +354,40 @@ class RingSet {
       edges[i].setAdjFace(adjFace);
     }
 
+    void generateSamples() {
+      int left = vertices[3].rid;  // left ring
+      int right = vertices[0].rid;  // right ring
+      pt c0 = centers[left], c1 = centers[right];
+      float r0 = radii[left], r1 = radii[right];
+      vec n0 = normals[left], n1 = normals[right];
+
+      /* Compute angles for arc DC and arc BA w.r.t. corresponding ring orientations. */
+      vec vd = V(c0, vertices[3].position);
+      vec vc = V(c0, vertices[2].position);
+      vec vb = V(c1, vertices[1].position);
+      vec va = V(c1, vertices[0].position);
+      float a0 = acos(dot(vd, vc) / (r0 * r0));  // [0, PI]
+      if (dot(n0, N(vd, vc)) < 0) a0 = TWO_PI - a0;
+      float a1 = acos(dot(vb, va) / (r1 * r1));
+      if (dot(n1, N(vb, va)) < 0) a1 = TWO_PI - a1;
+
+      if (a0 > a1) {
+        float stAng = acos(dot(vd, xAxes[left]) / r0);  // starting theta for D w.r.t. the left ring
+        if (dot(vd, yAxes[left]) < 0) stAng = TWO_PI - stAng;
+        int n = int(a0 / dAngle);
+        samples = fillExEdgeWithPoints(stAng, dAngle, n, left, right);
+      } else {
+        float stAng = acos(dot(vb, xAxes[right]) / r1);
+        if (dot(vb, yAxes[right]) < 0) stAng = TWO_PI - stAng;
+        int n = int(a1 / dAngle);
+        samples = fillExEdgeWithPoints(stAng, dAngle, n, right, left);
+        Collections.reverse(samples);  // reverse the list
+      }
+    }
+
     @Override
     boolean isVisibleFromCircle(vec v, float f) {
-      if ((acos(dot(v, normals[0])) < angles[0] + f) || (acos(dot(v, normals[1])) < angles[1] + f)) {
+      if ((acos(dot(v, appNormals[0])) < appAngles[0] + f) || (acos(dot(v, appNormals[1])) < appAngles[1] + f)) {
         // println("corridor is visible");
         return true;
       }
@@ -372,17 +425,28 @@ class RingSet {
 
     @Override
     void showFace() {
-      assert normals != null && normals.length == 2;
+      // show two triangles
+      // assert normals != null && normals.length == 2;
       // fill(green, 255);
-      stroke(0);
-      showTriangle(vertices[0].position, vertices[1].position, vertices[2].position);
-      showTriangle(vertices[2].position, vertices[3].position, vertices[0].position);
+      // stroke(0);
+      // showTriangle(vertices[0].position, vertices[1].position, vertices[2].position);
+      // showTriangle(vertices[2].position, vertices[3].position, vertices[0].position);
       // fill(lime, 100);
-      noStroke();
-      arrow(P(vertices[0].position, vertices[1].position, vertices[2].position),
-            V(20, normals[0]), 3);
-      arrow(P(vertices[2].position, vertices[3].position, vertices[0].position),
-            V(20, normals[1]), 3);
+      // noStroke();
+      // arrow(P(vertices[0].position, vertices[1].position, vertices[2].position),
+      //       V(20, normals[0]), 3);
+      // arrow(P(vertices[2].position, vertices[3].position, vertices[0].position),
+      //       V(20, normals[1]), 3);
+
+      // show correspondences
+      stroke(0);
+      beginShape(QUAD_STRIP);
+      vertex(vertices[3].position);  // D
+      vertex(vertices[0].position);  // A
+      for (pt p : samples) vertex(p);  // samples
+      vertex(vertices[2].position);  // C
+      vertex(vertices[1].position);  // B
+      endShape();
     }
   }
 
@@ -1580,7 +1644,7 @@ class RingSet {
   }
 
   private ArrayList<IncEdge> exploreVisibleRegion(IncEdge e, vec normal, float angle) {
-    IncFace face = e.getAdjFace();
+    IncFace face = e.getAdjFace(); //<>//
     ArrayList<IncEdge> edges = new ArrayList<IncEdge>();
     if (face.visible != -1) {  // if face is visited
       // println("face is visited, face.visible is ", face.visible);
@@ -1599,10 +1663,10 @@ class RingSet {
     /* Current face is visible, try to expand boundary. */
     face.visible = 1;
     IncEdge[] compEdges = face.getComplementalEdges(e);
-    assert compEdges.length == 1 || compEdges.length == 2;
+    assert compEdges.length == 1 || compEdges.length == 2; //<>//
     for (int i = 0; i < compEdges.length; ++i) {
       edges.addAll(exploreVisibleRegion(compEdges[i], normal, angle));
-    }
+    } //<>//
     return edges;
   }
 
@@ -1615,11 +1679,13 @@ class RingSet {
     IncVertex v2 = new IncVertex(ps[2], r2);
     IncTriangle tri = new IncTriangle(v0, v1, v2);
     tri.setNormalAndAngle(nors[0], angs[0]);
-    return tri;
+    // System.out.format("tri normal = (%f, %f, %f), angle = %f.\n",
+    //                   tri.normal.x, tri.normal.y, tri.normal.z, tri.angle);
+    return tri; //<>//
   }
 
   private IncCorridor generateIncCor(IncTriangle tri0, IncTriangle tri1, int rLeft, int rRight) {
-    int idx0 = 0;
+    int idx0 = 0; //<>//
     for (; idx0 < 3; ++idx0) {
       if (tri0.vertices[idx0].rid == rRight) break;
     }
@@ -1644,19 +1710,28 @@ class RingSet {
   }
 
   private ArrayList<IncFace> generateNewFaces(ArrayList<IncEdge> boundary, int k) {
-    assert boundary != null && boundary.size() >= 1 && k >= 0 && k < nRings; //<>//
+    assert boundary != null && boundary.size() >= 1 && k >= 0 && k < nRings;
 
-    /* Right shift the boundary by 1. */
-    // ArrayList<IncEdge> tmpBoundary = new ArrayList<IncEdge>();
-    // for (int i = 1; i < boundary.size(); ++i) {
-    //   tmpBoundary.add(boundary.get(i));
-    // }
-    // tmpBoundary.add(boundary.get(0));
-    // boundary = tmpBoundary;
+    /*
+     * If the first edge and the last edge share a corridor that should be removed,
+     * right shift the edge list by 1.
+     */
+    {
+      IncFace firstAdjFace = boundary.get(0).getAdjFace();
+      IncFace lastAdjFace = boundary.get(boundary.size() - 1).getAdjFace();
+      if (firstAdjFace.visible >= 1 && firstAdjFace instanceof IncCorridor && firstAdjFace == lastAdjFace) {
+        ArrayList<IncEdge> tmpBoundary = new ArrayList<IncEdge>();
+        for (int i = 1; i < boundary.size(); ++i) {
+          tmpBoundary.add(boundary.get(i));
+        }
+        tmpBoundary.add(boundary.get(0));
+        boundary = tmpBoundary;
+      }
+    }
 
     ArrayList<IncFace> newFaces = new ArrayList<IncFace>();
     IncTriangle prevTri = null;
-    boolean missOppoTri = false;
+    boolean missOppoTriPrev = false;
     for (IncEdge e : boundary) {
       IncTriangle oppoTri = null;
       IncFace adjFace = e.getAdjFace();
@@ -1675,20 +1750,25 @@ class RingSet {
       IncTriangle tri = generateIncTri(r0, r1, k);
       newFaces.add(tri);
 
-      // TODO: something wrong here!
-      if (oppoTri.visible == 1 && missOppoTri == false) {
-        missOppoTri = true;
-      }
 
-      if (missOppoTri == false) {  // create a corridor between tri and oppoTri
-        assert oppoTri != null; //<>//
-        IncCorridor cor = generateIncCor(tri, oppoTri, r1, r0);
+      if (oppoTri.visible < 1) {  // if the opposite triangle will remain //<>//
+        assert oppoTri != null;
+        IncCorridor cor = generateIncCor(tri, oppoTri, r1, r0);  // create a corridor between tri and oppoTri
         newFaces.add(cor);
       } else {
-        assert prevTri != null; //<>//
-        IncCorridor cor = generateIncCor(tri, prevTri, r1, r0);
-        newFaces.add(cor);
-        missOppoTri = false;
+        /*
+         * If the opposite triangle will be removed, then one more corridor must
+         * be created between two new triangles w.r.t. edge (r1, r0). This corridor
+         * is generated when we see the second new triangle.
+         */
+        if (missOppoTriPrev) {
+          assert prevTri != null;
+          IncCorridor cor = generateIncCor(tri, prevTri, r1, r0);  // create a corridor between tri and prevTri
+          newFaces.add(cor); //<>//
+          missOppoTriPrev = false;
+        } else {
+          missOppoTriPrev = true;
+        }
       }
 
       if (prevTri != null) {
@@ -1699,7 +1779,7 @@ class RingSet {
     }
 
     /* Create a corridor between the first triangle and the last triangle. */
-    {
+    { //<>//
       assert newFaces.get(0) instanceof IncTriangle;
       IncTriangle firstTri = (IncTriangle)(newFaces.get(0));
       assert prevTri != null;
@@ -1723,8 +1803,12 @@ class RingSet {
 
     ArrayList<IncEdge> boundary = new ArrayList<IncEdge>();
     ArrayList<IncFace> newFaces = null;
+    ArrayList<IncFace> removedFaces = new ArrayList<IncFace>();
+    ArrayList<IncFace> remainedFaces = new ArrayList<IncFace>();
+
     for (int i = 3; i < nRings; ++i) {
-      if (i == 4) break;
+      System.out.format("Insert the %d-th (0-base) circle\n", i);
+      // if (i == 4) break;
 
       /* Initialize boundary using the first visible face. */
       boundary.clear();
@@ -1747,7 +1831,11 @@ class RingSet {
 
       /* Expand the boundary. */
       int bsize = boundary.size();  // current number of edges
-      // println("bsize =", bsize);
+      if (bsize != 2 && bsize != 3) {
+        System.out.format("Invalid boundary size %d, store this example.\n", bsize);
+        P.savePts("data/pts_unnamed");
+      }
+
       assert bsize == 2 || bsize == 3;
       ArrayList<IncEdge> tmpBoundary = new ArrayList<IncEdge>();
       for (IncEdge e : boundary) {
@@ -1755,6 +1843,7 @@ class RingSet {
         tmpBoundary.addAll(tmpEdges);
       }
       boundary = tmpBoundary;
+      System.out.format("boundary size = %d\n", boundary.size());
 
       /* Label the corridors which are unvisible but adjacent to visible triangles. */
       for (IncFace f : faces) {
@@ -1773,14 +1862,26 @@ class RingSet {
 
       /* Construct new faces using boundary. */
       newFaces = generateNewFaces(boundary, i);
+      System.out.format("%d new faces generated\n", newFaces.size());
 
       /* Remove visible faces and the corridors adjacent to visible triangles. */
+      {
+        removedFaces.clear();
+        remainedFaces.clear();
+        for (IncFace f : faces) {
+          if (f.visible >= 1) removedFaces.add(f);
+          else {
+            f.visible = -1;  // old face becomes unvisited for next iteration
+            remainedFaces.add(f);
+          }
+        }
+      }
 
-      /* Mark all old faces as unvisited. */
-
-      /* Push all new faces. */
+      /* Collect remained faces and new faces. All faces are unvisited. */
+      faces.clear();
+      faces.addAll(remainedFaces);
+      faces.addAll(newFaces);
     }
-
 
     {  // show faces
       for (IncFace f : faces) {
@@ -1790,6 +1891,9 @@ class RingSet {
         }
         if (f instanceof IncCorridor && show2RT) {
           fill(green);
+          if (((IncCorridor)f).appAngles[0] > HALF_PI || ((IncCorridor)f).appAngles[1] > HALF_PI) {
+            fill(firebrick);
+          }
           f.showFace();
         }
       }
@@ -1799,7 +1903,6 @@ class RingSet {
       //   if (f instanceof IncCorridor){
       //     IncCorridor cor = (IncCorridor)f;
       //     pt pa, pb, pc, pd;
-      //     assert cor.vertices.length == 4;
       //     pa = cor.vertices[0].position;
       //     pb = cor.vertices[1].position;
       //     pc = cor.vertices[2].position;
@@ -1811,11 +1914,11 @@ class RingSet {
       // }
 
       // show boundary
-      fill(violet);
-      for (IncEdge e : boundary) {
-        e.showEdge();
-      }
-      println("boundary size =", boundary.size());
+      // fill(violet);
+      // for (IncEdge e : boundary) {
+      //   e.showEdge();
+      // }
+      // println("boundary size =", boundary.size());
 
       // show faces that should be removed
       // fill(chocolate);
@@ -1826,21 +1929,20 @@ class RingSet {
       // }
 
       // show new faces
-      if (newFaces != null) {
-        println("new faces size =", newFaces.size());
-        for (IncFace f : newFaces) {
-          if (f instanceof IncTriangle) {
-            fill(navy);
-            f.showFace();
-          }
-          if (f instanceof IncCorridor) {
-            fill(tomato);
-            f.showFace();
-          }
-        }
-      }
+      // if (newFaces != null) {
+      //   println("new faces size =", newFaces.size());
+      //   for (IncFace f : newFaces) {
+      //     if (f instanceof IncTriangle) {
+      //       fill(navy);
+      //       f.showFace();
+      //     }
+      //     if (f instanceof IncCorridor) {
+      //       fill(tomato);
+      //       f.showFace();
+      //     }
+      //   }
+      // }
     }
-
   }
 
   private ArrayList<pt> fillExEdgeWithPoints(float angle, float da, int n, int u, int v) {

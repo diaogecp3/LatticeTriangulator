@@ -104,7 +104,7 @@ void setup() {
   switch (inputMethodPointSet) {
     case 0:  // read from file
       //P.loadPts("data/point_set/ps_easy_0");
-      P.loadPts("data/point_set/ps_arcs_8");
+      P.loadPts("data/point_set/ps_arcs_9");
       //P.loadPts("data/pts_unnamed");
       break;
     case 1:  // generate randomly

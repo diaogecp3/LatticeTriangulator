@@ -23,3 +23,6 @@ update: allowing half angle > PI/2 fixes this issue
 
 ps_arcs_8:
 two big circles on left and right, one small in the middle.
+
+ps_arcs_9:
+cann't find valid boundary after inserting the 5-th circle
