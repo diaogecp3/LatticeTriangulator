@@ -260,6 +260,7 @@ void showPlane(pt p, vec n, float s) {
  * r is the radius.
  */
 void showCircle(pt c, vec n, float r) {
+  noFill();
   stroke(0);
   strokeWeight(3);
   float a = 0;

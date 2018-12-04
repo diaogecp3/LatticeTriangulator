@@ -669,21 +669,43 @@ void tangentTrianglesIncrementalTest() {
     rs.showDisks();
   }
 
-  if (showAuxPlane) {
-    fill(gray, 100);
-    showPlane(centerOfSphere, new vec(0, 0, 1), radiusOfSphere + 5);
+  // if (showAuxPlane) {
+  //   fill(gray, 100);
+  //   showPlane(centerOfSphere, new vec(0, 0, 1), radiusOfSphere + 5);
+  // }
+
+  rs.generateExTrisIncremental();
+
+  if ( debugIncCH) {
+    rs.showDebugIncCHInfo();
+  }
+}
+
+void corridorTest() {
+  if (P.nv < 6) {
+    println("Should use at least 6 points.");
+    return;
+  }
+
+  int nv = P.nv - P.nv % 2;
+  RingSet rs = new RingSet(centerOfSphere, radiusOfSphere, P.G, nv);
+
+  if (!rs.isValid()) {
+    validRS = false;
+    return;
+  } else {
+    validRS = true;
+  }
+
+  if (showCircleSet) {
+    rs.showCircles();
+  }
+
+  if (showDiskSet) {
+    rs.showDisks();
   }
 
   rs.generateExTrisIncremental();
-  // if (show3RT) {
-  //   rs.showExTris();
-  //   numTriangles = rs.exTriPoints.size() / 3;
-  //   numRings = rs.nRings;
 
-  //   fill(cyan);
-  //   for (int i = 0; i < rs.exTriPoints.size(); i += 3) {
-  //     showNormalToTriangle(rs.exTriPoints.get(i), rs.exTriPoints.get(i + 1), rs.exTriPoints.get(i + 2), 20, 3);
-  //   }
-  // }
-
+  rs.showCorridor(idxIncCor);
 }

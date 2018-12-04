@@ -16,6 +16,7 @@ import processing.pdf.*;
  * 11: one exact-convex-hull-for-all-circles test
  * 12: one tangent-triangles-naive test (allow interaction)
  * 13: one tangent-triangles-incremental test (allow interaction)
+ * 14: one corridor test
  * ...
  * 100: many convex-hull tests
  * 101: many ring-set-triangulation tests
@@ -104,7 +105,7 @@ void setup() {
   switch (inputMethodPointSet) {
     case 0:  // read from file
       //P.loadPts("data/point_set/ps_easy_0");
-      P.loadPts("data/point_set/ps_arcs_9");
+      P.loadPts("data/point_set/ps_arcs_10");
       //P.loadPts("data/pts_unnamed");
       break;
     case 1:  // generate randomly
@@ -254,6 +255,9 @@ void draw() {
       break;
     case 13:
       tangentTrianglesIncrementalTest();
+      break;
+    case 14:
+      corridorTest();
       break;
 
     case 100:  // many convex-hull tests
@@ -410,6 +414,7 @@ void keyPressed() {
     debug3RT = !debug3RT;
     debug2RT = !debug2RT;
     debugST = !debugST;
+    if (test == 13) debugIncCH = !debugIncCH;
   }
   if (key == 'o') showSphere = !showSphere;
   if (key == 'h') generateCH = !generateCH;
@@ -428,7 +433,16 @@ void keyPressed() {
       }
     }
   }
+
+  if (key == 'n') {
+    if (test == 13) debugIncCHNewView = !debugIncCHNewView;
+  }
+
   if (key == '+') {
+    if (test == 13) {
+      debugIncCHIter = min(debugIncCHIter + 1, int(P.nv / 2) - 1);
+    }
+    if (test == 14) idxIncCor++;
     if (numTriangles >= 0) {
       numFaces = numTriangles + 1;
       numFaces3RT = numTriangles + 1;
@@ -438,6 +452,10 @@ void keyPressed() {
     rs.debug2RTInfo.numLocalStep = 1;
   }
   if (key == '-') {
+    if (test == 13) {
+      debugIncCHIter = max(debugIncCHIter - 1, 3);
+    }
+    if (test == 14) idxIncCor--;
     if (numFaces > 0) {
       numFaces--;
       numFaces3RT--;

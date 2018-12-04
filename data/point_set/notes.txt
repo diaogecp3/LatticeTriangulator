@@ -26,3 +26,7 @@ two big circles on left and right, one small in the middle.
 
 ps_arcs_9:
 cann't find valid boundary after inserting the 5-th circle
+source of figures in paper, for illustration of type 3 new corridor
+
+ps_arcs_10:
+source of figures in paper, for illustration of incremental convex hull
