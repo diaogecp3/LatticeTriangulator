@@ -8,14 +8,14 @@ import processing.pdf.*;
  * 3: one subdivision test
  * 4: one hub test
  * 5: one pivot-plane-around-line-until-hit-circle test
- * 6: one exact-convex-hull-for-edge-circle test
- * 7: one exact-convex-hull-for-two-circles test
- * 8: one tangent-plane-of-three-circles-iter test (iterative method with 3 different initializations)
- * 9: one exact-convex-hull-for-three-circles test
+ * 6: one exact-convex-hull-of-edge-circle test
+ * 7: one exact-convex-hull-of-two-circles test
+ * 8: one supporting-plane-of-three-circles-iter test (iterative method with 3 different initializations)
+ * 9: one exact-convex-hull-of-three-circles test
  * 10: one three-ring-triangle test
- * 11: one exact-convex-hull-for-all-circles test
- * 12: one tangent-triangles-naive test (allow interaction)
- * 13: one tangent-triangles-incremental test (allow interaction)
+ * 11: empty
+ * 12: one interactive-naive-exact-convex-hull test
+ * 13: one interactive-incremental-exact-convex-hull test
  * 14: one corridor test
  * ...
  * 100: many convex-hull tests
@@ -25,7 +25,7 @@ import processing.pdf.*;
  * ...
  * 20: one circle-plane-intersection test
  */
-int test = 13;
+int test = 14;
 
 float tan0 = 0, tan1 = 0;  // for debugging supporting triangle of 3 circles
 float gaa = 0, gbb = 0, gab = 0;  // for debugging supporting triangle of 3 circles
@@ -37,6 +37,7 @@ int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
 int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
 
 boolean showSphere = true;
+boolean showCenterOfSphere = true;
 boolean showArcSet = true;
 boolean showAuxPlane = false;
 int approxMethodCorridor = 0;
@@ -105,7 +106,7 @@ void setup() {
   switch (inputMethodPointSet) {
     case 0:  // read from file
       //P.loadPts("data/point_set/ps_easy_0");
-      P.loadPts("data/point_set/ps_arcs_10");
+      P.loadPts("data/point_set/ps_arcs_0");
       //P.loadPts("data/pts_unnamed");
       break;
     case 1:  // generate randomly
@@ -209,9 +210,11 @@ void draw() {
   computeProjectedVectors(); // computes screen projections I, J, K of basis vectors (see bottom of pv3D): used for dragging in viewer's frame
   if (showFrame) showFrame(150); // X-red, Y-green, Z-blue arrows
 
-  noStroke();
-  fill(black);
-  show(centerOfSphere, 3); // show center of the sphere
+  if (showCenterOfSphere) {
+    noStroke();
+    fill(black);
+    show(centerOfSphere, 3); // show center of the sphere
+  }
 
   switch (test) {
     case 0:
@@ -248,16 +251,19 @@ void draw() {
       threeRingTriangleTest();
       break;
     case 11:
-      exactCHAllCirclesTest();
+      println("Not yet implement");
       break;
     case 12:
-      tangentTrianglesNaiveTest();
+      exactCHNaiveTest();
       break;
     case 13:
-      tangentTrianglesIncrementalTest();
+      exactCHIncrementalTest();
       break;
     case 14:
       corridorTest();
+      break;
+    case 15:
+      meshFromExactCHTest();
       break;
 
     case 100:  // many convex-hull tests
@@ -323,31 +329,31 @@ void draw() {
   // display anything related to my project
   //scribeHeader("debug = " + str(debugCH), 2);
   //scribeHeader("number of faces I enter = " + numFaces, 3);
-  if (test == 12 || test == 13) {
+  if (scribeText && test >=12 && test <= 15) {
     scribeHeader("valid ring set? " + (validRS ? "yes" : "no"), 3);
   }
-  if (numTriangles != -1) {
-    if (test != 12 && test != 13) {
+  if (scribeText && numTriangles != -1) {
+    if (test < 12) {
       scribeHeader("#triangles =" + numTriangles, 4);
     } else {
-      scribeHeader("#triangles =" + numTriangles + "(expect " + str(2 * numRings - 4) + "), #rings =" + numRings, 4);
-      scribeHeader("tan0 = " + tan0 + ", tan1 = " + tan1, 5);
-      scribeHeader("arctan0 = " + atan(tan0) + ", arctan1 = " + atan(tan1), 6);
-      scribeHeader("aa = " + gaa + ", bb = " + gbb + ", ab = " + gab, 7);
+      // scribeHeader("#triangles =" + numTriangles + "(expect " + str(2 * numRings - 4) + "), #rings =" + numRings, 4);
+      // scribeHeader("tan0 = " + tan0 + ", tan1 = " + tan1, 5);
+      // scribeHeader("arctan0 = " + atan(tan0) + ", arctan1 = " + atan(tan1), 6);
+      // scribeHeader("aa = " + gaa + ", bb = " + gbb + ", ab = " + gab, 7);
     }
   }
 
   //scribeHeader("time for triangle mesh generation = " + timeTM + "ms", 5);
-  if (test == 3 && subdivisionTimes > 0) {
+  if (scribeText && test == 3 && subdivisionTimes > 0) {
     scribeHeader("time for subdivision = " + timeSD + "ms", 6);
   }
-  if (test == 2 && debug3RT) {
+  if (scribeText && test == 2 && debug3RT) {
     scribeHeader("number of steps for a three-ring triangle = " + numSteps3RT, 7);
   }
   //scribeHeader("regenerate = " + str(regenerateCH), 8);
   //scribeHeader("fix penetration among 3-ring triangles = " + str(fix3RT), 9);
 
-  if (test == 11) {
+  if (scribeText && test == 11) {
     if (rs.exTriPoints != null) {
       scribeHeader("#triangles =" + int(rs.exTriPoints.size() / 3) + " #vertices =" + rs.nRings, 10);
     }
@@ -384,6 +390,9 @@ void keyPressed() {
   if (key == 'd') {
     // P.deletePicked();
     P.deletePickedPair();
+    if (test >= 12 && test <= 15) {
+      debugIncCHIter = max(3, min(debugIncCHIter, P.nv / 2));
+    }
   }
   if (key == 'i') {
     // P.insertClosestProjection(Pick);  // insert the new vertex Pick in P
@@ -416,9 +425,14 @@ void keyPressed() {
     debugST = !debugST;
     if (test == 13) debugIncCH = !debugIncCH;
   }
-  if (key == 'o') showSphere = !showSphere;
-  if (key == 'h') generateCH = !generateCH;
+  if (key == 'o') {
+    showSphere = !showSphere;
+  }
+  if (key == 'h') {
+    generateCH = !generateCH;
+  }
   if (key == 'r') {
+    if (test == 13) debugIncCHCor = !debugIncCHCor;
     regenerateCH = !regenerateCH;
     if (regenerateCH == false) {
       rs.generatePoints(attenuationMin);  // shrink all rings
@@ -433,16 +447,17 @@ void keyPressed() {
       }
     }
   }
-
   if (key == 'n') {
     if (test == 13) debugIncCHNewView = !debugIncCHNewView;
   }
-
   if (key == '+') {
     if (test == 13) {
       debugIncCHIter = min(debugIncCHIter + 1, int(P.nv / 2) - 1);
     }
-    if (test == 14) idxIncCor++;
+    if (test == 15) {
+      numPointsPerRing++;
+    }
+    // if (test == 14) idxIncCor++;
     if (numTriangles >= 0) {
       numFaces = numTriangles + 1;
       numFaces3RT = numTriangles + 1;
@@ -455,7 +470,10 @@ void keyPressed() {
     if (test == 13) {
       debugIncCHIter = max(debugIncCHIter - 1, 3);
     }
-    if (test == 14) idxIncCor--;
+    if (test == 15) {
+      numPointsPerRing = max(numPointsPerRing - 1, 3);
+    }
+    // if (test == 14) idxIncCor--;
     if (numFaces > 0) {
       numFaces--;
       numFaces3RT--;
@@ -465,10 +483,12 @@ void keyPressed() {
     rs.debug2RTInfo.numLocalStep = 1;
   }
   if (key == '*') {
+    if (test == 13 || test == 14) idxIncCor++;
     numSteps3RT++;
     rs.debug2RTInfo.numLocalStep = min(rs.debug2RTInfo.numLocalStep + 1, rs.nPointsPerRing);
   }
   if (key == '/') {
+    if (test == 13 || test == 14) idxIncCor--;
     numSteps3RT = max(1, numSteps3RT - 1);
     rs.debug2RTInfo.numLocalStep = max(1, rs.debug2RTInfo.numLocalStep - 1);
   }
@@ -484,23 +504,40 @@ void keyPressed() {
   if (key == '3') {
     show3RT = !show3RT;
   }
-
-  if ((test == 12 || test == 13) && key == '7') {
-    approxMethodCorridor++;
-    if (approxMethodCorridor > 2) approxMethodCorridor = 0;
+  if (key == '4') {
+    if (test >= 12 && test <= 15) showCorridorFaces = !showCorridorFaces;
   }
-  if ((test == 12 || test == 13) && key == '8') showArcSet = !showArcSet;
-  if ((test == 12 || test == 13) && key == '9') showAuxPlane = !showAuxPlane;
-
-  if (key == '[') attenuation = min(1.0, attenuation + attenuationDelta);
-  if (key == ']') attenuation = max(attenuationMin, attenuation - attenuationDelta);
+  if (key == '5') {
+    if (test >= 12 && test <= 15) showTriangleFaces = !showTriangleFaces;
+  }
+  if (key == '7') {
+    if (test == 12 || test == 13) {
+      approxMethodCorridor++;
+      if (approxMethodCorridor > 2) approxMethodCorridor = 0;
+    }
+  }
+  if (key == '8') {
+    if (test >= 12 && test <= 15) showArcSet = !showArcSet;
+  }
+  if (key == '9') {
+    if (test >=12 && test <= 15) showAuxPlane = !showAuxPlane;
+  }
+  if (key == '[') {
+    attenuation = min(1.0, attenuation + attenuationDelta);
+  }
+  if (key == ']') {
+    attenuation = max(attenuationMin, attenuation - attenuationDelta);
+  }
   if (key == 'g') {
     showRingSet = !showRingSet;
     showPointSet = !showPointSet;
     showCircleSet = !showCircleSet;
   }
-  if (key == 'f' && test == 10) {
-    fix3RT = !fix3RT;
+  if (key == 'b') {
+    showBeams = !showBeams;
+  }
+  if (key == 'f') {
+    if (test == 10) fix3RT = !fix3RT;
   }
   if (key == 'm') {
     if (methodTM == 0) methodTM = 1;
@@ -511,6 +548,9 @@ void keyPressed() {
         rs.twoRingTriangles = null;
       }
     }
+  }
+  if (key == 'C') {
+    showCenterOfSphere = !showCenterOfSphere;
   }
 
   change = true;

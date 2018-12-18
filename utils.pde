@@ -261,7 +261,7 @@ void showPlane(pt p, vec n, float s) {
  */
 void showCircle(pt c, vec n, float r) {
   noFill();
-  stroke(0);
+  // stroke(0);
   strokeWeight(3);
   float a = 0;
   float da = TWO_PI / 36;

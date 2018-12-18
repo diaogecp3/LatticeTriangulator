@@ -30,3 +30,6 @@ source of figures in paper, for illustration of type 3 new corridor
 
 ps_arcs_10:
 source of figures in paper, for illustration of incremental convex hull
+
+ps_arcs_11:
+source of figure in paper (application section)

@@ -479,7 +479,7 @@ void exactCHTwoCirclesTest() {
   assert rs.points != null && rs.centers != null && rs.normals != null &&
          rs.radii != null && rs.sameRadius == false;
   exactCHTwoCircles(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
-                      rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1]);
+                    rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1]);
 }
 
 void tangentPlaneThreeCirclesIterTest() {
@@ -557,24 +557,7 @@ void threeRingTriangleTest() {
   }
 }
 
-void exactCHAllCirclesTest() {
-  assert rs.nRings >= 3;
-  rs.generatePoints(attenuation);
-  assert rs.points != null && rs.centers != null && rs.normals != null &&
-         rs.radii != null && rs.sameRadius == false;
-
-  long startTime = System.nanoTime();
-  rs.generateExactCH();
-  long endTime = System.nanoTime();
-  timeTM = (endTime - startTime) / 1000000.0;
-
-  if (showCircleSet) rs.showCircles();
-  if (showDiskSet) rs.showDisks();
-  if (show2RT) rs.showExEdges();
-  if (show3RT) rs.showExTris();
-}
-
-void tangentTrianglesNaiveTest() {
+void exactCHNaiveTest() {
   if (P.nv < 6) {
     println("Should use at least 6 points.");
     return;
@@ -645,7 +628,7 @@ void tangentTrianglesNaiveTest() {
   rs.showApproxCorridors(approxMethodCorridor);
 }
 
-void tangentTrianglesIncrementalTest() {
+void exactCHIncrementalTest() {
   if (P.nv < 6) {
     println("Should use at least 6 points.");
     return;
@@ -669,14 +652,9 @@ void tangentTrianglesIncrementalTest() {
     rs.showDisks();
   }
 
-  // if (showAuxPlane) {
-  //   fill(gray, 100);
-  //   showPlane(centerOfSphere, new vec(0, 0, 1), radiusOfSphere + 5);
-  // }
+  rs.generateExactCHIncremental();
 
-  rs.generateExTrisIncremental();
-
-  if ( debugIncCH) {
+  if (debugIncCH) {
     rs.showDebugIncCHInfo();
   }
 }
@@ -705,7 +683,52 @@ void corridorTest() {
     rs.showDisks();
   }
 
-  rs.generateExTrisIncremental();
+  rs.generateExactCHIncremental();
 
   rs.showCorridor(idxIncCor);
+}
+
+void meshFromExactCHTest() {
+  if (P.nv < 6) {
+    println("Should use at least 6 points.");
+    return;
+  }
+
+  int nv = P.nv - P.nv % 2;
+  RingSet rs = new RingSet(centerOfSphere, radiusOfSphere, P.G, nv);
+
+  if (!rs.isValid()) {
+    validRS = false;
+    return;
+  } else {
+    validRS = true;
+  }
+
+  rs.setNumPointsPerRing(numPointsPerRing);
+  rs.generatePoints(attenuation);
+  if (showRingSet) {
+    rs.showRings();
+  }
+
+  if (showDiskSet) {
+    rs.showDisks();
+  }
+
+  rs.generateExactCHIncremental();
+  rs.generateMeshFromExactCH(0);
+
+  if (show3RT) {
+    fill(navy, 230);
+    rs.showThreeRingTriangles();
+  }
+
+  if (show2RT) {
+    fill(springGreen, 230);
+    rs.showTwoRingTriangles();
+  }
+
+  if (showBeams) {
+    fill(orange, 230);
+    rs.showBeams(40.0);
+  }
 }

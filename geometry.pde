@@ -745,3 +745,15 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     }
   }
 }
+
+boolean coplanarFourPoints(pt pa, pt pb, pt pc, pt pd) {
+  vec vb = U(pa, pb);
+  vec vc = U(pa, pc);
+  vec vd = U(pa, pd);
+  float mix = m(vb, vc, vd);
+  if (isZero(mix)) return true;
+  else {
+    println("mix product =", mix);
+    return false;
+  }
+}
