@@ -629,8 +629,8 @@ void exactCHNaiveTest() {
 }
 
 void exactCHIncrementalTest() {
-  if (P.nv < 6) {
-    println("Should use at least 6 points.");
+  if (P.nv < 4) {
+    println("Should use at least 4 points.");
     return;
   }
 
@@ -654,8 +654,22 @@ void exactCHIncrementalTest() {
 
   rs.generateExactCHIncremental();
 
+  if (showTriangleFaces) {
+    fill(blue);
+    rs.showIncTriangles();
+  }
+
+  if (showCorridorFaces) {
+    fill(green);
+    rs.showIncCorridors();
+  }
+
   if (debugIncCH) {
     rs.showDebugIncCHInfo();
+  }
+
+  if (showApolloniusGraph) {
+    rs.showAG();
   }
 }
 

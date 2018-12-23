@@ -25,7 +25,7 @@ import processing.pdf.*;
  * ...
  * 20: one circle-plane-intersection test
  */
-int test = 14;
+int test = 13;
 
 float tan0 = 0, tan1 = 0;  // for debugging supporting triangle of 3 circles
 float gaa = 0, gbb = 0, gab = 0;  // for debugging supporting triangle of 3 circles
@@ -551,6 +551,9 @@ void keyPressed() {
   }
   if (key == 'C') {
     showCenterOfSphere = !showCenterOfSphere;
+  }
+  if (key == 'A') {
+    showApolloniusGraph = !showApolloniusGraph;
   }
 
   change = true;

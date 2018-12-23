@@ -33,6 +33,7 @@ boolean showTriangleFaces = false;
 boolean showCorridorStrokes = true;
 boolean showTriangleStrokes = true;
 boolean showBeams = false;
+boolean showApolloniusGraph = false;
 
 /*
  * Method for three-ring triangle generation.
@@ -230,6 +231,7 @@ class RingSet {
     IncEdge[] edges;
     vec normal = null;
     float angle = -1.0;
+    pt pAG = null;  // the position of the corresponding Apollonius graph vertex
 
     IncTriangle(IncVertex v0, IncVertex v1, IncVertex v2) {
       vertices = new IncVertex[3];
@@ -248,9 +250,12 @@ class RingSet {
       edges[i].setAdjFace(adjFace);
     }
 
-    void setNormalAndAngle(vec v, float r) {
+    void setNormalAndAngle(vec v, float a) {
       normal = v;
-      angle = r;
+      angle = a;
+
+      // Compute pAG
+      pAG = P(c, r, normal);
     }
 
     @Override
@@ -311,6 +316,8 @@ class RingSet {
     float dAngle = TWO_PI / 6;  // default: TWO_PI / 20
     ArrayList<pt> samples;  // samples.size = 2 * (numSegments - 1), where numSegments = int(angle of bigger arc / dAngle)
 
+    ArrayList<pt> psAG;  // points on the corresponding Apollonius graph edge
+
     IncCorridor() {}
     IncCorridor(IncVertex v0, IncVertex v1, IncVertex v2, IncVertex v3) {
       vertices = new IncVertex[4];
@@ -324,6 +331,7 @@ class RingSet {
       edges[1].setEndPoints(v3, v0);  // DA
       setupNormalsAndAngles();
       generateSamples();
+      if (showApolloniusGraph) generatePointsAG();
     }
 
     /*
@@ -507,6 +515,53 @@ class RingSet {
         }
         coplanarFourPoints(samples.get(n-2), samples.get(n-1), vertices[2].position, vertices[1].position);
       }
+    }
+
+    // TODO: something wrong here
+    void generatePointsAG() {
+      if (psAG == null) psAG = new ArrayList<pt>();
+      else psAG.clear();
+
+      int n = samples.size();
+      int ridLeft = vertices[3].rid;
+      pt cLeft = centers[ridLeft];
+      float rLeft = radii[ridLeft];
+      vec xAxisLeft = xAxes[ridLeft];
+      vec yAxisLeft = yAxes[ridLeft];
+      for (int i = 0; i < n; i += 2) {
+        pt pa = samples.get(i);
+        pt pb = samples.get(i+1);
+
+        // Compute the tangent at pa w.r.t. the left circle
+        vec ca = V(cLeft, pa);
+        float theta = acos(dot(ca, xAxisLeft) / rLeft);
+        if (dot(ca, yAxisLeft) < 0) theta = TWO_PI - theta;
+        vec t = V(-sin(theta), xAxisLeft, cos(theta), yAxisLeft);
+
+        // Compute the normal of the supporting plane touching pa and pb
+        vec ab = U(pa, pb);
+        vec nor = N(ab, t);
+
+        pt p = P(c, r, nor);
+        psAG.add(p);
+      }
+    }
+
+    void showPointsAG() {
+      IncTriangle t0 = (IncTriangle)edges[1].getAdjFace();
+      IncTriangle t1 = (IncTriangle)edges[0].getAdjFace();
+
+      pt p0 = t0.pAG;
+      show(p0, 3);
+      pt p1;
+      for (pt p : psAG) {
+        // drawArc(p0, c, p, r, 1);
+        show(p, 3);
+        p0 = p;
+      }
+      p1 = t1.pAG;
+      show(p1, 3);
+      // drawArc(p0, c, p1, r, 1);
     }
   }
 
@@ -1701,6 +1756,68 @@ class RingSet {
     }
   }
 
+  private void generateExactCHTwoCircles() {
+    if (incCorridors == null) incCorridors = new ArrayList<IncCorridor>();
+    else incCorridors.clear();
+    if (faces == null) faces = new ArrayList<IncFace>();
+    else faces.clear();
+
+    int ridLeft = 0, ridRight = 1;
+    // if (radii[0] < radii[1]) {
+    //   ridLeft = 1;
+    //   ridRight = 0;
+    // }
+
+    float rLeft = radii[ridLeft];
+    float rRight = radii[ridRight];
+    pt cLeft = centers[ridLeft];
+    pt cRight = centers[ridRight];
+    vec nLeft = normals[ridLeft];
+    vec nRight = normals[ridRight];
+    pt pd = P(cLeft, rLeft, xAxes[ridLeft]);
+    pt pc = P(cLeft, -rLeft, xAxes[ridLeft]);
+
+    /* Find the corresponding point of pd. */
+    pt pa = null;
+    {
+      pt pdd = P(pd, rLeft, yAxes[ridLeft]);  // sampled point + tangent at that point
+      pt[] candidates = pivotPlaneAroundLineHitCircle(cRight, rRight, nRight, pd, pdd, xAxes[ridRight], yAxes[ridRight]);
+      pa = candidates[0];
+      if (dot(V(pd, cRight), N(pd, pa, pdd)) > 0) {
+        pa = candidates[1];
+      }
+    }
+
+    /* Find the corresponding point of pc. */
+    pt pb = null;
+    {
+      pt pcc = P(pc, -rLeft, yAxes[ridLeft]);
+      pt[] candidates = pivotPlaneAroundLineHitCircle(cRight, rRight, nRight, pc, pcc, xAxes[ridRight], yAxes[ridRight]);
+      pb = candidates[0];
+      if (dot(V(pc, cRight), N(pc, pb, pcc)) > 0) {
+        pb = candidates[1];
+      }
+    }
+
+    assert pa != null && pb != null;
+    IncVertex va = new IncVertex(pa, ridRight);
+    IncVertex vb = new IncVertex(pb, ridRight);
+    IncVertex vc = new IncVertex(pc, ridLeft);
+    IncVertex vd = new IncVertex(pd, ridLeft);
+
+    /* Create corridor (A, B, C, D). */
+    IncCorridor cor0 = new IncCorridor(va, vb, vc, vd);
+
+    /* Create corridor (D, C, B, A). */
+    IncCorridor cor1 = new IncCorridor(vd, vc, vb, va);
+
+    incCorridors.add(cor0);
+    incCorridors.add(cor1);
+
+    faces.add(cor0);
+    faces.add(cor1);
+  }
+
   private ArrayList<IncFace> generateInitFaces() {
     ArrayList<IncFace> fs = new ArrayList<IncFace>();
     vec[] nors = new vec[2];
@@ -1898,8 +2015,14 @@ class RingSet {
    * Generate exact convex hull of circles using an incremental algorithm.
    */
   void generateExactCHIncremental() {
-    if (nRings < 3) {
-      println("Less than 3 circles!");
+    if (nRings < 2) {
+      println("Less than 2 circles!");
+      return;
+    }
+
+    /* Generate the convex hull of 2 circles. */
+    if (nRings == 2) {
+      generateExactCHTwoCircles();
       return;
     }
 
@@ -2034,21 +2157,6 @@ class RingSet {
     }
 
     {  // show faces
-      for (IncFace f : faces) {
-        if (f instanceof IncTriangle && showTriangleFaces) {
-          fill(blue);
-          f.showFace();
-        }
-        if (f instanceof IncCorridor && showCorridorFaces) {
-          fill(green);
-          // if (((IncCorridor)f).appAngles[0] > HALF_PI || ((IncCorridor)f).appAngles[1] > HALF_PI) {
-          //   fill(firebrick);
-          // }
-          f.showFace();
-        }
-      }
-
-
       // show circumcircles of faces
       // for (IncFace f : faces) {
         // if (f instanceof IncCorridor){
@@ -2383,6 +2491,16 @@ class RingSet {
     endShape();
   }
 
+  void showIncTriangles() {
+    if (incTriangles == null || incTriangles.size() == 0) return;
+    for (IncTriangle tri : incTriangles) tri.showFace();
+  }
+
+  void showIncCorridors() {
+    if (incCorridors == null || incCorridors.size() == 0) return;
+    for (IncCorridor cor : incCorridors) cor.showFace();
+  }
+
   void showThreeRingTriangles() {
     if (threeRingTriangles == null) return;
     stroke(0);
@@ -2433,6 +2551,16 @@ class RingSet {
       vertex(points[i][0]);
       vertex(P(points[i][0], length, normals[i]));
       endShape();
+    }
+  }
+
+  void showAG() {
+    assert incCorridors != null && incCorridors.size() != 0;
+    assert incTriangles != null && incTriangles.size() != 0;
+
+    fill(black);
+    for (IncCorridor cor : incCorridors) {
+      cor.showPointsAG();
     }
   }
 
