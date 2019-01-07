@@ -25,7 +25,7 @@ import processing.pdf.*;
  * ...
  * 20: one circle-plane-intersection test
  */
-int test = 13;
+int test = 14;
 
 float tan0 = 0, tan1 = 0;  // for debugging supporting triangle of 3 circles
 float gaa = 0, gbb = 0, gab = 0;  // for debugging supporting triangle of 3 circles
@@ -488,7 +488,7 @@ void keyPressed() {
     rs.debug2RTInfo.numLocalStep = min(rs.debug2RTInfo.numLocalStep + 1, rs.nPointsPerRing);
   }
   if (key == '/') {
-    if (test == 13 || test == 14) idxIncCor--;
+    if (test == 13 || test == 14) idxIncCor = max(0, idxIncCor - 1);
     numSteps3RT = max(1, numSteps3RT - 1);
     rs.debug2RTInfo.numLocalStep = max(1, rs.debug2RTInfo.numLocalStep - 1);
   }

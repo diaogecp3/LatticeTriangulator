@@ -699,6 +699,16 @@ void corridorTest() {
 
   rs.generateExactCHIncremental();
 
+  if (showTriangleFaces) {
+    fill(blue);
+    rs.showIncTriangles();
+  }
+
+  if (showCorridorFaces) {
+    fill(green);
+    rs.showIncCorridors();
+  }
+
   rs.showCorridor(idxIncCor);
 }
 

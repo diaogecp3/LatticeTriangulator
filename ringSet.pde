@@ -313,7 +313,7 @@ class RingSet {
     vec[] appNormals;  // 2 normals, one for ABC, one for CDA
     float[] appAngles;  // 2 half-angles, one for ABC, one for CDA
 
-    float dAngle = TWO_PI / 6;  // default: TWO_PI / 20
+    float dAngle = TWO_PI / 20;  // default: TWO_PI / 20
     ArrayList<pt> samples;  // samples.size = 2 * (numSegments - 1), where numSegments = int(angle of bigger arc / dAngle)
 
     ArrayList<pt> psAG;  // points on the corresponding Apollonius graph edge
