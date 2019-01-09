@@ -664,12 +664,16 @@ void exactCHIncrementalTest() {
     rs.showIncCorridors();
   }
 
-  if (debugIncCH) {
-    rs.showDebugIncCHInfo();
+  // if (debugIncCH) {
+  //   rs.showDebugIncCHInfo();
+  // }
+
+  if (showApolloniusDiagram) {
+    rs.showApolloniusDiagram();
   }
 
-  if (showApolloniusGraph) {
-    rs.showAG();
+  if (debugApolloniusDiagram) {
+    rs.showADDebugInfo();
   }
 }
 

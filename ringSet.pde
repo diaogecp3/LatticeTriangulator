@@ -22,7 +22,9 @@ int numFaces3RT = 1;
 int numSteps3RT = 1;
 int maxIterHSGlobal = 100;
 int maxIterHSLocal = 100;
-int idxIncCor = 0;
+
+int idxIncCor = 0;  // the ID of a corridor
+int idxIncTri = 0;  // the ID of a triangle
 
 boolean debugIncCH = false;
 int debugIncCHIter = 3;
@@ -33,7 +35,8 @@ boolean showTriangleFaces = false;
 boolean showCorridorStrokes = true;
 boolean showTriangleStrokes = true;
 boolean showBeams = false;
-boolean showApolloniusGraph = false;
+boolean showApolloniusDiagram = false;
+boolean debugApolloniusDiagram = false;
 
 /*
  * Method for three-ring triangle generation.
@@ -231,7 +234,7 @@ class RingSet {
     IncEdge[] edges;
     vec normal = null;
     float angle = -1.0;
-    pt pAG = null;  // the position of the corresponding Apollonius graph vertex
+    pt pAD = null;  // the position of the corresponding Apollonius diagram vertex
 
     IncTriangle(IncVertex v0, IncVertex v1, IncVertex v2) {
       vertices = new IncVertex[3];
@@ -254,8 +257,14 @@ class RingSet {
       normal = v;
       angle = a;
 
-      // Compute pAG
-      pAG = P(c, r, normal);
+      // Compute pAD
+      pAD = P(c, r, normal);
+
+      if (showApolloniusDiagram) {  // visualize the normal at the center of the triangle
+        // fill(chocolate);
+        // pt mid = P(vertices[0].position, vertices[1].position, vertices[2].position);
+        // arrow(mid, V(20, normal), 1);
+      }
     }
 
     @Override
@@ -288,11 +297,18 @@ class RingSet {
       if (showTriangleStrokes) stroke(0);
       else noStroke();
       showTriangle(vertices[0].position, vertices[1].position, vertices[2].position);
+      if (showTriangleStrokes) noStroke();  // restore state
     }
 
     void showCircumcircle() {
       showCircumcircleOfTriangle(vertices[0].position, vertices[1].position,
                                  vertices[2].position, null, normal, null);
+    }
+
+    void showADCircle() {
+      stroke(navy);
+      showCircumcircle();
+      noStroke();
     }
   }
 
@@ -313,10 +329,10 @@ class RingSet {
     vec[] appNormals;  // 2 normals, one for ABC, one for CDA
     float[] appAngles;  // 2 half-angles, one for ABC, one for CDA
 
-    float dAngle = TWO_PI / 20;  // default: TWO_PI / 20
+    float dAngle = TWO_PI / 30;  // default: TWO_PI / 20
     ArrayList<pt> samples;  // samples.size = 2 * (numSegments - 1), where numSegments = int(angle of bigger arc / dAngle)
 
-    ArrayList<pt> psAG;  // points on the corresponding Apollonius graph edge
+    ArrayList<pt> psAD;  // points on the corresponding Apollonius diagram edge
 
     IncCorridor() {}
     IncCorridor(IncVertex v0, IncVertex v1, IncVertex v2, IncVertex v3) {
@@ -331,7 +347,7 @@ class RingSet {
       edges[1].setEndPoints(v3, v0);  // DA
       setupNormalsAndAngles();
       generateSamples();
-      if (showApolloniusGraph) generatePointsAG();
+      if (showApolloniusDiagram) generatePointsAD();
     }
 
     /*
@@ -446,23 +462,10 @@ class RingSet {
 
     @Override
     void showFace() {
-      // show two triangles
-      // assert normals != null && normals.length == 2;
-      // fill(green, 255);
-      // stroke(0);
-      // showTriangle(vertices[0].position, vertices[1].position, vertices[2].position);
-      // showTriangle(vertices[2].position, vertices[3].position, vertices[0].position);
-      // fill(lime, 100);
-      // noStroke();
-      // arrow(P(vertices[0].position, vertices[1].position, vertices[2].position),
-      //       V(20, normals[0]), 3);
-      // arrow(P(vertices[2].position, vertices[3].position, vertices[0].position),
-      //       V(20, normals[1]), 3);
-
-      // show correspondences
       if (showCorridorStrokes) stroke(0);
       else noStroke();
 
+      // show correspondences
       beginShape(QUAD_STRIP);
       vertex(vertices[3].position);  // D
       vertex(vertices[0].position);  // A
@@ -471,8 +474,7 @@ class RingSet {
       vertex(vertices[1].position);  // B
       endShape();
 
-      // check coplanarity
-      // checkCoplanarity();
+      if (showCorridorStrokes) noStroke();  // restore state
     }
 
     void showCircumcircles() {
@@ -482,19 +484,61 @@ class RingSet {
                                  vertices[0].position, null, appNormals[1], null);
     }
 
+    void showADCircle() {
+      int k = samples.size() / 2;
+      if (k % 2 == 0) k -= 2;
+      else k -= 1;
+      pt pa = null, pb = null;
+      if (k < 0) {
+        pa = vertices[3].position;
+        pb = vertices[0].position;
+      } else {
+        pa = samples.get(k);
+        pb = samples.get(k+1);
+      }
+
+      /* Compute the normal of the supporting plane of AB. */
+      int ridLeft = vertices[3].rid;
+      pt cLeft = centers[ridLeft];
+      float rLeft = radii[ridLeft];
+      vec xLeft = xAxes[ridLeft];
+      vec yLeft = yAxes[ridLeft];
+      vec ca = V(cLeft, pa);
+      float theta = acos(dot(ca, xLeft) / rLeft);
+      if (dot(ca, yLeft) < 0) theta = TWO_PI - theta;
+      vec t = V(-sin(theta), xLeft, cos(theta), yLeft);
+      vec ab = U(pa, pb);
+      vec nor = U(N(ab, t));
+
+      /* Compute the center and radius of the circle defined by the supporting plane of AB. */
+      float d = dot(V(c, pa), nor);  // d can be negative
+      pt center = P(c, d, nor);
+      float radius = sin(acos(d / r)) * r;
+
+      stroke(springGreen);
+      showCircle(center, nor, radius);
+      beginShape(LINES);
+      vertex(pa);
+      vertex(pb);
+      endShape();
+      noStroke();
+    }
+
     /* Show things related to debug, e.g. circumcircles of two adjacent triangles. */
     void showDebugInfo() {
       /* Show the circumcircles of the two adjacent triangles. */
       stroke(magenta);
       for (int i = 0; i < 2; ++i) {
         IncFace f = edges[i].getAdjFace();
-        assert f instanceof IncTriangle;
-        IncTriangle t = (IncTriangle)f;
-        t.showCircumcircle();
+        if (f != null) {
+          assert f instanceof IncTriangle;
+          IncTriangle t = (IncTriangle)f;
+          t.showCircumcircle();
+        }
       }
 
-      stroke(cyan);
-      showCircumcircles();
+      // stroke(cyan);
+      // showCircumcircles();
 
       // fill(purple);
       // stroke(0);
@@ -502,6 +546,12 @@ class RingSet {
       // showTriangle(vertices[2].position, vertices[3].position, vertices[0].position);
 
       checkCoplanarity();
+    }
+
+    private void generateExtendedPoints(pt pa, pt pb, float d, ArrayList<pt> extPoints) {
+      vec v = U(pa, pb);
+      extPoints.add(P(pa, -d, v));
+      extPoints.add(P(pb, d, v));
     }
 
     void checkCoplanarity() {
@@ -515,53 +565,101 @@ class RingSet {
         }
         coplanarFourPoints(samples.get(n-2), samples.get(n-1), vertices[2].position, vertices[1].position);
       }
+
+      /* Extend the line segment defined by each pair of corresponding points. */
+      ArrayList<pt> extPoints = new ArrayList<pt>();
+      float d = 1000;
+      generateExtendedPoints(vertices[3].position, vertices[0].position, d, extPoints);
+      for (int i = 0; i < samples.size(); i += 2) {
+        generateExtendedPoints(samples.get(i), samples.get(i+1), d, extPoints);
+      }
+      generateExtendedPoints(vertices[2].position, vertices[1].position, d, extPoints);
+      stroke(0);
+      strokeWeight(1);
+      beginShape(LINES);
+      for (int i = 0; i < extPoints.size(); i += 2) {
+        vertex(extPoints.get(i));
+        vertex(extPoints.get(i+1));
+      }
+      endShape();
     }
 
-    // TODO: something wrong here
-    void generatePointsAG() {
-      if (psAG == null) psAG = new ArrayList<pt>();
-      else psAG.clear();
+    private pt generateADPoint(pt pa, pt pb, pt cLeft, float rLeft, vec xLeft, vec yLeft) {
+      /* Compute the tangent at pa w.r.t. the left circle. */
+      vec ca = V(cLeft, pa);
+      float theta = acos(dot(ca, xLeft) / rLeft);
+      if (dot(ca, yLeft) < 0) theta = TWO_PI - theta;
+      vec t = V(-sin(theta), xLeft, cos(theta), yLeft);
+      /* Compute the normal of the supporting plane touching pa and pb. */
+      vec ab = U(pa, pb);
+      vec nor = U(N(ab, t));
+
+      {  // visualize the normal at the middle of (pa, pb)
+        // fill(chocolate);
+        // pt mid = P(pa, pb);
+        // arrow(mid, V(20, nor), 1);
+      }
+
+      return P(c, r, nor);
+    }
+
+    void generatePointsAD() {
+      if (psAD == null) psAD = new ArrayList<pt>();
+      else psAD.clear();
 
       int n = samples.size();
       int ridLeft = vertices[3].rid;
       pt cLeft = centers[ridLeft];
       float rLeft = radii[ridLeft];
-      vec xAxisLeft = xAxes[ridLeft];
-      vec yAxisLeft = yAxes[ridLeft];
+      vec xLeft = xAxes[ridLeft];
+      vec yLeft = yAxes[ridLeft];
+
+      /* Generate a point on DA if there is no adjacent triangle of DA. */
+      if (edges[1].getAdjFace() == null) {
+        pt p = generateADPoint(vertices[3].position, vertices[0].position, cLeft,
+                               rLeft, xLeft, yLeft);
+        psAD.add(p);
+      }
+
       for (int i = 0; i < n; i += 2) {
         pt pa = samples.get(i);
         pt pb = samples.get(i+1);
+        pt p = generateADPoint(pa, pb, cLeft, rLeft, xLeft, yLeft);
+        psAD.add(p);
+      }
 
-        // Compute the tangent at pa w.r.t. the left circle
-        vec ca = V(cLeft, pa);
-        float theta = acos(dot(ca, xAxisLeft) / rLeft);
-        if (dot(ca, yAxisLeft) < 0) theta = TWO_PI - theta;
-        vec t = V(-sin(theta), xAxisLeft, cos(theta), yAxisLeft);
-
-        // Compute the normal of the supporting plane touching pa and pb
-        vec ab = U(pa, pb);
-        vec nor = N(ab, t);
-
-        pt p = P(c, r, nor);
-        psAG.add(p);
+      /* Generate a point on CB if there is no adjacent triangle of CB. */
+      if (edges[0].getAdjFace() == null) {
+        pt p = generateADPoint(vertices[2].position, vertices[1].position, cLeft,
+                               rLeft, xLeft, yLeft);
+        psAD.add(p);
       }
     }
 
-    void showPointsAG() {
+    void showPointsAD() {
       IncTriangle t0 = (IncTriangle)edges[1].getAdjFace();
       IncTriangle t1 = (IncTriangle)edges[0].getAdjFace();
 
-      pt p0 = t0.pAG;
-      show(p0, 3);
-      pt p1;
-      for (pt p : psAG) {
-        // drawArc(p0, c, p, r, 1);
-        show(p, 3);
+      pt p0 = null, p1 = null;
+      if (t0 != null) {
+        p0 = t0.pAD;
+        fill(cyan);
+        show(p0, 3);
+      }
+      for (pt p : psAD) {
+        if (p0 != null) {
+          showPolyArc(p0, p, c, r);
+        }
+        fill(lime);
+        show(p, 2);
         p0 = p;
       }
-      p1 = t1.pAG;
-      show(p1, 3);
-      // drawArc(p0, c, p1, r, 1);
+      if (t1 != null) {
+        p1 = t1.pAD;
+        showPolyArc(p0, p1, c, r);
+        fill(cyan);
+        show(p1, 3);
+      }
     }
   }
 
@@ -2411,6 +2509,8 @@ class RingSet {
       }
       endShape(CLOSE);
     }
+    fill(black);  // restore state
+    noStroke();  // restore state
   }
 
   void showDisks() {
@@ -2554,14 +2654,20 @@ class RingSet {
     }
   }
 
-  void showAG() {
+  void showApolloniusDiagram() {
     assert incCorridors != null && incCorridors.size() != 0;
-    assert incTriangles != null && incTriangles.size() != 0;
 
-    fill(black);
     for (IncCorridor cor : incCorridors) {
-      cor.showPointsAG();
+      cor.showPointsAD();
     }
+  }
+
+  /* Show debug information related to Apollonius diagram. */
+  void showADDebugInfo() {
+    int i = idxIncTri % incTriangles.size();
+    int j = idxIncCor % incCorridors.size();
+    incTriangles.get(i).showADCircle();
+    incCorridors.get(j).showADCircle();
   }
 
   void showDebug3RTInfo() {
@@ -2589,7 +2695,13 @@ class RingSet {
   }
 
   void showDebugIncCHInfo() {
+    if (nRings == 2) {
+      incCorridors.get(0).showDebugInfo();
+      incCorridors.get(1).showDebugInfo();
+    }
+
     if (nRings < 4) return;
+
     // show remaining faces in both views
     for (IncFace f : debugIncCHInfo.remainingFaces) {
       if (f instanceof IncTriangle) fill(blue);

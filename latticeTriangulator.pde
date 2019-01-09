@@ -25,7 +25,7 @@ import processing.pdf.*;
  * ...
  * 20: one circle-plane-intersection test
  */
-int test = 14;
+int test = 13;
 
 float tan0 = 0, tan1 = 0;  // for debugging supporting triangle of 3 circles
 float gaa = 0, gbb = 0, gab = 0;  // for debugging supporting triangle of 3 circles
@@ -423,7 +423,10 @@ void keyPressed() {
     debug3RT = !debug3RT;
     debug2RT = !debug2RT;
     debugST = !debugST;
-    if (test == 13) debugIncCH = !debugIncCH;
+    if (test == 13) {
+      // debugIncCH = !debugIncCH;
+      debugApolloniusDiagram = !debugApolloniusDiagram;
+    }
   }
   if (key == 'o') {
     showSphere = !showSphere;
@@ -457,7 +460,6 @@ void keyPressed() {
     if (test == 15) {
       numPointsPerRing++;
     }
-    // if (test == 14) idxIncCor++;
     if (numTriangles >= 0) {
       numFaces = numTriangles + 1;
       numFaces3RT = numTriangles + 1;
@@ -473,7 +475,6 @@ void keyPressed() {
     if (test == 15) {
       numPointsPerRing = max(numPointsPerRing - 1, 3);
     }
-    // if (test == 14) idxIncCor--;
     if (numFaces > 0) {
       numFaces--;
       numFaces3RT--;
@@ -483,12 +484,12 @@ void keyPressed() {
     rs.debug2RTInfo.numLocalStep = 1;
   }
   if (key == '*') {
-    if (test == 13 || test == 14) idxIncCor++;
+    if (test == 13 || test == 14) idxIncCor = max(0, idxIncCor - 1);
     numSteps3RT++;
     rs.debug2RTInfo.numLocalStep = min(rs.debug2RTInfo.numLocalStep + 1, rs.nPointsPerRing);
   }
   if (key == '/') {
-    if (test == 13 || test == 14) idxIncCor = max(0, idxIncCor - 1);
+    if (test == 13 || test == 14) idxIncCor++;
     numSteps3RT = max(1, numSteps3RT - 1);
     rs.debug2RTInfo.numLocalStep = max(1, rs.debug2RTInfo.numLocalStep - 1);
   }
@@ -524,9 +525,11 @@ void keyPressed() {
   }
   if (key == '[') {
     attenuation = min(1.0, attenuation + attenuationDelta);
+    if (test == 13) idxIncTri++;
   }
   if (key == ']') {
     attenuation = max(attenuationMin, attenuation - attenuationDelta);
+    if (test == 13) idxIncTri = max(0, idxIncTri - 1);
   }
   if (key == 'g') {
     showRingSet = !showRingSet;
@@ -553,7 +556,7 @@ void keyPressed() {
     showCenterOfSphere = !showCenterOfSphere;
   }
   if (key == 'A') {
-    showApolloniusGraph = !showApolloniusGraph;
+    showApolloniusDiagram = !showApolloniusDiagram;
   }
 
   change = true;

@@ -257,11 +257,10 @@ void showPlane(pt p, vec n, float s) {
 
 /*
  * Show the circle defined by (c, n, r) where c is the center, n is the normal,
- * r is the radius.
+ * r is the radius. Remember to set stroke color before calling this function.
  */
 void showCircle(pt c, vec n, float r) {
   noFill();
-  // stroke(0);
   strokeWeight(3);
   float a = 0;
   float da = TWO_PI / 36;
@@ -272,6 +271,7 @@ void showCircle(pt c, vec n, float r) {
     vertex(P(c, r * cos(a), vi, r * sin(a), vj));
   }
   endShape(CLOSE);
+  fill(black);
 }
 
 /*
@@ -304,6 +304,34 @@ void showArcs(pt[] ps, int nv, pt c, float r, float w0, float w1, float w2) {
     show(ps[i], w2);
   }
 }
+
+/*
+ * Show the (minor) arc from A to B on sphere (C, r) approximated by a polyline.
+ */
+void showPolyArc(pt a, pt b, pt c, float r) {
+  vec u = V(c, a), w = V(c, b);
+  float angle = acos(dot(u, w) / (r * r));
+  float s = sin(angle);
+
+  ArrayList<pt> points = new ArrayList<pt>();
+  points.add(a);
+  for(float t = 0.1; t < 1.01; t += 0.1) {  // 10 iterations
+    float su = sin(angle * (1 - t));
+    float sw = sin(angle * t);
+    vec v = V(su/s, u, sw/s, w);  // SLERP
+    points.add(P(c, v));
+  }
+
+  stroke(0);
+  strokeWeight(1);
+  noFill();
+  beginShape();
+  for (pt p : points) vertex(p);
+  endShape();
+  fill(black);
+  noStroke();
+}
+
 
 /* Misc functions below. */
 
