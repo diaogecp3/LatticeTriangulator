@@ -2155,7 +2155,7 @@ class RingSet {
       int bsize = boundary.size();  // current number of edges
       if (bsize != 2 && bsize != 3) {
         System.out.format("Invalid boundary size %d, store this example.\n", bsize);
-        P.savePts("data/pts_unnamed");
+        gPoints.savePts("data/pts_unnamed");
       }
       assert bsize == 2 || bsize == 3;
 

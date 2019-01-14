@@ -79,16 +79,16 @@ void testIntersectionTwoDisks() {
 }
 
 void testIntersectionCirclePlane() {
-  assert rs.nRings >= 3;
+  assert gRingSet.nRings >= 3;
   pt p0 = new pt();
   pt p1 = new pt();
-  rs.generatePoints(attenuation);
+  gRingSet.generatePoints(attenuation);
 
-  pt c0 = rs.centers[0];
-  float r0 = rs.radii[0];
-  vec n0 = rs.normals[0];
-  pt c1 = rs.centers[1];
-  pt c2 = rs.centers[2];
+  pt c0 = gRingSet.centers[0];
+  float r0 = gRingSet.radii[0];
+  vec n0 = gRingSet.normals[0];
+  pt c1 = gRingSet.centers[1];
+  pt c2 = gRingSet.centers[2];
   vec d = normalToTriangle(c0, c1, c2);
 
   fill(orange, 100);

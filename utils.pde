@@ -339,8 +339,8 @@ void showPolyArc(pt a, pt b, pt c, float r) {
  * Exception handler.
  */
 void exceptionHandler() {
-  P.savePts("data/pts_unnamed");
-  rs.save("data/rs_unnamed");
+  gPoints.savePts("data/pts_unnamed");
+  gRingSet.save("data/rs_unnamed");
   exitDraw = true;
 }
 

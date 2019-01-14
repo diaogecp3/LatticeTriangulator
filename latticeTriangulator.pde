@@ -18,6 +18,7 @@ import processing.pdf.*;
  * 13: one interactive-incremental-exact-convex-hull test
  * 14: one corridor test
  * 15: one mesh-from-exact-convex-hull test
+ * 16: one interactive-hub test
  * ...
  * 100: many convex-hull tests
  * 101: many ring-set-triangulation tests
@@ -26,14 +27,14 @@ import processing.pdf.*;
  * ...
  * 20: one circle-plane-intersection test
  */
-int test = 13;
+int test = 16;
 
 float tan0 = 0, tan1 = 0;  // for debugging supporting triangle of 3 circles
 boolean validRS = false;
 
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
-int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
+int inputMethodHub = 1;  // 0: read from file, 1: generate randomly
 int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
 int inputMethodTriangleMesh = 1;  // 0: read from file, 1: nothing happens
 
@@ -66,23 +67,31 @@ pt Vf = P(0,0,0), Vb = P(0,0,0);
 pt Pick=P();
 
 float radiusOfSphere = 100;
-pt centerOfSphere = new pt();
+pt centerOfSphere = new pt(0.0, 0.0, 0.0);
 
+/* Global variables related to gPoints. */
+pts gPoints;  // the global points
+
+/* Global variables related to gRingSet. */
 float rMax = 50;
 float attenuationMin = 0.05;
 float attenuationDelta = 0.05;
 float attenuation = 1.0;
 int numRings = 5;
 int numPointsPerRing = 6;
-RingSet rs;  // global
+RingSet gRingSet;  // the global ring set
 
-float r0 = 20;
-float r1 = 80;
-int nNeighbors = 2;
-Hub hub;
+/* Global variables related to gHub. */
+float rInnerBall = 20;  // radius of the inner ball
+float rSphereOfOuterBalls = radiusOfSphere;  // radius of the sphere where the centers of the outer balls lie
+int nNeighbors = 4;  // number of outer balls
+Hub gHub;  // the global hub
 
-TriangleMesh tm;
-EdgeCircle ec;
+/* Global variables related to gTriangleMesh. */
+TriangleMesh gTriangleMesh;  // the global triangle mesh
+
+/* Global variables related to gEdgeCircle. */
+EdgeCircle gEdgeCircle;  // the global edge circle
 
 int numTriangles = -1;
 float timeTM = 0.0;
@@ -95,7 +104,8 @@ void setup() {
   size(900, 900, P3D); // P3D means that we will do 3D graphics
   noSmooth();  // LEAVE HERE FOR 3D PICK TO WORK!!!
 
-  P.declare();  // some points on a sphere
+  gPoints = new pts();
+  gPoints.declare();  // some points on a sphere
 
   if (test >= 100) {
     noLoop();
@@ -106,10 +116,10 @@ void setup() {
 
   switch (inputMethodPointSet) {
     case 0:  // read from file
-      P.loadPts("data/point_set/ps_arcs_12");
+      gPoints.loadPts("data/point_set/ps_arcs_12");
       break;
     case 1:  // generate randomly
-      generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, 10);
+      generatePointsOnSphere(gPoints, centerOfSphere, radiusOfSphere, 10);
       break;
     default:
       println("Please use a valid input method for point set");
@@ -118,13 +128,13 @@ void setup() {
 
   switch (inputMethodRingSet) {
     case 0:  // read from file
-      rs = new RingSet(centerOfSphere, radiusOfSphere);
-      rs.load("data/rs_unnamed");
+      gRingSet = new RingSet(centerOfSphere, radiusOfSphere);
+      gRingSet.load("data/rs_unnamed");
       break;
     case 1:  // generate randomly
-      rs = new RingSet(centerOfSphere, radiusOfSphere,
+      gRingSet = new RingSet(centerOfSphere, radiusOfSphere,
                        numRings, numPointsPerRing);
-      rs.init();
+      gRingSet.init();
       break;
     default:
       println("Please use a valid input method for ring set");
@@ -133,11 +143,11 @@ void setup() {
 
   switch (inputMethodHub) {
     case 0:  // read from file
-      hub = new Hub();
-      hub.load("data/hub/hub_easy_1");
+      gHub = new Hub();
+      gHub.load("data/hub/hub_easy_1");
       break;
     case 1:  // generate randomly
-      hub = generateHub(centerOfSphere, r0, r1, nNeighbors);
+      gHub = generateHub(centerOfSphere, rInnerBall, rSphereOfOuterBalls, nNeighbors);
       break;
     default:
       println("Please use a valid input method for hub");
@@ -146,12 +156,12 @@ void setup() {
 
   switch (inputMethodEdgeCircle) {
     case 0:
-      ec = new EdgeCircle();
-      ec.load("data/edge_circle/ec_0");
+      gEdgeCircle = new EdgeCircle();
+      gEdgeCircle.load("data/edge_circle/ec_0");
       break;
     case 1:
-      ec = new EdgeCircle();
-      ec.init();
+      gEdgeCircle = new EdgeCircle();
+      gEdgeCircle.init();
       break;
     default:
       println("Please use a valid input method for hub");
@@ -160,30 +170,30 @@ void setup() {
 
   switch (inputMethodTriangleMesh) {
     case 0:
-      tm = new TriangleMesh();
-      tm.load("data/triangle_mesh/tm_0");
+      gTriangleMesh = new TriangleMesh();
+      gTriangleMesh.load("data/triangle_mesh/tm_0");
       break;
     default:
-      tm = null;
+      gTriangleMesh = null;
   }
 
   // check validity of ring set
-  if (!rs.isValid()) {
+  if (!gRingSet.isValid()) {
     println("ring set not valid!");
     exit();
   }
 
   if (regenerateCH == false) {
     attenuation = attenuationMin;
-    rs.generatePoints(attenuation);  // shrink all rings
+    gRingSet.generatePoints(attenuation);  // shrink all rings
     if (test == 1) {
       debugCH = false;
-      rs.generateTriangleMesh(0);  // generate a triangle mesh and store it
+      gRingSet.generateTriangleMesh(0);  // generate a triangle mesh and store it
     }
     if (test == 2) {
       debug3RT = false;
       debug2RT = false;
-      rs.generateTriangleMesh(1);  // generate a triangle mesh and store it
+      gRingSet.generateTriangleMesh(1);  // generate a triangle mesh and store it
     }
   }
 }
@@ -265,6 +275,9 @@ void draw() {
     case 15:
       meshFromExactCHTest();
       break;
+    case 16:
+      interactiveHubTest();
+      break;
 
     case 100:  // many convex-hull tests
       convexHullTests(numTests, numPointsPerTest);
@@ -299,16 +312,22 @@ void draw() {
   }
 
   if (picking) {
-    P.setPickToIndexOfVertexClosestTo(Pick); // id of vertex of P with closest screen projection to mouse (us in keyPressed 'x'...
+    gPoints.setPickToIndexOfVertexClosestTo(Pick); // id of vertex of P with closest screen projection to mouse (us in keyPressed 'x'...
     picking = false;
+  }
+
+  /* Tests that should be done after picking. */
+  switch (test) {
+    case 16:
+      break;
   }
 
   if (showSphere && showArcSet) {
     noStroke();
-    int nv = P.nv - P.nv % 2;
-    showArcs(P.G, nv, centerOfSphere, radiusOfSphere, 4, 3, 4);
+    int nv = gPoints.nv - gPoints.nv % 2;
+    showArcs(gPoints.G, nv, centerOfSphere, radiusOfSphere, 4, 3, 4);
     fill(red, 100);
-    P.showPicked(6); // show currently picked vertex of P
+    gPoints.showPicked(6); // show currently picked vertex of P
     fill(orange, 100);
     show(pick(mouseX,mouseY), 5);  // show mouse position on the sphere
   }
@@ -360,9 +379,9 @@ void draw() {
   //scribeHeader("regenerate = " + str(regenerateCH), 8);
   //scribeHeader("fix penetration among 3-ring triangles = " + str(fix3RT), 9);
 
-  if (scribeText && rs.exTriPoints != null) {
+  if (scribeText && gRingSet.exTriPoints != null) {
     if (test == 11) {
-      scribeHeader("#triangles =" + int(rs.exTriPoints.size() / 3) + " #vertices =" + rs.nRings, 10);
+      scribeHeader("#triangles =" + int(gRingSet.exTriPoints.size() / 3) + " #vertices =" + gRingSet.nRings, 10);
     }
   }
 
@@ -385,38 +404,38 @@ void keyPressed() {
   if (key == '!') snapPicture();
   if (key == '@') snappingPDF = true;
   if (key == '~') filming = !filming;
-  if (key == 'p') P.projectOnSphere(100);
+  if (key == 'p') gPoints.projectOnSphere(100);
   // if (key == '.') F=P.Picked(); // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
   if (key == 'c') center = !center; // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
   if (key == 't') tracking = !tracking; // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
   // if (key == 'x' || key == 'z' || key == 'd' || key == 'a') P.setPickedIndexTo(pp); // picks the vertex of P that has closest projeciton to mouse
-  if (key == 'x' || key == 'z' || key == 'd' || key == 'a') P.setPickToIndexOfVertexClosestTo(Pick);  // picks the vertex of P that has closest projeciton to mouse
+  if (key == 'x' || key == 'z' || key == 'd' || key == 'a') gPoints.setPickToIndexOfVertexClosestTo(Pick);  // picks the vertex of P that has closest projeciton to mouse
   if (key == 'd') {
     // P.deletePicked();
-    P.deletePickedPair();
+    gPoints.deletePickedPair();
     if (test >= 12 && test <= 15) {
-      debugIncCHIter = max(3, min(debugIncCHIter, P.nv / 2));
+      debugIncCHIter = max(3, min(debugIncCHIter, gPoints.nv / 2));
     }
   }
   if (key == 'i') {
     // P.insertClosestProjection(Pick);  // insert the new vertex Pick in P
-    P.addPt(Pick);  // append the new vertex Pick in P
+    gPoints.addPt(Pick);  // append the new vertex Pick in P
   }
-  if (key == 'W') { P.savePts("data/pts"); }  // save vertices
-  if (key == 'L') { P.loadPts("data/pts"); }  // load vertices
+  if (key == 'W') { gPoints.savePts("data/pts"); }  // save vertices
+  if (key == 'L') { gPoints.loadPts("data/pts"); }  // load vertices
   if (key == 'w') {  // save data
-    if (P != null) P.savePts("data/pts_unnamed");
-    if (rs != null) rs.save("data/rs_unnamed");
-    if (hub != null) hub.save("data/hub_unnamed");
-    if (ec != null) ec.save("data/ec_unnamed");
-    if (tm != null) tm.save("data/tm_unnamed");
+    if (gPoints != null) gPoints.savePts("data/pts_unnamed");
+    if (gRingSet != null) gRingSet.save("data/rs_unnamed");
+    if (gHub != null) gHub.save("data/hub_unnamed");
+    if (gEdgeCircle != null) gEdgeCircle.save("data/ec_unnamed");
+    if (gTriangleMesh != null) gTriangleMesh.save("data/tm_unnamed");
   }
   if (key == 'l') {  // load data
-    if (P != null) P.loadPts("data/pts_unnamed");
-    if (rs != null) rs.load("data/rs_unnamed");
-    if (hub != null) hub.load("data/hub.unnamed");
-    if (ec != null) ec.load("data/ec_unnamed");
-    if (tm != null) tm.load("data/tm_unnamed");
+    if (gPoints != null) gPoints.loadPts("data/pts_unnamed");
+    if (gRingSet != null) gRingSet.load("data/rs_unnamed");
+    if (gHub != null) gHub.load("data/hub.unnamed");
+    if (gEdgeCircle != null) gEdgeCircle.load("data/ec_unnamed");
+    if (gTriangleMesh != null) gTriangleMesh.load("data/tm_unnamed");
   }
   // if (key == 'a') animating = !animating; // toggle animation
   if (key == ',') viewpoint = true;
@@ -469,7 +488,7 @@ void keyPressed() {
   /* Keys: increase/decrease operators. */
   if (key == '+') {
     if (test == 13) {
-      debugIncCHIter = min(debugIncCHIter + 1, int(P.nv / 2) - 1);
+      debugIncCHIter = min(debugIncCHIter + 1, int(gPoints.nv / 2) - 1);
     }
     if (test == 15) {
       numPointsPerRing++;
@@ -478,8 +497,8 @@ void keyPressed() {
       numFaces = numTriangles + 1;
       numFaces3RT = numTriangles + 1;
     }
-    rs.debug2RTInfo.numGlobalStep = min(rs.debug2RTInfo.numGlobalStep + 1, rs.nRings);
-    rs.debug2RTInfo.numLocalStep = 1;
+    gRingSet.debug2RTInfo.numGlobalStep = min(gRingSet.debug2RTInfo.numGlobalStep + 1, gRingSet.nRings);
+    gRingSet.debug2RTInfo.numLocalStep = 1;
   }
   if (key == '-') {
     if (test == 13) {
@@ -492,18 +511,18 @@ void keyPressed() {
       numFaces--;
       numFaces3RT--;
     }
-    rs.debug2RTInfo.numGlobalStep = max(1, rs.debug2RTInfo.numGlobalStep - 1);
-    rs.debug2RTInfo.numLocalStep = 1;
+    gRingSet.debug2RTInfo.numGlobalStep = max(1, gRingSet.debug2RTInfo.numGlobalStep - 1);
+    gRingSet.debug2RTInfo.numLocalStep = 1;
   }
   if (key == '/') {
     if (test == 13 || test == 14) idxIncCor++;
     numSteps3RT = max(1, numSteps3RT - 1);
-    rs.debug2RTInfo.numLocalStep = max(1, rs.debug2RTInfo.numLocalStep - 1);
+    gRingSet.debug2RTInfo.numLocalStep = max(1, gRingSet.debug2RTInfo.numLocalStep - 1);
   }
   if (key == '*') {
     if (test == 13 || test == 14) idxIncCor = max(0, idxIncCor - 1);
     numSteps3RT++;
-    rs.debug2RTInfo.numLocalStep = min(rs.debug2RTInfo.numLocalStep + 1, rs.nPointsPerRing);
+    gRingSet.debug2RTInfo.numLocalStep = min(gRingSet.debug2RTInfo.numLocalStep + 1, gRingSet.nPointsPerRing);
   }
   if (key == '[') {
     if (test == 1 || test == 2) attenuation = min(1.0, attenuation + attenuationDelta);
@@ -527,15 +546,15 @@ void keyPressed() {
     if (test == 13) debugIncCHCor = !debugIncCHCor;
     regenerateCH = !regenerateCH;
     if (regenerateCH == false) {
-      rs.generatePoints(attenuationMin);  // shrink all rings
+      gRingSet.generatePoints(attenuationMin);  // shrink all rings
       if (test == 1) {
         debugCH = false;
-        rs.generateTriangleMesh(0);  // generate a triangle mesh and store it
+        gRingSet.generateTriangleMesh(0);  // generate a triangle mesh and store it
       }
       if (test == 2) {
         debug3RT = false;
         debug2RT = false;
-        rs.generateTriangleMesh(1);  // generate a triangle mesh and store it
+        gRingSet.generateTriangleMesh(1);  // generate a triangle mesh and store it
       }
     }
   }
@@ -558,8 +577,8 @@ void keyPressed() {
     else {
       methodTM = 0;
       if (test == 2) {
-        rs.threeRingTriangles = null;
-        rs.twoRingTriangles = null;
+        gRingSet.threeRingTriangles = null;
+        gRingSet.twoRingTriangles = null;
       }
     }
   }
@@ -600,11 +619,11 @@ void mouseDragged() {
   if (keyPressed && key == CODED && keyCode == SHIFT) {
     Of.add(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   }
-  if (keyPressed && key == 'i') P.setPickedTo(Pick);
-  if (keyPressed && key == 'x') P.movePickedTo(Pick);
-  if (keyPressed && key == 'z') P.movePicked(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
-  if (keyPressed && key == 'X') P.moveAll(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
-  if (keyPressed && key == 'Z') P.moveAll(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
+  if (keyPressed && key == 'i') gPoints.setPickedTo(Pick);
+  if (keyPressed && key == 'x') gPoints.movePickedTo(Pick);
+  if (keyPressed && key == 'z') gPoints.movePicked(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
+  if (keyPressed && key == 'X') gPoints.moveAll(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
+  if (keyPressed && key == 'Z') gPoints.moveAll(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   if (keyPressed && key == 'f') { // move focus point on plane
     if (center) F.sub(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
     else F.add(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));

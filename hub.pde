@@ -44,16 +44,14 @@ float intersectionDistance(Ball ba, Ball bb, Ball bc) {
   pt pca01 = P(pa, ra, v1);
   pt px = intersectionTwoLines(pba10, pba11, pca00, pca01);
 
-  {
+  {  // show the intersection point
     fill(green, 100);
-    show(px, 10);
+    show(px, 4);
   }
 
   return d(pa, px);
 }
 
-
-// TODO: need to revisit
 /*
  * Show the tangential cone touching ball ba and bb.
  */
@@ -96,7 +94,6 @@ void showTangentialCone(Ball ba, Ball bb) {
   return;
 }
 
-
 /*
  * Hub class.
  *
@@ -107,14 +104,46 @@ class Hub {
   Ball ball = null;
   Ball[] neighbors = null;
   int nNeighbors = 0;
+
+  boolean valid = false;  // whether the hub is valid or not
+  private float maxIntersectDist = -1.0;  // the radius of the bounding sphere
+
+  Circle[] circles = null;
+
   Hub() {}
+
   Hub(Ball ball, Ball[] neighbors, int nNeighbors) {
     this.ball = ball;
     this.neighbors = neighbors;
     this.nNeighbors = nNeighbors;
+
+    valid = isValid();
+    if (valid) this.init();
   }
 
-  float maximumIntersectionDistance() {
+  Hub(pt c, float r, pt[] points, int nv) {
+    ball = new Ball(c, r);
+    nNeighbors = nv / 2;
+    neighbors = new Ball[nNeighbors];
+    for (int i = 0; i < nv; i += 2) {
+      neighbors[i / 2] =  new Ball(points[i], d(points[i], points[i+1]));
+    }
+
+    valid = isValid();
+    if (valid) this.init();
+  }
+
+  private boolean isValid() {
+    for (int i = 0; i < nNeighbors - 1; ++i) {
+      for (int j = i + 1; j < nNeighbors; ++j) {
+        if (neighbors[i].intersectBall(neighbors[j])) return false;
+      }
+      if (ball.intersectBall(neighbors[i])) return false;
+    }
+    return true;
+  }
+
+  private float maximumIntersectionDistance() {
     float t = -1.0;
     for (int i = 0; i < nNeighbors; ++i) {
       for (int j = i + 1; j < nNeighbors; ++j) {
@@ -125,11 +154,64 @@ class Hub {
     return t;
   }
 
-  void showBoundingBall(color c, int a) {
-    float t = maximumIntersectionDistance();
-    fill(c, a);
-    noStroke();
-    show(ball.c, t);
+  private void init() {
+    maxIntersectDist = maximumIntersectionDistance();
+    maxIntersectDist += 5;  // slightly bigger
+  }
+
+  private Circle intersectionCircleWithBoundingSphere(int i) {
+    float r0 = ball.r;
+    float r1 = neighbors[i].r;
+    vec v = V(ball.c, neighbors[i].c);
+    float dd = n2(v);
+    float r0r0 = r0 * r0;
+    float r1r1 = r1 * r1;
+    float r0r1 = 2 * r0 * r1;
+
+    float a = dd + r0r0 + r1r1 - r0r1;
+    float b = -2 * r0r0 + r0r1;
+    float c = r0r0 - maxIntersectDist * maxIntersectDist;
+
+    float[] sols = solveQuadraticEquation(a, b, c);
+    float t = -1.0;  // t should be in [0, 1]
+    if (sols != null) {
+      // println("sols[0] = ", sols[0], "sols[1] = ", sols[1]);
+      t = max(sols[0], sols[1]);
+    }
+
+    if (t >= 0 && t <= 1) {
+      float r = (1 - t) * r0 + t * r1;
+      vec n = U(v);
+      pt center = P(ball.c, t * sqrt(dd), n);
+      return new Circle(center, n, r);
+    }
+
+    return null;
+  }
+
+  void intersectionCircles() {
+    if (maxIntersectDist <= 0.0) return;
+
+    circles = new Circle[nNeighbors];
+    for (int i = 0; i < nNeighbors; ++i) {
+      circles[i] = intersectionCircleWithBoundingSphere(i);
+    }
+    return;
+  }
+
+  void showIntersectionCircles() {
+    stroke(cyan);
+    for (int i = 0; i < nNeighbors; ++i) {
+      if (circles[i] != null) circles[i].show();
+    }
+  }
+
+  void showBoundingSphere(color c, int a) {
+    if (maxIntersectDist > 0) {
+      fill(c, a);
+      noStroke();
+      show(ball.c, maxIntersectDist);
+    }
   }
 
   void showHub(color c, int a) {
@@ -138,7 +220,7 @@ class Hub {
     ball.showBall();
     for (int i = 0; i < nNeighbors; ++i) {
       showTangentialCone(ball, neighbors[i]);
-      neighbors[i].showBall();
+      //neighbors[i].showBall();
     }
     return;
   }

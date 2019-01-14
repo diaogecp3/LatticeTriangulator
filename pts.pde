@@ -1,5 +1,5 @@
 int pp=1; // index of picked vertex
-pts P = new pts(); // polyloop in 3D
+
 class pts { // class for manipulaitng and sisplaying polyloops
   Boolean loop=true;
   int pv =0, // picked vertex index,

@@ -93,9 +93,9 @@ void convexHullTests(int n, int m) {
   float[] times = new float[n];  // in millisecons
   int p = n / 10;
   for (int i = 0; i < n; ++i) {
-    generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, m);
+    generatePointsOnSphere(gPoints, centerOfSphere, radiusOfSphere, m);
     long startTime = System.nanoTime();
-    ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
+    ArrayList<Triangle> triangles = generateConvexHull(gPoints.G, gPoints.nv);
     long endTime = System.nanoTime();
     times[i] = (endTime - startTime) / 1000000.0;
     if (i % p == 0) System.out.format("duration of %d-th test = %f ms. \n", i, times[i]);
@@ -269,50 +269,50 @@ void exactCHAllCirclesTests(int n, int nRings) {
 void convexHullTest() {
   if (showPointSet) {
     fill(green);
-    P.drawBalls(2);
+    gPoints.drawBalls(2);
   }
   if (generateCH) {
     long startTime = System.nanoTime();
-    ArrayList<Triangle> triangles = generateConvexHull(P.G, P.nv);
+    ArrayList<Triangle> triangles = generateConvexHull(gPoints.G, gPoints.nv);
     long endTime = System.nanoTime();
     timeTM = (endTime - startTime) / 1000000.0;
     fill(red);
     stroke(0);
     numTriangles = triangles.size();
-    showTriangles(triangles, P.G);
+    showTriangles(triangles, gPoints.G);
   } else {
     numTriangles = -1;
   }
 }
 
 void convexHullWithHolesTest() {
-  rs.generatePoints(attenuation);
-  if (showRingSet) rs.showRings();
+  gRingSet.generatePoints(attenuation);
+  if (showRingSet) gRingSet.showRings();
   if (generateCH) {
-    pt[] pointArray = rs.get1DPointArray();
+    pt[] pointArray = gRingSet.get1DPointArray();
     if (regenerateCH) {  // regenerate a convex hull
       long startTime = System.nanoTime();
-      rs.generateTriangleMesh(0);
+      gRingSet.generateTriangleMesh(0);
       long endTime = System.nanoTime();
       timeTM = (endTime - startTime) / 1000000.0;
     }
     fill(red);
     stroke(0);
-    showTriangles(rs.triangles, pointArray);
-    numTriangles = rs.triangles.size();
+    showTriangles(gRingSet.triangles, pointArray);
+    numTriangles = gRingSet.triangles.size();
   } else {
     numTriangles = -1;
   }
 }
 
 void ringSetTriangulationTest() {
-  rs.generatePoints(attenuation);
-  if (showRingSet) rs.showRings();
+  gRingSet.generatePoints(attenuation);
+  if (showRingSet) gRingSet.showRings();
   if (generateCH) {
-    pt[] pointArray = rs.get1DPointArray();
+    pt[] pointArray = gRingSet.get1DPointArray();
     if (regenerateCH) {
       long startTime = System.nanoTime();
-      rs.generateTriangleMesh(methodTM);
+      gRingSet.generateTriangleMesh(methodTM);
       long endTime = System.nanoTime();
       timeTM = (endTime - startTime) / 1000000.0;
     }
@@ -320,40 +320,40 @@ void ringSetTriangulationTest() {
 
     if (methodTM == 1) {
       if (show3RT) {
-        assert rs.threeRingTriangles != null;
+        assert gRingSet.threeRingTriangles != null;
         fill(red);
         stroke(0);
         strokeWeight(2);
-        showTriangles(rs.threeRingTriangles, pointArray);
+        showTriangles(gRingSet.threeRingTriangles, pointArray);
         fill(#0AED62, 100);  // light green
         noStroke();
-        showTriangleNormals(rs.threeRingTriangles, pointArray);
-        numTriangles += rs.threeRingTriangles.size();
+        showTriangleNormals(gRingSet.threeRingTriangles, pointArray);
+        numTriangles += gRingSet.threeRingTriangles.size();
       }
       if (show2RT) {
-        assert rs.twoRingTriangles != null;
+        assert gRingSet.twoRingTriangles != null;
         fill(blue);
         stroke(0);
-        showTriangles(rs.twoRingTriangles, pointArray);
+        showTriangles(gRingSet.twoRingTriangles, pointArray);
         fill(#0AED62, 100);
         noStroke();
-        showTriangleNormals(rs.twoRingTriangles, pointArray);
-        numTriangles += rs.twoRingTriangles.size();
+        showTriangleNormals(gRingSet.twoRingTriangles, pointArray);
+        numTriangles += gRingSet.twoRingTriangles.size();
       }
     } else {
       fill(green);
       stroke(0);
-      showTriangles(rs.triangles, pointArray);
+      showTriangles(gRingSet.triangles, pointArray);
       fill(blue, 100);
       noStroke();
-      showTriangleNormals(rs.triangles, pointArray);
-      numTriangles += rs.triangles.size();
+      showTriangleNormals(gRingSet.triangles, pointArray);
+      numTriangles += gRingSet.triangles.size();
     }
 
     if (debug3RT && method3RT == 1) {
-      rs.showDebug3RTInfo();
+      gRingSet.showDebug3RTInfo();
     } else if (debug2RT) {
-      rs.showDebug2RTInfo();
+      gRingSet.showDebug2RTInfo();
     } else {
       // boolean success = passQualityTest(rs.threeRingTriangles, pointArray, pointArray.length);
       // if (!success) {
@@ -367,14 +367,14 @@ void ringSetTriangulationTest() {
 
 void subdivisionTest() {
   debugCH = false;
-  rs.generatePoints(attenuation);
-  if (showRingSet) rs.showRings();
+  gRingSet.generatePoints(attenuation);
+  if (showRingSet) gRingSet.showRings();
   if (generateCH) {
-    ArrayList<pt> positions = rs.get1DPointArrayList();
+    ArrayList<pt> positions = gRingSet.get1DPointArrayList();
     long startTime = System.nanoTime();
-    ArrayList<Triangle> triangles = generateConvexHull(rs.get2DPointArray(),
-                                                       rs.getNumRings(),
-                                                       rs.getNumPointsPerRing());
+    ArrayList<Triangle> triangles = generateConvexHull(gRingSet.get2DPointArray(),
+                                                       gRingSet.getNumRings(),
+                                                       gRingSet.getNumPointsPerRing());
     long endTime = System.nanoTime();
     timeTM = (endTime - startTime) / 1000000.0;
 
@@ -394,20 +394,20 @@ void subdivisionTest() {
 }
 
 void hubTest() {
-  hub.showHub(red, 150);
-  hub.showBoundingBall(blue, 100);
+  gHub.showHub(red, 150);
+  gHub.showBoundingSphere(blue, 100);
 }
 
 void pivotPlaneAroundLineHitCircleTest() {
-  assert rs.nRings >= 3;
-  rs.generatePoints(attenuation);
-  assert rs.points != null && rs.centers != null && rs.normals != null && rs.radii != null;
-  pt c = rs.centers[0];
-  float r = rs.radii[0];
-  vec n = rs.normals[0];
-  pt a = rs.points[1][0];
-  pt b = rs.points[2][0];
-  pt[] contacts = pivotPlaneAroundLineHitCircle(c, r, n, a, b, rs.xAxes[0], rs.yAxes[0]);
+  assert gRingSet.nRings >= 3;
+  gRingSet.generatePoints(attenuation);
+  assert gRingSet.points != null && gRingSet.centers != null && gRingSet.normals != null && gRingSet.radii != null;
+  pt c = gRingSet.centers[0];
+  float r = gRingSet.radii[0];
+  vec n = gRingSet.normals[0];
+  pt a = gRingSet.points[1][0];
+  pt b = gRingSet.points[2][0];
+  pt[] contacts = pivotPlaneAroundLineHitCircle(c, r, n, a, b, gRingSet.xAxes[0], gRingSet.yAxes[0]);
   assert contacts != null && contacts.length == 2;
 
 
@@ -468,38 +468,38 @@ void exactCHEdgeCircleTest() {
   //                   rs.normals[0], rs.xAxes[0], rs.yAxes[0]);
 
   {
-    assert ec != null;
-    exactCHEdgeCircle(ec.a, ec.b, ec.c, ec.r, ec.n, ec.vi, ec.vj);
+    assert gEdgeCircle != null;
+    exactCHEdgeCircle(gEdgeCircle.a, gEdgeCircle.b, gEdgeCircle.c, gEdgeCircle.r, gEdgeCircle.n, gEdgeCircle.vi, gEdgeCircle.vj);
   }
 }
 
 void exactCHTwoCirclesTest() {
-  assert rs.nRings >= 2;
-  rs.generatePoints(attenuation);
-  assert rs.points != null && rs.centers != null && rs.normals != null &&
-         rs.radii != null && rs.sameRadius == false;
-  exactCHTwoCircles(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
-                    rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1]);
+  assert gRingSet.nRings >= 2;
+  gRingSet.generatePoints(attenuation);
+  assert gRingSet.points != null && gRingSet.centers != null && gRingSet.normals != null &&
+         gRingSet.radii != null && gRingSet.sameRadius == false;
+  exactCHTwoCircles(gRingSet.centers[0], gRingSet.radii[0], gRingSet.normals[0], gRingSet.xAxes[0], gRingSet.yAxes[0],
+                    gRingSet.centers[1], gRingSet.radii[1], gRingSet.normals[1], gRingSet.xAxes[1], gRingSet.yAxes[1]);
 }
 
 void tangentPlaneThreeCirclesIterTest() {
-  assert rs.nRings >= 3;
-  rs.generatePoints(attenuation);
-  assert rs.points != null && rs.centers != null && rs.normals != null &&
-         rs.radii != null && rs.sameRadius == false;
+  assert gRingSet.nRings >= 3;
+  gRingSet.generatePoints(attenuation);
+  assert gRingSet.points != null && gRingSet.centers != null && gRingSet.normals != null &&
+         gRingSet.radii != null && gRingSet.sameRadius == false;
 
   {
     fill(red);
-    disk(rs.centers[0], rs.normals[0], rs.radii[0]);
+    disk(gRingSet.centers[0], gRingSet.normals[0], gRingSet.radii[0]);
     fill(green);
-    disk(rs.centers[1], rs.normals[1], rs.radii[1]);
+    disk(gRingSet.centers[1], gRingSet.normals[1], gRingSet.radii[1]);
     fill(blue);
-    disk(rs.centers[2], rs.normals[2], rs.radii[2]);
+    disk(gRingSet.centers[2], gRingSet.normals[2], gRingSet.radii[2]);
   }
 
-  pt[] ps = tangentPlaneThreeCirclesIter(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
-                                     rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1],
-                                     rs.centers[2], rs.radii[2], rs.normals[2], rs.xAxes[2], rs.yAxes[2],
+  pt[] ps = tangentPlaneThreeCirclesIter(gRingSet.centers[0], gRingSet.radii[0], gRingSet.normals[0], gRingSet.xAxes[0], gRingSet.yAxes[0],
+                                     gRingSet.centers[1], gRingSet.radii[1], gRingSet.normals[1], gRingSet.xAxes[1], gRingSet.yAxes[1],
+                                     gRingSet.centers[2], gRingSet.radii[2], gRingSet.normals[2], gRingSet.xAxes[2], gRingSet.yAxes[2],
                                      null);
   {
     fill(orange, 180);
@@ -507,9 +507,9 @@ void tangentPlaneThreeCirclesIterTest() {
     fill(cyan, 100);
     showNormalToTriangle(ps[0], ps[1], ps[2], 20, 4);
   }
-  ps = tangentPlaneThreeCirclesIter(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
-                                rs.centers[2], rs.radii[2], rs.normals[2], rs.xAxes[2], rs.yAxes[2],
-                                rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1],
+  ps = tangentPlaneThreeCirclesIter(gRingSet.centers[0], gRingSet.radii[0], gRingSet.normals[0], gRingSet.xAxes[0], gRingSet.yAxes[0],
+                                gRingSet.centers[2], gRingSet.radii[2], gRingSet.normals[2], gRingSet.xAxes[2], gRingSet.yAxes[2],
+                                gRingSet.centers[1], gRingSet.radii[1], gRingSet.normals[1], gRingSet.xAxes[1], gRingSet.yAxes[1],
                                 null);
   {
     fill(violet, 180);
@@ -518,53 +518,53 @@ void tangentPlaneThreeCirclesIterTest() {
     showNormalToTriangle(ps[0], ps[1], ps[2], 20, 4);
   }
 
-  if (showRingSet) rs.showRings();
+  if (showRingSet) gRingSet.showRings();
 }
 
 void exactCHThreeCirclesTest() {
-  assert rs.nRings >= 3;
-  rs.generatePoints(attenuation);
-  assert rs.points != null && rs.centers != null && rs.normals != null &&
-         rs.radii != null && rs.sameRadius == false;
-  exactCHThreeCircles(rs.centers[0], rs.radii[0], rs.normals[0], rs.xAxes[0], rs.yAxes[0],
-                      rs.centers[1], rs.radii[1], rs.normals[1], rs.xAxes[1], rs.yAxes[1],
-                      rs.centers[2], rs.radii[2], rs.normals[2], rs.xAxes[2], rs.yAxes[2]);
+  assert gRingSet.nRings >= 3;
+  gRingSet.generatePoints(attenuation);
+  assert gRingSet.points != null && gRingSet.centers != null && gRingSet.normals != null &&
+         gRingSet.radii != null && gRingSet.sameRadius == false;
+  exactCHThreeCircles(gRingSet.centers[0], gRingSet.radii[0], gRingSet.normals[0], gRingSet.xAxes[0], gRingSet.yAxes[0],
+                      gRingSet.centers[1], gRingSet.radii[1], gRingSet.normals[1], gRingSet.xAxes[1], gRingSet.yAxes[1],
+                      gRingSet.centers[2], gRingSet.radii[2], gRingSet.normals[2], gRingSet.xAxes[2], gRingSet.yAxes[2]);
 }
 
 void threeRingTriangleTest() {
-  rs.generatePoints(attenuation);
-  if (showRingSet) rs.showRings();
+  gRingSet.generatePoints(attenuation);
+  if (showRingSet) gRingSet.showRings();
   if (generateCH) {
-    pt[] pointArray = rs.get1DPointArray();
+    pt[] pointArray = gRingSet.get1DPointArray();
     if (regenerateCH) {
       long startTime = System.nanoTime();
-      rs.generateThreeRingTriangles();
+      gRingSet.generateThreeRingTriangles();
       long endTime = System.nanoTime();
       timeTM = (endTime - startTime) / 1000000.0;
     }
     numTriangles = 0;
-    assert rs.threeRingTriangles != null;
+    assert gRingSet.threeRingTriangles != null;
     fill(red);
     stroke(0);
     strokeWeight(2);
-    showTriangles(rs.threeRingTriangles, pointArray);
+    showTriangles(gRingSet.threeRingTriangles, pointArray);
     fill(#0AED62, 100);  // light green
     noStroke();
-    showTriangleNormals(rs.threeRingTriangles, pointArray);
-    numTriangles += rs.threeRingTriangles.size();
+    showTriangleNormals(gRingSet.threeRingTriangles, pointArray);
+    numTriangles += gRingSet.threeRingTriangles.size();
   } else {
     numTriangles = -1;
   }
 }
 
 void exactCHNaiveTest() {
-  if (P.nv < 6) {
+  if (gPoints.nv < 6) {
     println("Should use at least 6 points.");
     return;
   }
 
-  int nv = P.nv - P.nv % 2;
-  RingSet rs = new RingSet(centerOfSphere, radiusOfSphere, P.G, nv);
+  int nv = gPoints.nv - gPoints.nv % 2;
+  RingSet rs = new RingSet(centerOfSphere, radiusOfSphere, gPoints.G, nv);
 
   if (!rs.isValid()) {
     validRS = false;
@@ -629,13 +629,13 @@ void exactCHNaiveTest() {
 }
 
 void exactCHIncrementalTest() {
-  if (P.nv < 4) {
+  if (gPoints.nv < 4) {
     println("Should use at least 4 points.");
     return;
   }
 
-  int nv = P.nv - P.nv % 2;
-  RingSet rs = new RingSet(centerOfSphere, radiusOfSphere, P.G, nv);
+  int nv = gPoints.nv - gPoints.nv % 2;
+  RingSet rs = new RingSet(centerOfSphere, radiusOfSphere, gPoints.G, nv);
 
   if (!rs.isValid()) {
     validRS = false;
@@ -678,13 +678,13 @@ void exactCHIncrementalTest() {
 }
 
 void corridorTest() {
-  if (P.nv < 6) {
+  if (gPoints.nv < 6) {
     println("Should use at least 6 points.");
     return;
   }
 
-  int nv = P.nv - P.nv % 2;
-  RingSet rs = new RingSet(centerOfSphere, radiusOfSphere, P.G, nv);
+  int nv = gPoints.nv - gPoints.nv % 2;
+  RingSet rs = new RingSet(centerOfSphere, radiusOfSphere, gPoints.G, nv);
 
   if (!rs.isValid()) {
     validRS = false;
@@ -717,62 +717,84 @@ void corridorTest() {
 }
 
 void meshFromExactCHTest() {
-  if (P.nv < 6) {
+  if (gPoints.nv < 6) {
     println("Should use at least 6 points.");
     return;
   }
 
-  int nv = P.nv - P.nv % 2;
-  rs = new RingSet(centerOfSphere, radiusOfSphere, P.G, nv);  // global
+  int nv = gPoints.nv - gPoints.nv % 2;
+  gRingSet = new RingSet(centerOfSphere, radiusOfSphere, gPoints.G, nv);
 
-  if (!rs.isValid()) {
+  if (!gRingSet.isValid()) {
     validRS = false;
     return;
   } else {
     validRS = true;
   }
 
-  rs.setNumPointsPerRing(numPointsPerRing);
-  rs.generatePoints(attenuation);
+  gRingSet.setNumPointsPerRing(numPointsPerRing);
+  gRingSet.generatePoints(attenuation);
   if (showRingSet) {
-    rs.showRings();
+    gRingSet.showRings();
   }
 
   if (showDiskSet) {
-    rs.showDisks();
+    gRingSet.showDisks();
   }
 
-  rs.generateExactCHIncremental();
-  rs.generateMeshFromExactCH(0);
+  gRingSet.generateExactCHIncremental();
+  gRingSet.generateMeshFromExactCH(0);
 
-  tm = rs.triMesh;  // make it global, so that we can save it by pressing 'w'
+  gTriangleMesh = gRingSet.triMesh;  // make it global, so that we can save it by pressing 'w'
 
   if (subdivisionTimes > 0) {
-    rs.triMesh.subdivide(subdivisionTimes, centerOfSphere, radiusOfSphere);
+    gRingSet.triMesh.subdivide(subdivisionTimes, centerOfSphere, radiusOfSphere);
   }
 
   if (showTriMesh) {
-    if (rs.triMesh != null) {
-      rs.triMesh.showTriangleMesh(khaki, true);
+    if (gRingSet.triMesh != null) {
+      gRingSet.triMesh.showTriangleMesh(khaki, true);
     }
   } else {
     if (show3RT) {
       fill(navy, 230);
-      rs.showThreeRingTriangles();
+      gRingSet.showThreeRingTriangles();
     }
     if (show2RT) {
       fill(springGreen, 230);
-      rs.showTwoRingTriangles();
+      gRingSet.showTwoRingTriangles();
     }
   }
 
   if (showBeams) {
     fill(orange, 230);
-    rs.showBeams(40.0);
+    gRingSet.showBeams(40.0);
   }
 }
 
 void triangleMeshTest() {
-  if (tm == null) return;
-  if (showTriMesh) tm.showTriangleMesh(hotPink, true);
+  if (gTriangleMesh == null) return;
+  if (showTriMesh) gTriangleMesh.showTriangleMesh(hotPink, true);
+}
+
+void interactiveHubTest() {
+  if (gPoints.nv < 2) {
+    println("Should use at least 2 points.");
+    return;
+  }
+
+  int nv = gPoints.nv - gPoints.nv % 2;
+  gHub = new Hub(centerOfSphere, rInnerBall, gPoints.G, nv);
+  if (!gHub.valid) {
+    println("Hub is not valid!");
+    return;
+  } else {
+    // println("number of outer balls =", gHub.nNeighbors);
+  }
+
+  gHub.showHub(red, 100);
+  gHub.showBoundingSphere(blue, 100);
+
+  gHub.intersectionCircles();
+  gHub.showIntersectionCircles();
 }

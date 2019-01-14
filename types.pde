@@ -256,20 +256,41 @@ class Disk {
   }
 }
 
-/*
- * Ball class.
- */
+class Circle {
+  pt c;
+  vec n;
+  float r;
+
+  Circle(pt c, vec n, float r) {
+    this.c = c;
+    this.n = n;
+    this.r = r;
+  }
+
+  void show() {
+    showCircle(c, n, r);
+  }
+}
+
 class Ball {
   pt c;
   float r;
+
   Ball(pt c, float r) {
     this.c = c;
     this.r = r;
   }
+
   Ball(float x, float y, float z, float r) {
     this.c = new pt(x, y, z);
     this.r = r;
   }
+
+  boolean intersectBall(Ball other) {
+    if (d(c, other.c) <= r + other.r) return true;
+    return false;
+  }
+
   void showBall() {
     show(c, r);
   }
