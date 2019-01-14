@@ -13,10 +13,11 @@ import processing.pdf.*;
  * 8: one supporting-plane-of-three-circles-iter test (iterative method with 3 different initializations)
  * 9: one exact-convex-hull-of-three-circles test
  * 10: one three-ring-triangle test
- * 11: empty
+ * 11: one triangle-mesh test
  * 12: one interactive-naive-exact-convex-hull test
  * 13: one interactive-incremental-exact-convex-hull test
  * 14: one corridor test
+ * 15: one mesh-from-exact-convex-hull test
  * ...
  * 100: many convex-hull tests
  * 101: many ring-set-triangulation tests
@@ -28,13 +29,13 @@ import processing.pdf.*;
 int test = 13;
 
 float tan0 = 0, tan1 = 0;  // for debugging supporting triangle of 3 circles
-float gaa = 0, gbb = 0, gab = 0;  // for debugging supporting triangle of 3 circles
 boolean validRS = false;
 
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
 int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
+int inputMethodTriangleMesh = 1;  // 0: read from file, 1: nothing happens
 
 boolean showSphere = true;
 boolean showCenterOfSphere = true;
@@ -47,8 +48,7 @@ boolean showRingSet = true;
 boolean showCircleSet = false;
 boolean showDiskSet = false;
 boolean showPointSet = true;
-
-int subdivisionTimes = 0;
+int subdivisionTimes = 0;  // subdivision times
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
 float rx = -0.06 * TWO_PI, ry = -0.04 * TWO_PI;  // view angles manipulated when space pressed but not mouse
@@ -74,13 +74,14 @@ float attenuationDelta = 0.05;
 float attenuation = 1.0;
 int numRings = 5;
 int numPointsPerRing = 6;
-RingSet rs;
+RingSet rs;  // global
 
 float r0 = 20;
 float r1 = 80;
 int nNeighbors = 2;
 Hub hub;
 
+TriangleMesh tm;
 EdgeCircle ec;
 
 int numTriangles = -1;
@@ -105,9 +106,7 @@ void setup() {
 
   switch (inputMethodPointSet) {
     case 0:  // read from file
-      //P.loadPts("data/point_set/ps_easy_0");
-      P.loadPts("data/point_set/ps_arcs_0");
-      //P.loadPts("data/pts_unnamed");
+      P.loadPts("data/point_set/ps_arcs_12");
       break;
     case 1:  // generate randomly
       generatePointsOnSphere(P, centerOfSphere, radiusOfSphere, 10);
@@ -120,15 +119,7 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       rs = new RingSet(centerOfSphere, radiusOfSphere);
-      //rs.load("data/rs_unnamed");
-      rs.load("data/tmp/rs_wrong_number_ex_tris_0");
-      //rs.load("data/ring_set/rs_easy_5");
-      //rs.load("data/ring_set/rs_3rt_bfs_null_1");
-      //rs.load("data/ring_set/rs_3rt_penetration_1");
-      //rs.load("data/ring_set/rs_3rt_wrong_fix_2");
-      //rs.load("data/ring_set/rs_2rt_fail");
-      //rs.load("data/ring_set/rs_plane_line_circle_0");
-      //rs.load("data/ring_set/rs_exact_CH_edge_circle_0");
+      rs.load("data/rs_unnamed");
       break;
     case 1:  // generate randomly
       rs = new RingSet(centerOfSphere, radiusOfSphere,
@@ -165,6 +156,15 @@ void setup() {
     default:
       println("Please use a valid input method for hub");
       exit();
+  }
+
+  switch (inputMethodTriangleMesh) {
+    case 0:
+      tm = new TriangleMesh();
+      tm.load("data/triangle_mesh/tm_0");
+      break;
+    default:
+      tm = null;
   }
 
   // check validity of ring set
@@ -251,7 +251,7 @@ void draw() {
       threeRingTriangleTest();
       break;
     case 11:
-      println("Not yet implement");
+      triangleMeshTest();
       break;
     case 12:
       exactCHNaiveTest();
@@ -339,22 +339,29 @@ void draw() {
       // scribeHeader("#triangles =" + numTriangles + "(expect " + str(2 * numRings - 4) + "), #rings =" + numRings, 4);
       // scribeHeader("tan0 = " + tan0 + ", tan1 = " + tan1, 5);
       // scribeHeader("arctan0 = " + atan(tan0) + ", arctan1 = " + atan(tan1), 6);
-      // scribeHeader("aa = " + gaa + ", bb = " + gbb + ", ab = " + gab, 7);
     }
   }
 
   //scribeHeader("time for triangle mesh generation = " + timeTM + "ms", 5);
-  if (scribeText && test == 3 && subdivisionTimes > 0) {
-    scribeHeader("time for subdivision = " + timeSD + "ms", 6);
+  if (scribeText && subdivisionTimes > 0) {
+    if (test == 3) {
+      scribeHeader("time for subdivision = " + timeSD + "ms", 6);
+    }
+    if (test == 15) {
+      scribeHeader("subdivision times = " + subdivisionTimes, 6);
+    }
   }
-  if (scribeText && test == 2 && debug3RT) {
-    scribeHeader("number of steps for a three-ring triangle = " + numSteps3RT, 7);
+  if (scribeText && debug3RT) {
+    if (test == 2) {
+      scribeHeader("number of steps for a three-ring triangle = " + numSteps3RT, 7);
+    }
   }
+
   //scribeHeader("regenerate = " + str(regenerateCH), 8);
   //scribeHeader("fix penetration among 3-ring triangles = " + str(fix3RT), 9);
 
-  if (scribeText && test == 11) {
-    if (rs.exTriPoints != null) {
+  if (scribeText && rs.exTriPoints != null) {
+    if (test == 11) {
       scribeHeader("#triangles =" + int(rs.exTriPoints.size() / 3) + " #vertices =" + rs.nRings, 10);
     }
   }
@@ -378,10 +385,7 @@ void keyPressed() {
   if (key == '!') snapPicture();
   if (key == '@') snappingPDF = true;
   if (key == '~') filming = !filming;
-  if (key == 'q') Q.copyFrom(P);
   if (key == 'p') P.projectOnSphere(100);
-  if (key == 'e') { PtQ.copyFrom(Q); Q.copyFrom(P); P.copyFrom(PtQ); }
-  if (key == '=') { bu = fu; bv = fv; }
   // if (key == '.') F=P.Picked(); // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
   if (key == 'c') center = !center; // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
   if (key == 't') tracking = !tracking; // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
@@ -398,19 +402,21 @@ void keyPressed() {
     // P.insertClosestProjection(Pick);  // insert the new vertex Pick in P
     P.addPt(Pick);  // append the new vertex Pick in P
   }
-  if (key == 'W') { P.savePts("data/pts"); Q.savePts("data/pts2"); }  // save vertices to pts2
-  if (key == 'L') { P.loadPts("data/pts"); Q.loadPts("data/pts2"); }  // loads saved model
+  if (key == 'W') { P.savePts("data/pts"); }  // save vertices
+  if (key == 'L') { P.loadPts("data/pts"); }  // load vertices
   if (key == 'w') {  // save data
-    P.savePts("data/pts_unnamed");
-    rs.save("data/rs_unnamed");
-    hub.save("data/hub_unnamed");
-    ec.save("data/ec_unnamed");
+    if (P != null) P.savePts("data/pts_unnamed");
+    if (rs != null) rs.save("data/rs_unnamed");
+    if (hub != null) hub.save("data/hub_unnamed");
+    if (ec != null) ec.save("data/ec_unnamed");
+    if (tm != null) tm.save("data/tm_unnamed");
   }
   if (key == 'l') {  // load data
-    P.loadPts("data/pts_unnamed");
-    rs.load("data/rs_unnamed");
-    hub.load("data/hub.unnamed");
-    ec.load("data/ec_unnamed");
+    if (P != null) P.loadPts("data/pts_unnamed");
+    if (rs != null) rs.load("data/rs_unnamed");
+    if (hub != null) hub.load("data/hub.unnamed");
+    if (ec != null) ec.load("data/ec_unnamed");
+    if (tm != null) tm.load("data/tm_unnamed");
   }
   // if (key == 'a') animating = !animating; // toggle animation
   if (key == ',') viewpoint = true;
@@ -418,80 +424,16 @@ void keyPressed() {
   if (key == '#') exit();
 
   /* Following are Yaohong's keys. */
+  /* Keys: numbers. */
   if (key == '0') {
     debugCH = !debugCH;
     debug3RT = !debug3RT;
     debug2RT = !debug2RT;
     debugST = !debugST;
     if (test == 13) {
-      // debugIncCH = !debugIncCH;
+      debugIncCH = !debugIncCH;
       debugApolloniusDiagram = !debugApolloniusDiagram;
     }
-  }
-  if (key == 'o') {
-    showSphere = !showSphere;
-  }
-  if (key == 'h') {
-    generateCH = !generateCH;
-  }
-  if (key == 'r') {
-    if (test == 13) debugIncCHCor = !debugIncCHCor;
-    regenerateCH = !regenerateCH;
-    if (regenerateCH == false) {
-      rs.generatePoints(attenuationMin);  // shrink all rings
-      if (test == 1) {
-        debugCH = false;
-        rs.generateTriangleMesh(0);  // generate a triangle mesh and store it
-      }
-      if (test == 2) {
-        debug3RT = false;
-        debug2RT = false;
-        rs.generateTriangleMesh(1);  // generate a triangle mesh and store it
-      }
-    }
-  }
-  if (key == 'n') {
-    if (test == 13) debugIncCHNewView = !debugIncCHNewView;
-  }
-  if (key == '+') {
-    if (test == 13) {
-      debugIncCHIter = min(debugIncCHIter + 1, int(P.nv / 2) - 1);
-    }
-    if (test == 15) {
-      numPointsPerRing++;
-    }
-    if (numTriangles >= 0) {
-      numFaces = numTriangles + 1;
-      numFaces3RT = numTriangles + 1;
-    }
-    subdivisionTimes++;
-    rs.debug2RTInfo.numGlobalStep = min(rs.debug2RTInfo.numGlobalStep + 1, rs.nRings);
-    rs.debug2RTInfo.numLocalStep = 1;
-  }
-  if (key == '-') {
-    if (test == 13) {
-      debugIncCHIter = max(debugIncCHIter - 1, 3);
-    }
-    if (test == 15) {
-      numPointsPerRing = max(numPointsPerRing - 1, 3);
-    }
-    if (numFaces > 0) {
-      numFaces--;
-      numFaces3RT--;
-    }
-    subdivisionTimes = max(0, subdivisionTimes - 1);
-    rs.debug2RTInfo.numGlobalStep = max(1, rs.debug2RTInfo.numGlobalStep - 1);
-    rs.debug2RTInfo.numLocalStep = 1;
-  }
-  if (key == '*') {
-    if (test == 13 || test == 14) idxIncCor = max(0, idxIncCor - 1);
-    numSteps3RT++;
-    rs.debug2RTInfo.numLocalStep = min(rs.debug2RTInfo.numLocalStep + 1, rs.nPointsPerRing);
-  }
-  if (key == '/') {
-    if (test == 13 || test == 14) idxIncCor++;
-    numSteps3RT = max(1, numSteps3RT - 1);
-    rs.debug2RTInfo.numLocalStep = max(1, rs.debug2RTInfo.numLocalStep - 1);
   }
   if (key == '1') {
     numFaces = 1;
@@ -523,13 +465,82 @@ void keyPressed() {
   if (key == '9') {
     if (test >=12 && test <= 15) showAuxPlane = !showAuxPlane;
   }
+
+  /* Keys: increase/decrease operators. */
+  if (key == '+') {
+    if (test == 13) {
+      debugIncCHIter = min(debugIncCHIter + 1, int(P.nv / 2) - 1);
+    }
+    if (test == 15) {
+      numPointsPerRing++;
+    }
+    if (numTriangles >= 0) {
+      numFaces = numTriangles + 1;
+      numFaces3RT = numTriangles + 1;
+    }
+    rs.debug2RTInfo.numGlobalStep = min(rs.debug2RTInfo.numGlobalStep + 1, rs.nRings);
+    rs.debug2RTInfo.numLocalStep = 1;
+  }
+  if (key == '-') {
+    if (test == 13) {
+      debugIncCHIter = max(debugIncCHIter - 1, 3);
+    }
+    if (test == 15) {
+      numPointsPerRing = max(numPointsPerRing - 1, 3);
+    }
+    if (numFaces > 0) {
+      numFaces--;
+      numFaces3RT--;
+    }
+    rs.debug2RTInfo.numGlobalStep = max(1, rs.debug2RTInfo.numGlobalStep - 1);
+    rs.debug2RTInfo.numLocalStep = 1;
+  }
+  if (key == '/') {
+    if (test == 13 || test == 14) idxIncCor++;
+    numSteps3RT = max(1, numSteps3RT - 1);
+    rs.debug2RTInfo.numLocalStep = max(1, rs.debug2RTInfo.numLocalStep - 1);
+  }
+  if (key == '*') {
+    if (test == 13 || test == 14) idxIncCor = max(0, idxIncCor - 1);
+    numSteps3RT++;
+    rs.debug2RTInfo.numLocalStep = min(rs.debug2RTInfo.numLocalStep + 1, rs.nPointsPerRing);
+  }
   if (key == '[') {
-    attenuation = min(1.0, attenuation + attenuationDelta);
+    if (test == 1 || test == 2) attenuation = min(1.0, attenuation + attenuationDelta);
     if (test == 13) idxIncTri++;
+    if (test == 3 || test == 15) subdivisionTimes++;
   }
   if (key == ']') {
-    attenuation = max(attenuationMin, attenuation - attenuationDelta);
+    if (test == 1 || test == 2) attenuation = max(attenuationMin, attenuation - attenuationDelta);
     if (test == 13) idxIncTri = max(0, idxIncTri - 1);
+    if (test == 3 || test == 15) subdivisionTimes = max(0, subdivisionTimes - 1);
+  }
+
+  /* Keys: lowercase letters. */
+  if (key == 'o') {
+    showSphere = !showSphere;
+  }
+  if (key == 'h') {
+    generateCH = !generateCH;
+  }
+  if (key == 'r') {
+    if (test == 13) debugIncCHCor = !debugIncCHCor;
+    regenerateCH = !regenerateCH;
+    if (regenerateCH == false) {
+      rs.generatePoints(attenuationMin);  // shrink all rings
+      if (test == 1) {
+        debugCH = false;
+        rs.generateTriangleMesh(0);  // generate a triangle mesh and store it
+      }
+      if (test == 2) {
+        debug3RT = false;
+        debug2RT = false;
+        rs.generateTriangleMesh(1);  // generate a triangle mesh and store it
+      }
+    }
+  }
+  if (key == 'n') {
+    if (test == 13) debugIncCHNewView = !debugIncCHNewView;
   }
   if (key == 'g') {
     showRingSet = !showRingSet;
@@ -552,11 +563,16 @@ void keyPressed() {
       }
     }
   }
+
+  /* Keys: uppercase letters. */
   if (key == 'C') {
     showCenterOfSphere = !showCenterOfSphere;
   }
   if (key == 'A') {
     showApolloniusDiagram = !showApolloniusDiagram;
+  }
+  if (key == 'T') {
+    showTriMesh = !showTriMesh;
   }
 
   change = true;

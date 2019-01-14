@@ -2,6 +2,8 @@
  * Triangle mesh processing.
  ******************************************************************************/
 
+boolean projectToSphere = false;
+
 
 int nextCorner(int cid) {
     return cid - (cid % 3) + (cid + 1) % 3;
@@ -153,7 +155,11 @@ class TriangleMesh {
           pt pa = positions.get(a);
           pt pb = positions.get(b);
           pt mid = P(pa, pb);
-          mid = P(center, r, U(center, mid));  // lift to surface of sphere
+
+          if (projectToSphere == true) {
+            mid = P(center, r, U(center, mid));  // lift to surface of sphere
+          }
+
           positions.add(mid);
           midpointIDs[c] = midpointIDs[o] = vid++;
         }
@@ -232,6 +238,7 @@ class TriangleMesh {
       vertex(positions.get(triangles.get(i).c));
     }
     endShape();
+    if (useStroke) noStroke();
   }
 
   void showCornerPairs(color c, float w) {
@@ -252,5 +259,48 @@ class TriangleMesh {
 
   private int cornerIDToVertexID(int cid) {
     return triangles.get(cid / 3).get(cid % 3);
+  }
+
+  void save(String file) {
+    println("saving triangle mesh:", file);
+    String[] lines = new String[2 + nv + nt];
+    int i = 0;
+    lines[i++] = str(nv);
+    for (int j = 0; j < nv; ++j) {
+      pt p = positions.get(j);
+      lines[i++] = str(p.x) + "," + str(p.y) + "," + str(p.z);
+    }
+    lines[i++] = str(nt);
+    for (int j = 0; j < nt; ++j) {
+      Triangle tri = triangles.get(j);
+      lines[i++] = str(tri.a) + "," + str(tri.b) + "," + str(tri.c);
+    }
+    saveStrings(file, lines);
+    return;
+  }
+
+  void load(String file) {
+    println("loading triangle mesh:", file);
+    String[] lines = loadStrings(file);
+    int i = 0;
+
+    nv = int(lines[i++]);
+    if (positions == null) positions = new ArrayList<pt>();
+    else positions.clear();
+    for (int j = 0; j < nv; ++j) {
+      float[] pos = float(split(lines[i++], ","));
+      positions.add(new pt(pos[0], pos[1], pos[2]));
+    }
+
+    nt = int(lines[i++]);
+    if (triangles == null) triangles = new ArrayList<Triangle>();
+    else triangles.clear();
+    for (int j = 0; j < nt; ++j) {
+      int[] vid = int(split(lines[i++], ","));
+      triangles.add(new Triangle(vid[0], vid[1], vid[2]));
+    }
+
+    setupOppositeTable();
+    return;
   }
 }

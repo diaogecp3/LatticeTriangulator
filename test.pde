@@ -723,7 +723,7 @@ void meshFromExactCHTest() {
   }
 
   int nv = P.nv - P.nv % 2;
-  RingSet rs = new RingSet(centerOfSphere, radiusOfSphere, P.G, nv);
+  rs = new RingSet(centerOfSphere, radiusOfSphere, P.G, nv);  // global
 
   if (!rs.isValid()) {
     validRS = false;
@@ -745,18 +745,34 @@ void meshFromExactCHTest() {
   rs.generateExactCHIncremental();
   rs.generateMeshFromExactCH(0);
 
-  if (show3RT) {
-    fill(navy, 230);
-    rs.showThreeRingTriangles();
+  tm = rs.triMesh;  // make it global, so that we can save it by pressing 'w'
+
+  if (subdivisionTimes > 0) {
+    rs.triMesh.subdivide(subdivisionTimes, centerOfSphere, radiusOfSphere);
   }
 
-  if (show2RT) {
-    fill(springGreen, 230);
-    rs.showTwoRingTriangles();
+  if (showTriMesh) {
+    if (rs.triMesh != null) {
+      rs.triMesh.showTriangleMesh(khaki, true);
+    }
+  } else {
+    if (show3RT) {
+      fill(navy, 230);
+      rs.showThreeRingTriangles();
+    }
+    if (show2RT) {
+      fill(springGreen, 230);
+      rs.showTwoRingTriangles();
+    }
   }
 
   if (showBeams) {
     fill(orange, 230);
     rs.showBeams(40.0);
   }
+}
+
+void triangleMeshTest() {
+  if (tm == null) return;
+  if (showTriMesh) tm.showTriangleMesh(hotPink, true);
 }

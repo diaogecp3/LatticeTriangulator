@@ -33,3 +33,6 @@ source of figures in paper, for illustration of incremental convex hull
 
 ps_arcs_11:
 source of figure in paper (application section)
+
+ps_arcs_12:
+The Apollonius edge between two circles is not a great arc.

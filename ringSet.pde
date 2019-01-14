@@ -37,6 +37,8 @@ boolean showTriangleStrokes = true;
 boolean showBeams = false;
 boolean showApolloniusDiagram = false;
 boolean debugApolloniusDiagram = false;
+boolean showTriMesh = false;  // the mesh generated from exact convex hull
+
 
 /*
  * Method for three-ring triangle generation.
@@ -259,12 +261,6 @@ class RingSet {
 
       // Compute pAD
       pAD = P(c, r, normal);
-
-      if (showApolloniusDiagram) {  // visualize the normal at the center of the triangle
-        // fill(chocolate);
-        // pt mid = P(vertices[0].position, vertices[1].position, vertices[2].position);
-        // arrow(mid, V(20, normal), 1);
-      }
     }
 
     @Override
@@ -326,10 +322,10 @@ class RingSet {
   class IncCorridor extends IncFace {
     IncVertex[] vertices;
     IncEdge[] edges;
-    vec[] appNormals;  // 2 normals, one for ABC, one for CDA
-    float[] appAngles;  // 2 half-angles, one for ABC, one for CDA
+    vec[] coneNormals;  // 2 normals, one for cone ABC, one for cone CDA
+    float[] coneAngles;  // 2 half-angles, one for cone ABC, one for cone CDA
 
-    float dAngle = TWO_PI / 30;  // default: TWO_PI / 20
+    float delta = TWO_PI / 40;  // the sampling density on an arc, default = TWO_PI / 20
     ArrayList<pt> samples;  // samples.size = 2 * (numSegments - 1), where numSegments = int(angle of bigger arc / dAngle)
 
     ArrayList<pt> psAD;  // points on the corresponding Apollonius diagram edge
@@ -354,26 +350,26 @@ class RingSet {
      * Compute the normal and circumradius of triangle ABC/CDA.
      */
     private void setupNormalsAndAngles() {
-      appNormals = new vec[2];
-      appAngles = new float[2];
-      appNormals[0] = normalToTriangle(vertices[0].position, vertices[1].position,
+      coneNormals = new vec[2];
+      coneAngles = new float[2];
+      coneNormals[0] = normalToTriangle(vertices[0].position, vertices[1].position,
                                        vertices[2].position);
-      appNormals[1] = normalToTriangle(vertices[2].position, vertices[3].position,
+      coneNormals[1] = normalToTriangle(vertices[2].position, vertices[3].position,
                                        vertices[0].position);
       float r0 = circumradiusOfTriangle(vertices[0].position, vertices[1].position,
                                         vertices[2].position);
       vec v = V(vertices[0].position, c);  // the vector from A to the center of the sphere
-      appAngles[0] = asin(r0 / r);  // r, i.e. the radius of the sphere, can be accessed!
-      if (dot(v, appNormals[0]) > 0) {  // if the center is on the positive side
-        appAngles[0] = PI - appAngles[0];  // the angle should be > PI/2
+      coneAngles[0] = asin(r0 / r);  // r, i.e. the radius of the sphere, can be accessed!
+      if (dot(v, coneNormals[0]) > 0) {  // if the center is on the positive side
+        coneAngles[0] = PI - coneAngles[0];  // the angle should be > PI/2
       }
       float r1 = circumradiusOfTriangle(vertices[2].position, vertices[3].position,
                                         vertices[0].position);
-      appAngles[1] = asin(r1 / r);
-      if (dot(v, appNormals[1]) > 0) {  // if the center is on the positive side
-        appAngles[1] = PI - appAngles[1];  // the angle should be > PI/2
+      coneAngles[1] = asin(r1 / r);
+      if (dot(v, coneNormals[1]) > 0) {  // if the center is on the positive side
+        coneAngles[1] = PI - coneAngles[1];  // the angle should be > PI/2
       }
-      assert isZero(appNormals[0].norm() - 1) && isZero(appNormals[1].norm() - 1);
+      assert isZero(coneNormals[0].norm() - 1) && isZero(coneNormals[1].norm() - 1);
     }
 
     void setAdjFace(IncFace adjFace, int i) {
@@ -401,13 +397,13 @@ class RingSet {
       if (a0 > a1) {
         float stAng = acos(dot(vd, xAxes[left]) / r0);  // starting theta for D w.r.t. the left ring
         if (dot(vd, yAxes[left]) < 0) stAng = TWO_PI - stAng;
-        int n = int(a0 / dAngle);
-        samples = fillExEdgeWithPoints(stAng, dAngle, n, left, right);
+        int n = int(a0 / delta);
+        samples = fillExEdgeWithPoints(stAng, delta, n, left, right);
       } else {
         float stAng = acos(dot(vb, xAxes[right]) / r1);
         if (dot(vb, yAxes[right]) < 0) stAng = TWO_PI - stAng;
-        int n = int(a1 / dAngle);
-        samples = fillExEdgeWithPoints(stAng, dAngle, n, right, left);
+        int n = int(a1 / delta);
+        samples = fillExEdgeWithPoints(stAng, delta, n, right, left);
         Collections.reverse(samples);  // reverse the list
       }
     }
@@ -431,7 +427,7 @@ class RingSet {
      */
     @Override
     boolean isVisibleFromCircle(vec v, float f) {
-      if ((acos(dot(v, appNormals[0])) < appAngles[0] + f) || (acos(dot(v, appNormals[1])) < appAngles[1] + f)) {
+      if ((acos(dot(v, coneNormals[0])) < coneAngles[0] + f) || (acos(dot(v, coneNormals[1])) < coneAngles[1] + f)) {
         // println("corridor is centrally visible");
         return true;
       }
@@ -479,9 +475,9 @@ class RingSet {
 
     void showCircumcircles() {
       showCircumcircleOfTriangle(vertices[0].position, vertices[1].position,
-                                 vertices[2].position, null, appNormals[0], null);
+                                 vertices[2].position, null, coneNormals[0], null);
       showCircumcircleOfTriangle(vertices[2].position, vertices[3].position,
-                                 vertices[0].position, null, appNormals[1], null);
+                                 vertices[0].position, null, coneNormals[1], null);
     }
 
     void showADCircle() {
@@ -691,6 +687,7 @@ class RingSet {
   pt[] centers;  // the centers of rings, one for each ring
 
   ArrayList<Triangle> triangles = null;  // triangle mesh with ring vertices
+  TriangleMesh triMesh = null;
   TriangleMesh refConvexHull = null; // convex hull generated by contacts
   ArrayList<Triangle> threeRingTriangles = null;
   ArrayList<Triangle> twoRingTriangles = null;
@@ -1636,9 +1633,6 @@ class RingSet {
     // if (debugST) {
     //   tan0 = ts[0];
     //   tan1 = ts[1];
-    //   gaa = aa;
-    //   gbb = bb;
-    //   gab = ab;
     //   for (int ii = 0; ii < 2; ++ii) {
     //     debugSTInfo.circumcenters.add(ps[ii]);
     //     float a = atan(ts[ii]);  // [-PI/2, PI/2]
@@ -2277,13 +2271,13 @@ class RingSet {
       for (IncFace f : faces) {
         if (f instanceof IncCorridor) {
           IncCorridor cor = (IncCorridor)f;
-          if (notZero(cor.appNormals[0].x - cor.appNormals[1].x) ||
-              notZero(cor.appNormals[0].y - cor.appNormals[1].y) ||
-              notZero(cor.appNormals[0].z - cor.appNormals[1].z)) {
+          if (notZero(cor.coneNormals[0].x - cor.coneNormals[1].x) ||
+              notZero(cor.coneNormals[0].y - cor.coneNormals[1].y) ||
+              notZero(cor.coneNormals[0].z - cor.coneNormals[1].z)) {
               println("The two normals of a corridor are different.");
               System.out.format("normal 1 = (%f, %f, %f), normal 2 = (%f, %f, %f)\n",
-                                cor.appNormals[0].x, cor.appNormals[0].y, cor.appNormals[0].z,
-                                cor.appNormals[1].x, cor.appNormals[1].y, cor.appNormals[1].z);
+                                cor.coneNormals[0].x, cor.coneNormals[0].y, cor.coneNormals[0].z,
+                                cor.coneNormals[1].x, cor.coneNormals[1].y, cor.coneNormals[1].z);
               noStroke();
               fill(ivory);
               show(cor.vertices[0].position, 3);
@@ -2415,6 +2409,20 @@ class RingSet {
     return i + offset;
   }
 
+  private void convertToTriMesh() {
+    assert threeRingTriangles != null && threeRingTriangles.size() > 0;
+    assert twoRingTriangles != null && twoRingTriangles.size() > 0;
+
+    if (triangles != null) triangles.clear();
+    else triangles = new ArrayList<Triangle>();
+
+    ArrayList<pt> positions = get1DPointArrayList();
+    triangles.addAll(threeRingTriangles);
+    triangles.addAll(twoRingTriangles);
+
+    triMesh = new TriangleMesh(positions, triangles);
+  }
+
   private void generateMeshSnapping() {
     if (threeRingTriangles != null) threeRingTriangles.clear();
     else threeRingTriangles = new ArrayList<Triangle>();
@@ -2454,6 +2462,8 @@ class RingSet {
       IncTriangle tri0 = (IncTriangle)cor.edges[1].getAdjFace();
       fillCorridor(sd, sc, sa, sb, rLeft, rRight, tri0.normal);
     }
+
+    convertToTriMesh();
   }
 
   void generateMeshFromExactCH(int option) {
@@ -2698,6 +2708,19 @@ class RingSet {
     if (nRings == 2) {
       incCorridors.get(0).showDebugInfo();
       incCorridors.get(1).showDebugInfo();
+
+      {  // show the line connecting the two centers
+        vec v = U(centers[0], centers[1]);
+        float d = 1000;
+        pt p0 = P(centers[0], -d, v);
+        pt p1 = P(centers[1], d, v);
+        stroke(darkRed);
+        strokeWeight(2);
+        beginShape(LINES);
+        vertex(p0);
+        vertex(p1);
+        endShape();
+      }
     }
 
     if (nRings < 4) return;
