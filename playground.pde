@@ -78,7 +78,7 @@ void testIntersectionTwoDisks() {
   return;
 }
 
-void testIntersectionCirclePlane() {
+void circlePlaneIntersectionTest() {
   assert gRingSet.nRings >= 3;
   pt p0 = new pt();
   pt p1 = new pt();

@@ -2,7 +2,9 @@
  * Triangle mesh processing.
  ******************************************************************************/
 
-boolean projectToSphere = false;
+boolean projectOnSphere = true;
+boolean projectOnHub = false;
+int subdivisionTimes = 0;  // subdivision times
 
 
 int nextCorner(int cid) {
@@ -132,13 +134,13 @@ class TriangleMesh {
     }
   }
 
-  void subdivide(int times, pt center, float r) {
+  void subdivide(int times) {
     int triedTimes = 0;
     while (triedTimes < times) {
       int nc = 3 * nt;
       int vid = nv;
       int[] midpointIDs = new int[nc];
-      /* Insert midpoints. */
+      /* Insert a midpoint on each edge excluding border edges. */
       for (int i = 0; i < nt; ++i) {
         int t = 3 * i;
         Triangle triangle = triangles.get(i);
@@ -155,10 +157,6 @@ class TriangleMesh {
           pt pa = positions.get(a);
           pt pb = positions.get(b);
           pt mid = P(pa, pb);
-
-          if (projectToSphere == true) {
-            mid = P(center, r, U(center, mid));  // lift to surface of sphere
-          }
 
           positions.add(mid);
           midpointIDs[c] = midpointIDs[o] = vid++;
@@ -213,6 +211,26 @@ class TriangleMesh {
       /* TODO: may update this table when creating new triangle mesh. */
       setupOppositeTable();  // update opposite table
       triedTimes++;
+    }
+  }
+
+  void projectOnSphere(pt c, float r) {
+    for (int i = 0; i < nv; ++i) {
+      pt p = positions.get(i);
+      if (isZero(d(p, c) - r)) continue;
+      vec v = U(c, p);
+      p.set(P(c, r, v));  // this may not be good if c isn't in the interior of the mesh
+    }
+  }
+
+  void projectOnHub(Hub hub) {
+    for (int i = 0; i < nv; ++i) {
+      pt o = positions.get(i);
+      vec d = U(hub.ball.c, o);
+      Float t = hub.closestIntersectionWithLine(o, d);
+      if (t != null) {
+        o.set(P(o, t, d));
+      }
     }
   }
 

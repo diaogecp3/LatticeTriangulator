@@ -26,6 +26,10 @@ int maxIterHSLocal = 100;
 int idxIncCor = 0;  // the ID of a corridor
 int idxIncTri = 0;  // the ID of a triangle
 
+boolean showRingSet = true;
+boolean showCircleSet = false;
+boolean showDiskSet = false;
+
 boolean debugIncCH = false;
 int debugIncCHIter = 3;
 boolean debugIncCHNewView = false;
@@ -181,6 +185,7 @@ class RingSet {
   }
 
   class IncFace {
+    IncVertex[] vertices = null;
     /*
      * -1: unvisited, 0: unvisible, 1: visible, 2: unvisible but should be removed
      * For example, a corridor may not be visible but if its adjacent triangle is
@@ -232,7 +237,6 @@ class RingSet {
   }
 
   class IncTriangle extends IncFace {
-    IncVertex[] vertices;
     IncEdge[] edges;
     vec normal = null;
     float angle = -1.0;
@@ -320,7 +324,6 @@ class RingSet {
    * Are vertices A, B, C, D coplanar? I think so!
    */
   class IncCorridor extends IncFace {
-    IncVertex[] vertices;
     IncEdge[] edges;
     vec[] coneNormals;  // 2 normals, one for cone ABC, one for cone CDA
     float[] coneAngles;  // 2 half-angles, one for cone ABC, one for cone CDA
@@ -748,7 +751,7 @@ class RingSet {
     this.r = r;
     this.nRings = int(nv / 2);
     this.nPointsPerRing = 3;  // default
-    sameRadius = false;
+    sameRadius = false;  // default
     float rr = r + r;
     float r2 = r * r;
     contacts = new pt[nRings];
@@ -766,6 +769,28 @@ class RingSet {
       xAxes[j] = constructNormal(normals[j]);
       yAxes[j] = N(normals[j], xAxes[j]);
       centers[j] = P(c, sqrt(r2 - radii[j] * radii[j]), normals[j]);
+    }
+  }
+
+  RingSet(pt c, float r, Circle[] circles, int nc) {
+    this.c = c;
+    this.r = r;
+    this.nRings = nc;
+    this.nPointsPerRing = 3;  // default
+    sameRadius = false;  // default
+    centers = new pt[nc];
+    normals = new vec[nc];
+    radii = new float[nc];
+    contacts = new pt[nc];
+    xAxes = new vec[nRings];
+    yAxes = new vec[nRings];
+    for (int i = 0; i < nc; ++i) {
+      centers[i] = circles[i].c;
+      normals[i] = circles[i].n;
+      radii[i] = circles[i].r;
+      contacts[i] = P(this.c, this.r, normals[i]);
+      xAxes[i] = constructNormal(normals[i]);
+      yAxes[i] = N(normals[i], xAxes[i]);
     }
   }
 
@@ -2475,6 +2500,50 @@ class RingSet {
       default:
         generateMeshSnapping();
     }
+  }
+
+  TriangleMesh generateTriMeshOfExactCH() {
+    /* Create a list of positions. */
+    HashMap<IncVertex, Integer> vids = new HashMap<IncVertex, Integer>();
+    ArrayList<pt> posList = new ArrayList<pt>();
+
+    /* Create a list of triangles, each being a tuple of vids. */
+    ArrayList<Triangle> triList = new ArrayList<Triangle>();
+
+    Integer id = 0;
+    assert faces != null;
+    for (IncFace f : faces) {
+      for (IncVertex v : f.vertices) {
+        if (!vids.containsKey(v)) {
+          vids.put(v, id++);
+          posList.add(v.position);
+        }
+      }
+    }
+
+    if (incTriangles != null) {
+      for (IncTriangle tri : incTriangles) {
+        int a = vids.get(tri.vertices[0]);
+        int b = vids.get(tri.vertices[1]);
+        int c = vids.get(tri.vertices[2]);
+        triList.add(new Triangle(a, b, c));
+      }
+    }
+
+    if (incCorridors != null) {
+      for (IncCorridor cor : incCorridors) {
+        int a = vids.get(cor.vertices[0]);
+        int b = vids.get(cor.vertices[1]);
+        int c = vids.get(cor.vertices[2]);
+        int d = vids.get(cor.vertices[3]);
+        triList.add(new Triangle(a, b, c));
+        triList.add(new Triangle(c, d, a));
+      }
+    }
+
+    if (triList.size() == 0) return null;
+    TriangleMesh tm = new TriangleMesh(posList, triList);
+    return tm;
   }
 
   void showRings() {

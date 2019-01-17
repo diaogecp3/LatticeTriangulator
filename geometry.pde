@@ -665,7 +665,7 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     float ab = acos(dot(V(cb, pb0), V(cb, pb1)) / (rb * rb));
     if (dot(nb, N(cb, pb0, pb1)) < 0) ab = TWO_PI - ab;
 
-    // TODO: may pick the arc with bigger angle to subdivide
+    // TODO: may pick the arc with bigger angle to split
     // Assume that arc b has a bigger angle than arc a
     correspondences[i][0] = j;
     correspondences[i][1] = i;

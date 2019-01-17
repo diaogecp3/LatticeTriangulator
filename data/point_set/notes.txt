@@ -36,3 +36,10 @@ source of figure in paper (application section)
 
 ps_arcs_12:
 The Apollonius edge between two circles is not a great arc.
+
+ps_arcs_13:
+Wrong bounding sphere of the hub. Fixed.
+Wrong intersection circles. A circle is not on the negative side of the other. Fixed.
+
+ps_arcs_14:
+Wrong intersection circles. A circle is on the wrong side of the cone.

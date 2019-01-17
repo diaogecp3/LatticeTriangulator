@@ -25,7 +25,8 @@ import processing.pdf.*;
  * 102: many three-ring-triangle tests
  * 103: many extreme-plane tests
  * ...
- * 20: one circle-plane-intersection test
+ * 200: one circle-plane-intersection test
+ * 201: one hub-line-intersection test
  */
 int test = 16;
 
@@ -45,11 +46,7 @@ boolean showAuxPlane = false;
 int approxMethodCorridor = 0;
 boolean generateCH = false;
 boolean regenerateCH = true;  // for ring set, test shrink/grow
-boolean showRingSet = true;
-boolean showCircleSet = false;
-boolean showDiskSet = false;
 boolean showPointSet = true;
-int subdivisionTimes = 0;  // subdivision times
 
 float dz = 500;  // distance to camera. Manipulated with mouse wheel
 float rx = -0.06 * TWO_PI, ry = -0.04 * TWO_PI;  // view angles manipulated when space pressed but not mouse
@@ -107,7 +104,7 @@ void setup() {
   gPoints = new pts();
   gPoints.declare();  // some points on a sphere
 
-  if (test >= 100) {
+  if (test >= 100 && test < 200) {
     noLoop();
     debugCH = false;
     debug3RT = false;
@@ -116,7 +113,7 @@ void setup() {
 
   switch (inputMethodPointSet) {
     case 0:  // read from file
-      gPoints.loadPts("data/point_set/ps_arcs_12");
+      gPoints.loadPts("data/point_set/ps_arcs_14");
       break;
     case 1:  // generate randomly
       generatePointsOnSphere(gPoints, centerOfSphere, radiusOfSphere, 10);
@@ -144,7 +141,7 @@ void setup() {
   switch (inputMethodHub) {
     case 0:  // read from file
       gHub = new Hub();
-      gHub.load("data/hub/hub_easy_1");
+      gHub.load("data/hub/hub_easy_3");
       break;
     case 1:  // generate randomly
       gHub = generateHub(centerOfSphere, rInnerBall, rSphereOfOuterBalls, nNeighbors);
@@ -295,8 +292,11 @@ void draw() {
       exactCHAllCirclesTests(numTests, numRings);
       break;
 
-    case 20:
-      testIntersectionCirclePlane();
+    case 200:
+      circlePlaneIntersectionTest();
+      break;
+    case 201:
+      hubLineIntersectionTest();
       break;
     default:
       println("Please enter a correct test number");
@@ -467,10 +467,10 @@ void keyPressed() {
     show3RT = !show3RT;
   }
   if (key == '4') {
-    if (test >= 12 && test <= 15) showCorridorFaces = !showCorridorFaces;
+    if (test >= 12 && test <= 16) showCorridorFaces = !showCorridorFaces;
   }
   if (key == '5') {
-    if (test >= 12 && test <= 15) showTriangleFaces = !showTriangleFaces;
+    if (test >= 12 && test <= 16) showTriangleFaces = !showTriangleFaces;
   }
   if (key == '7') {
     if (test == 12 || test == 13) {
@@ -527,12 +527,12 @@ void keyPressed() {
   if (key == '[') {
     if (test == 1 || test == 2) attenuation = min(1.0, attenuation + attenuationDelta);
     if (test == 13) idxIncTri++;
-    if (test == 3 || test == 15) subdivisionTimes++;
+    if (test == 3 || test == 15 || test == 16) subdivisionTimes++;
   }
   if (key == ']') {
     if (test == 1 || test == 2) attenuation = max(attenuationMin, attenuation - attenuationDelta);
     if (test == 13) idxIncTri = max(0, idxIncTri - 1);
-    if (test == 3 || test == 15) subdivisionTimes = max(0, subdivisionTimes - 1);
+    if (test == 3 || test == 15 || test == 16) subdivisionTimes = max(0, subdivisionTimes - 1);
   }
 
   /* Keys: lowercase letters. */
@@ -592,6 +592,20 @@ void keyPressed() {
   }
   if (key == 'T') {
     showTriMesh = !showTriMesh;
+  }
+  if (key == 'B') {
+    showBoundingSphere = !showBoundingSphere;
+  }
+  if (key == 'O') {
+    showIntersectionCircles = !showIntersectionCircles;
+  }
+  if (key == 'H') {
+    showHub = !showHub;
+  }
+  if (key == 'P') {
+    if (test == 3) projectOnSphere = !projectOnSphere;
+    if (test == 16) projectOnHub = !projectOnHub;
+
   }
 
   change = true;

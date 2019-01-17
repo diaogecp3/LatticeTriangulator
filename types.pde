@@ -291,6 +291,14 @@ class Ball {
     return false;
   }
 
+  float[] intersectLine(pt o, vec d) {
+    vec co = V(c, o);
+    float c2 = dot(d, d);
+    float c1 = 2 * dot(co, d);
+    float c0 = dot(co, co) - r * r;
+    return solveQuadraticEquation(c2, c1, c0);
+  }
+
   void showBall() {
     show(c, r);
   }

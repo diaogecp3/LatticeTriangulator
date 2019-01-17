@@ -237,6 +237,19 @@ void showNormalToTriangle(pt A, pt B, pt C, float d, float r) {
   arrow(D, V(d, N), r);
 }
 
+
+/*
+ * Show the line defined by (o, d).
+ */
+void showLine(pt o, vec d) {
+  pt p0 = P(o, -1000, d);
+  pt p1 = P(o, 1000, d);
+  beginShape(LINES);
+  vertex(p0);
+  vertex(p1);
+  endShape();
+}
+
 /*
  * Show the plane defined by (p, n). s controls the size of the plane shown.
  */

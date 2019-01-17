@@ -380,7 +380,12 @@ void subdivisionTest() {
 
     startTime = System.nanoTime();
     TriangleMesh triMesh = new TriangleMesh(positions, triangles);
-    triMesh.subdivide(subdivisionTimes, centerOfSphere, radiusOfSphere);
+    triMesh.subdivide(subdivisionTimes);
+
+    if (projectOnSphere) {
+      triMesh.projectOnSphere(centerOfSphere, radiusOfSphere);
+    }
+
     endTime = System.nanoTime();
     timeSD = (endTime - startTime) / 1000000.0;
 
@@ -748,7 +753,7 @@ void meshFromExactCHTest() {
   gTriangleMesh = gRingSet.triMesh;  // make it global, so that we can save it by pressing 'w'
 
   if (subdivisionTimes > 0) {
-    gRingSet.triMesh.subdivide(subdivisionTimes, centerOfSphere, radiusOfSphere);
+    gRingSet.triMesh.subdivide(subdivisionTimes);
   }
 
   if (showTriMesh) {
@@ -788,13 +793,78 @@ void interactiveHubTest() {
   if (!gHub.valid) {
     println("Hub is not valid!");
     return;
-  } else {
-    // println("number of outer balls =", gHub.nNeighbors);
   }
 
-  gHub.showHub(red, 100);
-  gHub.showBoundingSphere(blue, 100);
+  if (showHub) {
+    gHub.showHub(lightSalmon, 100);
+  }
 
   gHub.intersectionCircles();
-  gHub.showIntersectionCircles();
+  if (showIntersectionCircles) {
+    gHub.showIntersectionCircles();
+  }
+  gRingSet = gHub.circlesToRingSet();
+
+  if (showDiskSet) {
+    gRingSet.showDisks();
+  }
+
+  gRingSet.generateExactCHIncremental();
+
+  if (showTriangleFaces) {
+    fill(blue);
+    gRingSet.showIncTriangles();
+  }
+
+  if (showCorridorFaces) {
+    fill(green);
+    gRingSet.showIncCorridors();
+  }
+
+  gTriangleMesh = gRingSet.generateTriMeshOfExactCH();
+
+  gTriangleMesh.subdivide(subdivisionTimes);
+  if (projectOnHub) {
+    gTriangleMesh.projectOnHub(gHub);
+  }
+
+  if (showTriMesh) {
+    gTriangleMesh.showTriangleMesh(purple, true);
+  }
+
+  if (showBoundingSphere) {
+    gHub.showBoundingSphere(khaki, 100);
+  }
+}
+
+void hubLineIntersectionTest() {
+  if (gPoints.nv < 4) {
+    println("Should use at least 4 points.");
+    return;
+  }
+
+  int nv = gPoints.nv - 2 - gPoints.nv % 2;
+  gHub = new Hub(centerOfSphere, rInnerBall, gPoints.G, nv);
+  if (!gHub.valid) {
+    println("Hub is not valid!");
+    return;
+  }
+
+  if (showHub) {
+    gHub.showHub(lightSalmon, 100);
+  }
+
+  if (gPoints.nv % 2 == 1) return;
+
+  pt o = gPoints.G[nv];
+  vec d = U(o, gPoints.G[nv + 1]);
+
+  stroke(cyan);
+  strokeWeight(3);
+  showLine(o, d);
+  noStroke();
+
+  gHub.closestIntersectionWithLine(o, d);
+
+  return;
 }

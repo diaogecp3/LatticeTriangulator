@@ -1,5 +1,8 @@
 hub_easy_0:
-wrong blue bounding sphere, 3 neighbors
+wrong bounding sphere, 3 neighbors
 
 hub_easy_2:
 wrong bounding sphere, only 2 neighbors
+
+hub_easy_3:
+wrong bounding sphere
