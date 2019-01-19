@@ -821,7 +821,7 @@ void interactiveHubTest() {
     gRingSet.showIncCorridors();
   }
 
-  gTriangleMesh = gRingSet.generateTriMeshOfExactCH();
+  gTriangleMesh = gRingSet.generateConvexTriMesh();
 
   gTriangleMesh.subdivide(subdivisionTimes);
   if (projectOnHub) {

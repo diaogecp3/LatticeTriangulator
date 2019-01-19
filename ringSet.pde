@@ -328,7 +328,7 @@ class RingSet {
     vec[] coneNormals;  // 2 normals, one for cone ABC, one for cone CDA
     float[] coneAngles;  // 2 half-angles, one for cone ABC, one for cone CDA
 
-    float delta = TWO_PI / 40;  // the sampling density on an arc, default = TWO_PI / 20
+    float delta = TWO_PI / 20;  // the sampling density on an arc, default = TWO_PI / 20
     ArrayList<pt> samples;  // samples.size = 2 * (numSegments - 1), where numSegments = int(angle of bigger arc / dAngle)
 
     ArrayList<pt> psAD;  // points on the corresponding Apollonius diagram edge
@@ -345,6 +345,9 @@ class RingSet {
       edges[0].setEndPoints(v1, v2);  // BC
       edges[1].setEndPoints(v3, v0);  // DA
       setupNormalsAndAngles();
+
+      if (numPointsPerRing >= 3) delta = TWO_PI / (numPointsPerRing + 2);
+      else delta = TWO_PI / 10;
       generateSamples();
       if (showApolloniusDiagram) generatePointsAD();
     }
@@ -659,6 +662,48 @@ class RingSet {
         fill(cyan);
         show(p1, 3);
       }
+    }
+
+    /*
+     * Generate a list of triangles which approximate the corridor. The list of
+     * positions will be updated as sampled points will be inserted. Note that
+     * there is no need to update the hash map vids.
+     */
+    ArrayList<Triangle> generateTriangles(ArrayList<pt> positions, HashMap<IncVertex, Integer> vids) {
+      ArrayList<Triangle> triangles = new ArrayList<Triangle>();
+      if (samples == null || samples.size() == 0) {
+        int a = vids.get(vertices[0]);
+        int b = vids.get(vertices[1]);
+        int c = vids.get(vertices[2]);
+        int d = vids.get(vertices[3]);
+        triangles.add(new Triangle(a, b, c));
+        triangles.add(new Triangle(c, d, a));
+        return triangles;
+      }
+
+      int td = vids.get(vertices[3]);  // ID of tmp vertex D
+      int ta = vids.get(vertices[0]);  // ID of tmp vertex A
+      int k = positions.size();  // k is the next valid vertex ID
+      for (int i = 0; i < samples.size(); i += 2) {
+        positions.add(samples.get(i));  // position of tmp vertex C
+        positions.add(samples.get(i+1));  // position of tmp vertex B
+        int tc = k;  // ID of tmp vertex C
+        int tb = k + 1;  // ID of tmp vertex B
+        triangles.add(new Triangle(ta, tb, tc));
+        triangles.add(new Triangle(tc, td, ta));
+
+        td = tc;
+        ta = tb;
+        k += 2;
+      }
+
+      {  // C, B, and the last two samples
+        int tc = vids.get(vertices[2]);
+        int tb = vids.get(vertices[1]);
+        triangles.add(new Triangle(ta, tb, tc));
+        triangles.add(new Triangle(tc, td, ta));
+      }
+      return triangles;
     }
   }
 
@@ -2502,7 +2547,7 @@ class RingSet {
     }
   }
 
-  TriangleMesh generateTriMeshOfExactCH() {
+  TriangleMesh generateConvexTriMesh() {
     /* Create a list of positions. */
     HashMap<IncVertex, Integer> vids = new HashMap<IncVertex, Integer>();
     ArrayList<pt> posList = new ArrayList<pt>();
@@ -2510,6 +2555,7 @@ class RingSet {
     /* Create a list of triangles, each being a tuple of vids. */
     ArrayList<Triangle> triList = new ArrayList<Triangle>();
 
+    /* Store all vertices of all supporting triangles. */
     Integer id = 0;
     assert faces != null;
     for (IncFace f : faces) {
@@ -2521,6 +2567,7 @@ class RingSet {
       }
     }
 
+    /* Convert each supporting triangle to a tuple of vids. */
     if (incTriangles != null) {
       for (IncTriangle tri : incTriangles) {
         int a = vids.get(tri.vertices[0]);
@@ -2530,16 +2577,21 @@ class RingSet {
       }
     }
 
+    // println("Before converting corridors, #triangles =", triList.size(), "#vertices =", posList.size());
+    /* Convert each corridor to a list of tuples of vids. */
     if (incCorridors != null) {
       for (IncCorridor cor : incCorridors) {
-        int a = vids.get(cor.vertices[0]);
-        int b = vids.get(cor.vertices[1]);
-        int c = vids.get(cor.vertices[2]);
-        int d = vids.get(cor.vertices[3]);
-        triList.add(new Triangle(a, b, c));
-        triList.add(new Triangle(c, d, a));
+        // int a = vids.get(cor.vertices[0]);
+        // int b = vids.get(cor.vertices[1]);
+        // int c = vids.get(cor.vertices[2]);
+        // int d = vids.get(cor.vertices[3]);
+        // triList.add(new Triangle(a, b, c));
+        // triList.add(new Triangle(c, d, a));
+        ArrayList<Triangle> tris = cor.generateTriangles(posList, vids);
+        triList.addAll(tris);
       }
     }
+    // println("After converting corridors, #triangles =", triList.size(), "#vertices =", posList.size());
 
     if (triList.size() == 0) return null;
     TriangleMesh tm = new TriangleMesh(posList, triList);
@@ -2848,6 +2900,7 @@ class RingSet {
   }
 
   void save(String file) {
+    println("saving ring set:", file);
     String[] lines = new String[2 + 3 * nRings];
     int i = 0;
     lines[i++] = str(nRings);
