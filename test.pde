@@ -795,10 +795,6 @@ void interactiveHubTest() {
     return;
   }
 
-  if (showHub) {
-    gHub.showHub(lightSalmon, 100);
-  }
-
   gHub.intersectionCircles();
   if (showIntersectionCircles) {
     gHub.showIntersectionCircles();
@@ -825,11 +821,15 @@ void interactiveHubTest() {
 
   gTriangleMesh.subdivide(subdivisionTimes);
   if (projectOnHub) {
-    gTriangleMesh.projectOnHub(gHub);
+    gTriangleMesh.projectOnHub(gHub, projectMethod);
   }
 
   if (showTriMesh) {
     gTriangleMesh.showTriangleMesh(purple, true);
+  }
+
+  if (showHub) {
+    gHub.showHub(lightSalmon, 100);
   }
 
   if (showBoundingSphere) {
@@ -867,4 +867,27 @@ void hubLineIntersectionTest() {
   gHub.closestIntersectionWithLine(o, d);
 
   return;
+}
+
+void roundConeDistTest() {
+  if (gPoints.nv < 3) {
+    println("Should use at least 3 points.");
+    return;
+  }
+
+  int nv = 2;
+  gHub = new Hub(centerOfSphere, rInnerBall, gPoints.G, nv);
+  if (!gHub.valid) {
+    println("Hub is not valid!");
+    return;
+  }
+
+  gHub.showHub(lightSalmon, 100);
+
+  pt p = gPoints.G[2];
+  float d = roundConeDist(p, gHub.ball.c, gHub.ball.r, gHub.neighbors[0].c, gHub.neighbors[0].r);
+  println("distance =", d);
+
+  fill(cyan, 100);
+  show(p, d);
 }

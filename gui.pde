@@ -2,6 +2,47 @@
  * Graphical user interface.
  ******************************************************************************/
 
+void displayDebugText() {
+  if (test >=12 && test <= 15) {
+    scribeHeader("valid ring set? " + (validRS ? "yes" : "no"), 3);
+  }
+  if (numTriangles >= 0) {
+    if (test < 12) {
+      scribeHeader("#triangles =" + numTriangles, 4);
+    }
+  }
+
+  //scribeHeader("time for triangle mesh generation = " + timeTM + "ms", 5);
+  if (subdivisionTimes >= 0) {
+    if (test == 3) {
+      scribeHeader("time for subdivision = " + timeSD + "ms", 6);
+    }
+    if (test == 15 || test == 16) {
+      scribeHeader("subdivision times = " + subdivisionTimes, 6);
+    }
+  }
+
+  if (test == 16) {
+    switch (projectMethod) {
+      case 1:
+        scribeHeader("Project method: shooting lines", 7);
+        break;
+      case 2:
+        scribeHeader("Project method: sphere tracing to blended hub", 7);
+        break;
+      default:
+        scribeHeader("Project method: shooting rays", 7);
+    }
+  }
+
+  //scribeHeader("regenerate = " + str(regenerateCH), 8);
+
+  if (gRingSet.exTriPoints != null) {
+    if (test == 11) {
+      scribeHeader("#triangles =" + int(gRingSet.exTriPoints.size() / 3) + " #vertices =" + gRingSet.nRings, 10);
+    }
+  }
+}
 
 void keyPressed() {
   if (key == '`') picking = true;
@@ -9,7 +50,6 @@ void keyPressed() {
   if (key == '!') snapPicture();
   if (key == '@') snappingPDF = true;
   if (key == '~') filming = !filming;
-  if (key == 'p') gPoints.projectOnSphere(100);
   if (key == 'c') center = !center; // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
   if (key == 't') tracking = !tracking; // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
   if (key == 'x' || key == 'z' || key == 'd' || key == 'a') gPoints.setPickToIndexOfVertexClosestTo(Pick);  // picks the vertex of P that has closest projeciton to mouse
@@ -118,13 +158,15 @@ void keyPressed() {
   }
   if (key == '/') {
     if (test == 13 || test == 14) idxIncCor++;
-    numSteps3RT = max(1, numSteps3RT - 1);
-    gRingSet.debug2RTInfo.numLocalStep = max(1, gRingSet.debug2RTInfo.numLocalStep - 1);
+    if (test == 16) projectMethod = (projectMethod + 1) % numProjectMethod;
+    // numSteps3RT = max(1, numSteps3RT - 1);
+    // gRingSet.debug2RTInfo.numLocalStep = max(1, gRingSet.debug2RTInfo.numLocalStep - 1);
   }
   if (key == '*') {
     if (test == 13 || test == 14) idxIncCor = max(0, idxIncCor - 1);
-    numSteps3RT++;
-    gRingSet.debug2RTInfo.numLocalStep = min(gRingSet.debug2RTInfo.numLocalStep + 1, gRingSet.nPointsPerRing);
+    if (test == 16) projectMethod = (projectMethod + numProjectMethod - 1) % numProjectMethod;
+    // numSteps3RT++;
+    // gRingSet.debug2RTInfo.numLocalStep = min(gRingSet.debug2RTInfo.numLocalStep + 1, gRingSet.nPointsPerRing);
   }
   if (key == '[') {
     if (test == 1 || test == 2) attenuation = min(1.0, attenuation + attenuationDelta);
@@ -217,12 +259,15 @@ void mouseWheel(MouseEvent event) {
   dz -= event.getAmount();
   change = true;
 }
+
 void mouseReleased() {
   picking = false;
 }
+
 void mousePressed() {
   if (!keyPressed || key == 'a') picking = true;
 }
+
 void mouseMoved() {
   if (keyPressed && key == ' ') {
     rx -= PI * (mouseY - pmouseY) / height;
@@ -230,6 +275,7 @@ void mouseMoved() {
   }
   if (keyPressed && key == 's') dz += (float)(mouseY-pmouseY); // approach view (same as wheel)
 }
+
 void mouseDragged() {
   if (!keyPressed) {
     Of.add(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
@@ -252,7 +298,6 @@ void mouseDragged() {
   }
 }
 
-// **** Header, footer, help text on canvas
 void displayHeader() { // Displays title and authors face on screen
   scribeHeader(title, 0);
   scribeHeaderRight(name);

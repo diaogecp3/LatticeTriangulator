@@ -30,9 +30,6 @@ import processing.pdf.*;
  */
 int test = 16;
 
-float tan0 = 0, tan1 = 0;  // for debugging supporting triangle of 3 circles
-boolean validRS = false;
-
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 1;  // 0: read from file, 1: generate randomly
@@ -298,6 +295,9 @@ void draw() {
     case 201:
       hubLineIntersectionTest();
       break;
+    case 202:
+      roundConeDistTest();
+      break;
     default:
       println("Please enter a correct test number");
       exit();
@@ -340,49 +340,10 @@ void draw() {
   }
   popMatrix(); // done with 3D drawing, restore front view for writing text
 
-  // display header, including my face
+  fill(black);
   if (scribeText) {
-    fill(black);
     displayHeader();
-  }
-  // display anything related to my project
-  //scribeHeader("debug = " + str(debugCH), 2);
-  //scribeHeader("number of faces I enter = " + numFaces, 3);
-  if (scribeText && test >=12 && test <= 15) {
-    scribeHeader("valid ring set? " + (validRS ? "yes" : "no"), 3);
-  }
-  if (scribeText && numTriangles != -1) {
-    if (test < 12) {
-      scribeHeader("#triangles =" + numTriangles, 4);
-    } else {
-      // scribeHeader("#triangles =" + numTriangles + "(expect " + str(2 * numRings - 4) + "), #rings =" + numRings, 4);
-      // scribeHeader("tan0 = " + tan0 + ", tan1 = " + tan1, 5);
-      // scribeHeader("arctan0 = " + atan(tan0) + ", arctan1 = " + atan(tan1), 6);
-    }
-  }
-
-  //scribeHeader("time for triangle mesh generation = " + timeTM + "ms", 5);
-  if (scribeText && subdivisionTimes > 0) {
-    if (test == 3) {
-      scribeHeader("time for subdivision = " + timeSD + "ms", 6);
-    }
-    if (test == 15) {
-      scribeHeader("subdivision times = " + subdivisionTimes, 6);
-    }
-  }
-  if (scribeText && debug3RT) {
-    if (test == 2) {
-      scribeHeader("number of steps for a three-ring triangle = " + numSteps3RT, 7);
-    }
-  }
-
-  //scribeHeader("regenerate = " + str(regenerateCH), 8);
-  //scribeHeader("fix penetration among 3-ring triangles = " + str(fix3RT), 9);
-
-  if (scribeText && gRingSet.exTriPoints != null) {
-    if (test == 11) {
-      scribeHeader("#triangles =" + int(gRingSet.exTriPoints.size() / 3) + " #vertices =" + gRingSet.nRings, 10);
-    }
+    displayDebugText();
   }
 
   // show menu at bottom, only if not filming

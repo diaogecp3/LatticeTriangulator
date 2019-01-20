@@ -746,6 +746,9 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
   }
 }
 
+/*
+ * Return true if the 4 points are coplanar.
+ */
 boolean coplanarFourPoints(pt pa, pt pb, pt pc, pt pd) {
   vec vb = U(pa, pb);
   vec vc = U(pa, pc);
@@ -756,4 +759,26 @@ boolean coplanarFourPoints(pt pa, pt pb, pt pc, pt pd) {
     println("mix product =", mix);
     return false;
   }
+}
+
+/*
+ * Compute the distance from a point p to a round cone, which is defined by the
+ * union of two balls and the tangential cone connecting them. The distance is
+ * negative if the point is inside the round cone.
+ * https://www.iquilezles.org/www/articles/distfunctions/distfunctions.htm
+ */
+float roundConeDist(pt p, pt s1, float r1, pt s2, float r2) {
+  vec s1s2 = V(s1, s2);
+  vec s1p = V(s1, p);
+  float h = s1s2.norm();
+  vec2 q = new vec2(N(s1p, s1s2).norm() / h, dot(V(s1s2).div(h), s1p));
+
+  float b = (r1 - r2) / h;
+  float a = sqrt(1.0 - b * b);
+  float k = dot(q, V(-b, a));
+
+  if (k < 0.0) return q.norm() - r1;
+  if (k > a * h) return V(q.x, q.y-h).norm() - r2;
+
+  return dot(q, V(a,b)) - r1;
 }

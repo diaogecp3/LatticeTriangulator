@@ -6,6 +6,8 @@ boolean projectOnSphere = true;
 boolean projectOnHub = false;
 int subdivisionTimes = 0;  // subdivision times
 
+int projectMethod = 0;
+int numProjectMethod = 3;
 
 int nextCorner(int cid) {
     return cid - (cid % 3) + (cid + 1) % 3;
@@ -223,14 +225,57 @@ class TriangleMesh {
     }
   }
 
-  void projectOnHub(Hub hub) {
+  private void projectOnHubRay(Hub hub) {
     for (int i = 0; i < nv; ++i) {
       pt o = positions.get(i);
+      if (hub.distanceFrom(o) < 0.0001) continue;
+      vec d = U(o, hub.ball.c);  // from current vertex to the center of the hub
+      Float t = hub.closestIntersectionWithRay(o, d);
+      if (t != null) {
+        o.set(P(o, t, d));
+      }
+    }
+  }
+
+  private void projectOnHubLine(Hub hub) {
+    for (int i = 0; i < nv; ++i) {
+      pt o = positions.get(i);
+      // if (hub.distanceFrom(o) < 0.0001) continue;
       vec d = U(hub.ball.c, o);
       Float t = hub.closestIntersectionWithLine(o, d);
       if (t != null) {
         o.set(P(o, t, d));
       }
+    }
+  }
+
+  private void projectOnHubSphereTrace(Hub hub) {
+    int maxIter = 32;
+    for (int i = 0; i < nv; ++i) {
+      pt o = positions.get(i);
+      if (hub.distanceFrom(o) < 0.0001) continue;
+      vec d = U(o, hub.ball.c);  // from current vertex to the center of the hub
+
+      pt p = P(o);  // copy
+      for (int j = 0; j < maxIter; ++j) {
+        float dist = hub.blendedDistanceFrom(p);
+        if (dist < 0.0001) break;
+        p.add(dist, d);
+      }
+      o.set(p);
+    }
+  }
+
+  void projectOnHub(Hub hub, int option) {
+    switch (option) {
+      case 1:
+        projectOnHubLine(hub);
+        break;
+      case 2:
+        projectOnHubSphereTrace(hub);
+        break;
+      default:
+        projectOnHubRay(hub);
     }
   }
 

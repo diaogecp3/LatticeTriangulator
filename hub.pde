@@ -19,8 +19,8 @@ class Cone {
   }
 
   /*
-   * Compute the intersection between a line and a two-cone. Return the two
-   * parameters, if any.
+   * Compute the intersections between a line and a two-cone. Return the two
+   * parameters corresponding to the two intersections, if any.
    */
   float[] intersectLine(pt o, vec d) {
     float dv = dot(d, axis);
@@ -84,7 +84,6 @@ class TruncatedCone {
    */
   Float closestIntersectionWithLine(pt o, vec d) {
     assert cone != null;
-
     float[] ts = cone.intersectLine(o, d);
     if (ts == null) return null;
 
@@ -98,6 +97,40 @@ class TruncatedCone {
 
     if (valid0) {
       if (valid1 && abs(ts[1]) < abs(ts[0])) return new Float(ts[1]);
+      else return new Float(ts[0]);
+    } else {
+      if (valid1) return new Float(ts[1]);
+      else return null;
+    }
+  }
+
+  /*
+   * Find the closest valid intersection with ray (o, d). The intersection
+   * point must be on the positive cone and has height in [lowHeight, highHeight].
+   * If there are two valid, return the closer one.
+   */
+  Float closestIntersectionWithRay(pt o, vec d) {
+    assert cone != null;
+    float[] ts = cone.intersectLine(o, d);
+    if (ts == null) return null;
+
+    pt p0 = ts[0] > 0 ? P(o, ts[0], d) : null;
+    pt p1 = ts[1] > 0 ? P(o, ts[1], d) : null;
+
+    boolean valid0 = false;
+    if (p0 != null) {
+      float d0 = dot(V(cone.apex, p0), cone.axis);
+      valid0 = (d0 >= lowHeight && d0 <= highHeight);
+    }
+
+    boolean valid1 = false;
+    if (p1 != null) {
+      float d1 = dot(V(cone.apex, p1), cone.axis);
+      valid1 = (d1 >= lowHeight && d1 <= highHeight);
+    }
+
+    if (valid0) {
+      if (valid1 && ts[1] < ts[0]) return new Float(ts[1]);
       else return new Float(ts[0]);
     } else {
       if (valid1) return new Float(ts[1]);
@@ -241,7 +274,7 @@ class Hub {
     generateTruncatedCones();
 
     maxIntersectDist = maximumIntersectionDistance();
-    maxIntersectDist += 3;  // slightly bigger such that circles are disjoint
+    maxIntersectDist += 10;  // slightly bigger such that circles are disjoint
   }
 
   private Circle intersectionCircleWithBoundingSphere(int i) {
@@ -287,8 +320,33 @@ class Hub {
     return new RingSet(ball.c, maxIntersectDist, circles, nNeighbors);
   }
 
+  /*
+   * Return the distance from point p to the hub.
+   */
+  float distanceFrom(pt p) {
+    float d = Float.MAX_VALUE;
+    for (int i = 0; i < nNeighbors; ++i) {
+      d = min(d, roundConeDist(p, ball.c, ball.r, neighbors[i].c, neighbors[i].r));
+    }
+    return d;
+  }
+
+  /*
+   * Return the distance from point p to the blended hub. The blending is
+   * independent on the order of the neighbors.
+   */
+  float blendedDistanceFrom(pt p) {
+    float d = 0;
+    float k = 8;  // shouldn't be too large
+    for (int i = 0; i < nNeighbors; ++i) {
+      d += exp(-k * roundConeDist(p, ball.c, ball.r, neighbors[i].c, neighbors[i].r));
+    }
+    return -log(d) / k;
+  }
+
   float closestIntersectionWithLine(pt o, vec d) {
-    float t = 1e20;
+    /* Check intersections between each cone and the line. */
+    float t = Float.MAX_VALUE;
     for (int i = 0; i < nNeighbors; ++i) {
       Float tmp = tCones[i].closestIntersectionWithLine(o, d);
       if (tmp != null && abs(tmp) < abs(t)) t = tmp;
@@ -302,9 +360,23 @@ class Hub {
       }
     }
 
-    {
-      // fill(tomato, 255);
-      // show(P(o, t, d), 4);
+    return t;
+  }
+
+  float closestIntersectionWithRay(pt o, vec d) {
+    /* Check intersections between each cone and the ray. */
+    float t = Float.MAX_VALUE;
+    for (int i = 0; i < nNeighbors; ++i) {
+      Float tmp = tCones[i].closestIntersectionWithRay(o, d);
+      if (tmp != null && tmp < t) t = tmp;
+    }
+
+    {  // check intersections between the inner ball and the ray
+      float[] ts = ball.intersectLine(o, d);
+      if (ts != null) {
+        if (ts[0] > 0 && ts[0] < t) t = ts[0];
+        if (ts[1] > 0 && ts[1] < t) t = ts[1];
+      }
     }
 
     return t;

@@ -43,6 +43,8 @@ boolean showApolloniusDiagram = false;
 boolean debugApolloniusDiagram = false;
 boolean showTriMesh = false;  // the mesh generated from exact convex hull
 
+float tan0 = 0, tan1 = 0;  // for debugging supporting triangle of 3 circles
+boolean validRS = false;
 
 /*
  * Method for three-ring triangle generation.

@@ -309,20 +309,31 @@ class vec2 {
   vec2() {
     x = y = 0.0;
   }
-  vec2(float x_, float y_) {
-    x = x_;
-    y = y_;
+  vec2(float x, float y) {
+    this.x = x;
+    this.y = y;
   }
   vec2 set(vec2 v) {
     x = v.x;
     y = v.y;
     return this;
   }
-  vec2 set(float x_, float y_) {
-    x = x_;
-    y = y_;
+  vec2 set(float x, float y) {
+    this.x = x;
+    this.y = y;
     return this;
   }
+  float norm() {
+    return sqrt(x * x + y * y);
+  }
+}
+
+vec2 V(float a, float b) {
+  return new vec2(a, b);
+}
+
+float dot(vec2 u, vec2 v) {
+  return u.x * v.x + u.y * v.y;
 }
 
 class EdgeCircle {
