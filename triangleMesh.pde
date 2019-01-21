@@ -17,7 +17,6 @@ int prevCorner(int cid) {
     return cid - (cid % 3) + (cid + 2) % 3;
 }
 
-
 /*
  * TriangleMesh class.
  *
@@ -27,9 +26,10 @@ int prevCorner(int cid) {
 class TriangleMesh {
   ArrayList<pt> positions;
   ArrayList<Triangle> triangles;
+  int nv, nt;
+
   ArrayList<Integer> oppositeTable;
   ArrayList<ArrayList<Integer>> swingLists;
-  int nv, nt;
 
   TriangleMesh() {
     positions = new ArrayList<pt>();
@@ -50,7 +50,6 @@ class TriangleMesh {
     this.triangles = triangles;
     nv = this.positions.size();
     nt = this.triangles.size();
-    setupOppositeTable();
   }
 
   TriangleMesh(pt[] positionArray, ArrayList<Triangle> triangles) {
@@ -59,7 +58,22 @@ class TriangleMesh {
     for (int i = 0; i < nv; ++i) positions.add(positionArray[i]);
     this.triangles = triangles;
     nt = triangles.size();
-    setupOppositeTable();
+  }
+
+  void augmentWithoutShift(ArrayList<pt> newPositions, ArrayList<Triangle> newTriangles) {
+    positions.addAll(newPositions);
+    triangles.addAll(newTriangles);
+    nv = positions.size();
+    nt = triangles.size();
+  }
+
+  void augmentWithShift(ArrayList<pt> newPositions, ArrayList<Triangle> newTriangles) {
+    positions.addAll(newPositions);
+    for (Triangle tri : newTriangles) {
+      triangles.add(new Triangle(tri.a + nv, tri.b + nv, tri.c + nv));
+    }
+    nv = positions.size();
+    nt = triangles.size();
   }
 
   void addTriangle(Triangle tri) {
@@ -137,6 +151,7 @@ class TriangleMesh {
   }
 
   void subdivide(int times) {
+    setupOppositeTable();
     int triedTimes = 0;
     while (triedTimes < times) {
       int nc = 3 * nt;

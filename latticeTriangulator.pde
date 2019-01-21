@@ -83,6 +83,8 @@ Hub gHub;  // the global hub
 
 /* Global variables related to gTriangleMesh. */
 TriangleMesh gTriangleMesh;  // the global triangle mesh
+TriangleMesh gBeamMesh;  // the global triangle mesh for lifted beams
+TriangleMesh gGapMesh;  // the global triangle mesh for gaps
 
 /* Global variables related to gEdgeCircle. */
 EdgeCircle gEdgeCircle;  // the global edge circle

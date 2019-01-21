@@ -799,6 +799,14 @@ void interactiveHubTest() {
   if (showIntersectionCircles) {
     gHub.showIntersectionCircles();
   }
+
+  gBeamMesh = gHub.triangulateBeams();
+  if (showLiftedCones) {
+    // fill(cyan, 100);
+    // gHub.showLiftedCones();
+    gBeamMesh.showTriangleMesh(cyan, true);
+  }
+
   gRingSet = gHub.circlesToRingSet();
 
   if (showDiskSet) {
@@ -819,10 +827,19 @@ void interactiveHubTest() {
 
   gTriangleMesh = gRingSet.generateConvexTriMesh();
 
+  /* Generate gap mesh. */
+  gHub.initGaps(gRingSet.borders);
+  gGapMesh = gHub.gapMesh();
+  if (showGapMesh) {
+    gGapMesh.showTriangleMesh(navy, true);
+  }
+
   gTriangleMesh.subdivide(subdivisionTimes);
   if (projectOnHub) {
     gTriangleMesh.projectOnHub(gHub, projectMethod);
   }
+
+  // gTriangleMesh.augmentWithShift(gBeamMesh.positions, gBeamMesh.triangles);
 
   if (showTriMesh) {
     gTriangleMesh.showTriangleMesh(purple, true);

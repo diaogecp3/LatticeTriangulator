@@ -5,6 +5,8 @@
 boolean showHub = true;
 boolean showBoundingSphere = false;  // the bounding sphere of a hub
 boolean showIntersectionCircles = false;  // the intersection circles between the bounding sphere and cones
+boolean showLiftedCones = false;
+boolean showGapMesh = false;
 
 
 class Cone {
@@ -40,25 +42,39 @@ class Cone {
 
 class TruncatedCone {
   pt c0;  // center of the lower base
-  pt c1;  // center of the upper base
   float r0;  // radius of the lower base
+  pt c1;  // center of the upper base
   float r1;  // radius of the upper base
+
   vec normal;  // unit vector from c0 to c1
+  Cone cone = null;  // the original cone
+  float lowHeight = -1.0;
+  float highHeight = -1.0;
 
-  Cone cone;  // the original cone
-  float lowHeight;
-  float highHeight;
+  pt[] samples = null;
 
-  TruncatedCone(pt c0, pt c1, float r0, float r1) {
+  TruncatedCone(pt c0, float r0, pt c1, float r1) {
     this.c0 = c0;
-    this.c1 = c1;
     this.r0 = r0;
+    this.c1 = c1;
     this.r1 = r1;
     normal = U(c0, c1);
-    initCone();
   }
 
+  TruncatedCone(pt c0, float r0, pt c1, float r1, vec normal, Cone cone) {
+    this.c0 = c0;
+    this.r0 = r0;
+    this.c1 = c1;
+    this.r1 = r1;
+    this.normal = normal;
+    this.cone = cone;
+  }
+
+  /*
+   * Compute the original cone. This function is called when needed.
+   */
   void initCone() {
+    if (cone != null) return;
     float d = d(c0, c1);
     float tan = abs(r1 - r0) / d;
     float alpha = atan(tan);  // [0, PI/2)
@@ -74,6 +90,22 @@ class TruncatedCone {
     } else {
       lowHeight = x - d;
       highHeight = x;
+    }
+  }
+
+  void generateSamples() {
+    int n = numPointsPerRing;  // global variable
+    samples = new pt[2 * n];
+    vec vi = constructNormal(normal);
+    vec vj = N(normal, vi);
+    float da = TWO_PI / n;
+    float a = 0;
+    for (int i = 0; i < n; ++i) {
+      float cos = cos(a);
+      float sin = sin(a);
+      samples[i] = P(c0, r0 * cos, vi, r0 * sin, vj);
+      samples[i + n] = P(c1, r1 * cos, vi, r1 * sin, vj);
+      a += da;
     }
   }
 
@@ -139,28 +171,111 @@ class TruncatedCone {
   }
 
   void show() {
-    int n = 30;
-    pt[] points0 = new pt[n];
-    pt[] points1 = new pt[n];
-    vec vi = constructNormal(normal);
-    vec vj = N(normal, vi);
-    float da = TWO_PI / n;
-    float a = 0;
-    for (int i = 0; i < n; ++i) {
-      float cos = cos(a);
-      float sin = sin(a);
-      points0[i] = P(c0, r0 * cos, vi, r0 * sin, vj);
-      points1[i] = P(c1, r1 * cos, vi, r1 * sin, vj);
-      a += da;
-    }
+    if (samples == null || samples.length == 0) generateSamples();
+    int n = samples.length / 2;
+    stroke(0);
     beginShape(QUAD_STRIP);
     for (int i = 0; i < n; ++i) {
-      vertex(points1[i]);
-      vertex(points0[i]);
+      vertex(samples[n + i]);
+      vertex(samples[i]);
     }
-    vertex(points1[0]);
-    vertex(points0[0]);
+    vertex(samples[n]);
+    vertex(samples[0]);
     endShape();
+    noStroke();
+  }
+}
+
+class ConicGap {
+  ArrayList<pt> points0;  // points on inner irregular loop
+  ArrayList<pt> points1;  // points on outer regular loop
+
+  ConicGap(ArrayList<pt> points0, ArrayList<pt> points1) {
+    this.points0 = points0;
+    this.points1 = points1;
+  }
+
+  ArrayList<pt> positionList() {
+    ArrayList<pt> posList = new ArrayList<pt>();
+    posList.addAll(points0);
+    posList.addAll(points1);
+    return posList;
+  }
+
+  ArrayList<Triangle> gapHull() {
+    int nv0 = points0.size();
+    int nv1 = points1.size();
+    assert nv0 >= 3 && nv1 >= 3;
+
+    ArrayList<Triangle> triangles = new ArrayList<Triangle>();
+
+    /* Find the first triangle. */
+    pt pa = points0.get(0);
+    pt pb = points0.get(1);
+    int j = 0;
+    int jLeft = nv1 - 1, jRight;
+    for (; j < nv1; ++j) {
+      jRight = (j + 1) % nv1;
+      vec vLeft = V(pa, points1.get(jLeft));
+      vec vRight = V(pa, points1.get(jRight));
+      vec n = N(pa, pb, points1.get(j));  // no need to normalize
+      if (dot(n, vLeft) < 0 && dot(n, vRight) < 0) break;
+      jLeft = j;
+    }
+    assert j < nv1;
+    triangles.add(new Triangle(0, 1, j + nv0));
+
+    /* Traverse the loops. */
+    int stop0 = 0;
+    int stop1 = j;
+    int i = 1;
+    int iNext = (i + 1) % nv0;
+    int jNext = (j + 1) % nv1;
+    int jCount = 0;
+    while (i != stop0 && jCount < nv1) {
+      pa = points1.get(j);
+      pb = points0.get(i);
+      pt pc = points0.get(iNext);
+
+      /* Check convexity. */
+      boolean valid = false;
+      {
+        vec n = N(pa, pb, pc);
+        vec vLeft = V(pa, points1.get((j + nv1 - 1) % nv1));
+        vec vRight = V(pa, points1.get(jNext));
+        if (dot(n, vLeft) < 0 && dot(n, vRight) < 0) valid = true;
+      }
+
+      if (valid) {
+        triangles.add(new Triangle(j + nv0, i, iNext));
+        i = iNext;
+        iNext = (i + 1) % nv0;
+      } else {
+        triangles.add(new Triangle(j + nv0, i, jNext + nv0));
+        j = jNext;
+        jNext = (j + 1) % nv1;
+        jCount++;
+      }
+    }
+
+    while (i != stop0) {
+      triangles.add(new Triangle(j + nv0, i, iNext));
+      i = iNext;
+      iNext = (i + 1) % nv0;
+    }
+
+    while (j != stop1) {
+      triangles.add(new Triangle(j + nv0, i, jNext + nv0));
+      j = jNext;
+      jNext = (j + 1) % nv1;
+    }
+    return triangles;
+  }
+
+  TriangleMesh toTriMesh() {
+    ArrayList<pt> posList = positionList();
+    ArrayList<Triangle> triList = gapHull();
+    return new TriangleMesh(posList, triList);
   }
 }
 
@@ -172,15 +287,20 @@ class TruncatedCone {
  * defined by it and each of its neighboring balls.
  */
 class Hub {
-  Ball ball = null;
-  Ball[] neighbors = null;
+  Ball ball = null;  // inner ball
+  Ball[] neighbors = null;  // outer balls
   int nNeighbors = 0;
 
   boolean valid = false;  // whether the hub is valid or not
   float maxIntersectDist = -1.0;  // the radius of the bounding sphere
 
-  TruncatedCone[] tCones = null;
-  Circle[] circles = null;
+  TruncatedCone[] tCones = null;  // beams
+  Circle[] circles = null;  // intersection between cones and bounding sphere
+
+  float gapWidth = 10.0;  // the width of the gap between the convex hull and beams
+  TruncatedCone[] liftedCones = null;
+
+  ConicGap[] gaps = null;
 
   Hub() {}
 
@@ -228,7 +348,8 @@ class Hub {
       float r0 = ball.r * sin;
       float r1 = neighbors[i].r * sin;
 
-      tCones[i] = new TruncatedCone(c0, c1, r0, r1);
+      tCones[i] = new TruncatedCone(c0, r0, c1, r1);
+      tCones[i].initCone();
     }
   }
 
@@ -277,9 +398,20 @@ class Hub {
     maxIntersectDist += 10;  // slightly bigger such that circles are disjoint
   }
 
+  private TruncatedCone liftCone(int i, pt c, float r) {
+    pt c0 = P(c, gapWidth, tCones[i].normal);
+    float r0 = r;
+    if (tCones[i].r1 < tCones[i].r0) {
+      r0 -= gapWidth * tan(tCones[i].cone.alpha);
+    } else {
+      r0 += gapWidth * tan(tCones[i].cone.alpha);
+    }
+    return new TruncatedCone(c0, r0, tCones[i].c1, tCones[i].r1, tCones[i].normal, tCones[i].cone);
+  }
+
   private Circle intersectionCircleWithBoundingSphere(int i) {
-    float r0 = ball.r * ball.r / tCones[i].r0;
-    float r1 = neighbors[i].r * neighbors[i].r / tCones[i].r1;
+    float r0 = ball.r * ball.r / tCones[i].r0;  // the radius of the base of ball.c
+    float r1 = neighbors[i].r * neighbors[i].r / tCones[i].r1;  // the radius of the base of neighbors[i].c
     vec v = V(ball.c, neighbors[i].c);
 
     float dd = n2(v);
@@ -310,8 +442,10 @@ class Hub {
     if (maxIntersectDist <= 0.0) return;
 
     circles = new Circle[nNeighbors];
+    liftedCones = new TruncatedCone[nNeighbors];
     for (int i = 0; i < nNeighbors; ++i) {
       circles[i] = intersectionCircleWithBoundingSphere(i);
+      liftedCones[i] = liftCone(i, circles[i].c, circles[i].r);
     }
     return;
   }
@@ -382,6 +516,83 @@ class Hub {
     return t;
   }
 
+  /*
+   * Triangulate the i-th beam. The ID of the first point of this beam is k.
+   * Augment the triangle mesh tm with new positions and new triangles. Return
+   * the number of new positions.
+   */
+  private int triangulateBeam(int b, int k, TriangleMesh tm) {
+    TruncatedCone beam = liftedCones[b];
+    assert beam != null;
+    if (beam.samples == null) beam.generateSamples();
+    pt[] samples = beam.samples;
+
+    ArrayList<pt> positions = new ArrayList<pt>();
+    for (int i = 0; i < samples.length; ++i) {
+      positions.add(samples[i]);
+    }
+    ArrayList<Triangle> triangles = new ArrayList<Triangle>();
+    int n = samples.length / 2;
+    for (int i = 0; i < n - 1; ++i) {
+      int ia = i + k;
+      int ib = ia + 1;
+      int ic = ib + n;
+      int id = ia + n;
+      triangles.add(new Triangle(ia, ib, ic));
+      triangles.add(new Triangle(ic, id, ia));
+    }
+    {
+      int ia = n - 1 + k;
+      int ib = k;
+      int ic = ib + n;
+      int id = ia + n;
+      triangles.add(new Triangle(ia, ib, ic));
+      triangles.add(new Triangle(ic, id, ia));
+    }
+    tm.augmentWithoutShift(positions, triangles);
+
+    return samples.length;
+  }
+
+  /*
+   * Triangulate the beams.
+   */
+  TriangleMesh triangulateBeams() {
+    TriangleMesh tm = new TriangleMesh();
+    int k = 0;
+    for (int i = 0; i < nNeighbors; ++i) {
+      k += triangulateBeam(i, k, tm);
+    }
+    return tm;
+  }
+
+  void initGaps(ArrayList<pt>[] innerLoops) {
+    assert innerLoops.length == nNeighbors;
+    assert liftedCones != null;
+    gaps = new ConicGap[nNeighbors];
+
+    for (int i = 0; i < nNeighbors; ++i) {
+      ArrayList<pt> innerLoop = innerLoops[i];
+      if (liftedCones[i].samples == null) liftedCones[i].generateSamples();
+      ArrayList<pt> outerLoop = new ArrayList<pt>();
+      pt[] samples = liftedCones[i].samples;
+      int n = samples.length / 2;  // or numPointsPerRings
+      for (int j = 0; j < n; ++j) outerLoop.add(samples[j]);
+      gaps[i] = new ConicGap(innerLoop, outerLoop);
+    }
+  }
+
+  TriangleMesh gapMesh() {
+    if (gaps == null || gaps.length == 0) return null;
+
+    TriangleMesh gapMesh = new TriangleMesh();
+    for (int i = 0; i < nNeighbors; ++i) {
+      TriangleMesh tm = gaps[i].toTriMesh();
+      gapMesh.augmentWithShift(tm.positions, tm.triangles);
+    }
+    return gapMesh;
+  }
+
   void showIntersectionCircles() {
     stroke(cyan);
     for (int i = 0; i < nNeighbors; ++i) {
@@ -394,6 +605,12 @@ class Hub {
       fill(c, a);
       noStroke();
       show(ball.c, maxIntersectDist);
+    }
+  }
+
+  void showLiftedCones() {
+    for (int i = 0; i < nNeighbors; ++i) {
+      if (liftedCones[i] != null) liftedCones[i].show();
     }
   }
 

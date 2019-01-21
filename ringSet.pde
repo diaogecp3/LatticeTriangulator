@@ -293,6 +293,13 @@ class RingSet {
       return compEdges;
     }
 
+    Triangle toTriangle(HashMap<pt, Integer> pids) {
+      int a = pids.get(vertices[0].position);
+      int b = pids.get(vertices[1].position);
+      int c = pids.get(vertices[2].position);
+      return new Triangle(a, b, c);
+    }
+
     @Override
     void showFace() {
       assert normal != null;
@@ -348,8 +355,8 @@ class RingSet {
       edges[1].setEndPoints(v3, v0);  // DA
       setupNormalsAndAngles();
 
-      if (numPointsPerRing >= 3) delta = TWO_PI / (numPointsPerRing + 2);
-      else delta = TWO_PI / 10;
+      if (numPointsPerRing >= 3) delta = TWO_PI / (numPointsPerRing + 1);
+      else delta = TWO_PI / 20;
       generateSamples();
       if (showApolloniusDiagram) generatePointsAD();
     }
@@ -671,26 +678,32 @@ class RingSet {
      * positions will be updated as sampled points will be inserted. Note that
      * there is no need to update the hash map vids.
      */
-    ArrayList<Triangle> generateTriangles(ArrayList<pt> positions, HashMap<IncVertex, Integer> vids) {
+    ArrayList<Triangle> toTriangles(ArrayList<pt> positions, HashMap<pt, Integer> pids) {
       ArrayList<Triangle> triangles = new ArrayList<Triangle>();
       if (samples == null || samples.size() == 0) {
-        int a = vids.get(vertices[0]);
-        int b = vids.get(vertices[1]);
-        int c = vids.get(vertices[2]);
-        int d = vids.get(vertices[3]);
+        int a = pids.get(vertices[0].position);
+        int b = pids.get(vertices[1].position);
+        int c = pids.get(vertices[2].position);
+        int d = pids.get(vertices[3].position);
         triangles.add(new Triangle(a, b, c));
         triangles.add(new Triangle(c, d, a));
         return triangles;
       }
 
-      int td = vids.get(vertices[3]);  // ID of tmp vertex D
-      int ta = vids.get(vertices[0]);  // ID of tmp vertex A
+      int td = pids.get(vertices[3].position);  // ID of tmp vertex D
+      int ta = pids.get(vertices[0].position);  // ID of tmp vertex A
       int k = positions.size();  // k is the next valid vertex ID
       for (int i = 0; i < samples.size(); i += 2) {
-        positions.add(samples.get(i));  // position of tmp vertex C
-        positions.add(samples.get(i+1));  // position of tmp vertex B
+        pt tpc = samples.get(i);
+        positions.add(tpc);  // position of tmp vertex C
         int tc = k;  // ID of tmp vertex C
+        pids.put(tpc, tc);
+
+        pt tpb = samples.get(i + 1);
+        positions.add(tpb);  // position of tmp vertex B
         int tb = k + 1;  // ID of tmp vertex B
+        pids.put(tpb, tb);
+
         triangles.add(new Triangle(ta, tb, tc));
         triangles.add(new Triangle(tc, td, ta));
 
@@ -700,8 +713,8 @@ class RingSet {
       }
 
       {  // C, B, and the last two samples
-        int tc = vids.get(vertices[2]);
-        int tb = vids.get(vertices[1]);
+        int tc = pids.get(vertices[2].position);
+        int tb = pids.get(vertices[1].position);
         triangles.add(new Triangle(ta, tb, tc));
         triangles.add(new Triangle(tc, td, ta));
       }
@@ -752,6 +765,8 @@ class RingSet {
   ArrayList<Integer>[] swingLists = null;  // each ring has a swing list to sort the corners touching it
   ArrayList<Float>[] angleLists = null;
   LinkedHashMap<NaiveCorridor, ArrayList<pt>> exEdges;  // key: (pid a, b, c, d), value: a list of points sampled from corresponding arcs
+
+  ArrayList<pt>[] borders = null;
 
   /* Data structures for incrementally constructing convex hull. */
   ArrayList<IncFace> faces;
@@ -1868,37 +1883,6 @@ class RingSet {
     for (int i = 0; i < nRings; ++i) {
       for (int j = i + 1; j < nRings; ++j) {
         for (int k = j + 1; k < nRings; ++k) {
-          // pt[] tmp = generateExTriThreeRingsTwo(i, j, k, null, null, true);
-          // if (isValidExTri(tmp[0], tmp[1], tmp[2], i, j, k)) {
-          //   int pid = exTriPoints.size();
-          //   exTriPoints.add(tmp[0]);
-          //   exTriRIDs.add(i);
-          //   updateSwingList(i, tmp[0], pid);
-
-          //   exTriPoints.add(tmp[1]);
-          //   exTriRIDs.add(j);
-          //   updateSwingList(j, tmp[1], pid + 1);
-
-          //   exTriPoints.add(tmp[2]);
-          //   exTriRIDs.add(k);
-          //   updateSwingList(k, tmp[2], pid + 2);
-          // }
-          // tmp = generateExTriThreeRingsTwo(i, k, j, null, null, true);
-          // if (isValidExTri(tmp[0], tmp[1], tmp[2], i, k, j)) {
-          //   int pid = exTriPoints.size();
-          //   exTriPoints.add(tmp[0]);
-          //   exTriRIDs.add(i);
-          //   updateSwingList(i, tmp[0], pid);
-
-          //   exTriPoints.add(tmp[1]);
-          //   exTriRIDs.add(k);
-          //   updateSwingList(k, tmp[1], pid + 1);
-
-          //   exTriPoints.add(tmp[2]);
-          //   exTriRIDs.add(j);
-          //   updateSwingList(j, tmp[2], pid + 2);
-          // }
-
           pt[] tmp = generateExTriThreeRingsTwo(i, j, k, null, null, false);
           if (tmp == null || tmp.length != 6) {
             System.out.format("No ex tris among (%d, %d, %d)\n", i, j, k);
@@ -2340,25 +2324,25 @@ class RingSet {
     }
 
     {  // print something
-      for (IncFace f : faces) {
-        if (f instanceof IncCorridor) {
-          IncCorridor cor = (IncCorridor)f;
-          if (notZero(cor.coneNormals[0].x - cor.coneNormals[1].x) ||
-              notZero(cor.coneNormals[0].y - cor.coneNormals[1].y) ||
-              notZero(cor.coneNormals[0].z - cor.coneNormals[1].z)) {
-              println("The two normals of a corridor are different.");
-              System.out.format("normal 1 = (%f, %f, %f), normal 2 = (%f, %f, %f)\n",
-                                cor.coneNormals[0].x, cor.coneNormals[0].y, cor.coneNormals[0].z,
-                                cor.coneNormals[1].x, cor.coneNormals[1].y, cor.coneNormals[1].z);
-              noStroke();
-              fill(ivory);
-              show(cor.vertices[0].position, 3);
-              show(cor.vertices[1].position, 3);
-              show(cor.vertices[2].position, 3);
-              show(cor.vertices[3].position, 3);
-          }
-        }
-      }
+      // for (IncFace f : faces) {
+      //   if (f instanceof IncCorridor) {
+      //     IncCorridor cor = (IncCorridor)f;
+      //     if (notZero(cor.coneNormals[0].x - cor.coneNormals[1].x) ||
+      //         notZero(cor.coneNormals[0].y - cor.coneNormals[1].y) ||
+      //         notZero(cor.coneNormals[0].z - cor.coneNormals[1].z)) {
+      //         println("The two normals of a corridor are different.");
+      //         System.out.format("normal 1 = (%f, %f, %f), normal 2 = (%f, %f, %f)\n",
+      //                           cor.coneNormals[0].x, cor.coneNormals[0].y, cor.coneNormals[0].z,
+      //                           cor.coneNormals[1].x, cor.coneNormals[1].y, cor.coneNormals[1].z);
+      //         noStroke();
+      //         fill(ivory);
+      //         show(cor.vertices[0].position, 3);
+      //         show(cor.vertices[1].position, 3);
+      //         show(cor.vertices[2].position, 3);
+      //         show(cor.vertices[3].position, 3);
+      //     }
+      //   }
+      // }
     }
   }
 
@@ -2549,51 +2533,123 @@ class RingSet {
     }
   }
 
+  private void updateSwingListGivenCorridor(IncCorridor cor, HashMap<pt, Integer> pids) {
+    int ridLeft = cor.vertices[2].rid;
+    int ridRight = cor.vertices[0].rid;
+    int pidC = pids.get(cor.vertices[2].position);
+    int pidA = pids.get(cor.vertices[0].position);
+
+    ArrayList<pt> pointsDC = new ArrayList<pt>();
+    ArrayList<pt> pointsBA = new ArrayList<pt>();
+    for (int i = 0; i < cor.samples.size(); i += 2) {
+      pointsDC.add(cor.samples.get(i));
+      pointsBA.add(cor.samples.get(i+1));
+    }
+    Collections.reverse(pointsBA);
+
+    ArrayList<Integer> pidsDC = new ArrayList<Integer>();
+    ArrayList<Integer> pidsBA = new ArrayList<Integer>();
+    for (int i = 0; i < pointsDC.size(); ++i) {
+      pidsDC.add(pids.get(pointsDC.get(i)));
+      pidsBA.add(pids.get(pointsBA.get(i)));
+    }
+
+    ArrayList<Integer> slLeft = swingLists[ridLeft];
+    ArrayList<Integer> slRight = swingLists[ridRight];
+    int locLeft = 0;
+    int locRight = 0;
+    for (; locLeft < slLeft.size(); ++locLeft) {
+      if (slLeft.get(locLeft) == pidC) break;
+    }
+    for (; locRight < slRight.size(); ++locRight) {
+      if (slRight.get(locRight) == pidA) break;
+    }
+    assert locLeft < slLeft.size() && locRight < slRight.size();
+
+    slLeft.addAll(locLeft, pidsDC);
+    slRight.addAll(locRight, pidsBA);
+  }
+
   TriangleMesh generateConvexTriMesh() {
     /* Create a list of positions. */
-    HashMap<IncVertex, Integer> vids = new HashMap<IncVertex, Integer>();
-    ArrayList<pt> posList = new ArrayList<pt>();
+    HashMap<pt, Integer> pids = new HashMap<pt, Integer>();  // position -> ID
+    ArrayList<pt> posList = new ArrayList<pt>();  // ID -> position
 
-    /* Create a list of triangles, each being a tuple of vids. */
+    /* Create a list of triangles, each being a tuple of IDs. */
     ArrayList<Triangle> triList = new ArrayList<Triangle>();
 
-    /* Store all vertices of all supporting triangles. */
+    /* Setup the swing list and angle list for each circle. */
+    swingLists = new ArrayList[nRings];
+    angleLists = new ArrayList[nRings];
+    for (int i = 0; i < nRings; ++i) {
+      swingLists[i] = new ArrayList<Integer>();
+      angleLists[i] = new ArrayList<Float>();
+    }
+
+    /* Store the vertices of all supporting triangles. */
     Integer id = 0;
     assert faces != null;
     for (IncFace f : faces) {
-      for (IncVertex v : f.vertices) {
-        if (!vids.containsKey(v)) {
-          vids.put(v, id++);
+      if (f instanceof IncTriangle) {
+        for (IncVertex v : f.vertices) {
+          updateSwingList(v.rid, v.position, id);
+          pids.put(v.position, id++);
           posList.add(v.position);
         }
       }
     }
 
-    /* Convert each supporting triangle to a tuple of vids. */
+    {  // verify the swing lists
+      // fill(cyan, 100);
+      // for (int i = 0; i < nRings; ++i) {
+      //   ArrayList<Integer> sl = swingLists[i];
+      //   for (int j = 0; j < sl.size() - 1; ++j) {
+      //     pt a = posList.get(sl.get(j));
+      //     pt b = posList.get(sl.get(j + 1));
+      //     arrow(a, V(a, b), 3);
+      //   }
+      // }
+    }
+
+    /* Convert each supporting triangle to a tuple of IDs. */
     if (incTriangles != null) {
       for (IncTriangle tri : incTriangles) {
-        int a = vids.get(tri.vertices[0]);
-        int b = vids.get(tri.vertices[1]);
-        int c = vids.get(tri.vertices[2]);
-        triList.add(new Triangle(a, b, c));
+        triList.add(tri.toTriangle(pids));
       }
     }
 
-    // println("Before converting corridors, #triangles =", triList.size(), "#vertices =", posList.size());
-    /* Convert each corridor to a list of tuples of vids. */
+    // println("Before converting corridors, size of pids =", pids.size());
+    /* Convert each corridor to a list of tuples of IDs. */
     if (incCorridors != null) {
       for (IncCorridor cor : incCorridors) {
-        // int a = vids.get(cor.vertices[0]);
-        // int b = vids.get(cor.vertices[1]);
-        // int c = vids.get(cor.vertices[2]);
-        // int d = vids.get(cor.vertices[3]);
-        // triList.add(new Triangle(a, b, c));
-        // triList.add(new Triangle(c, d, a));
-        ArrayList<Triangle> tris = cor.generateTriangles(posList, vids);
-        triList.addAll(tris);
+        triList.addAll(cor.toTriangles(posList, pids));
+        updateSwingListGivenCorridor(cor, pids);
       }
     }
-    // println("After converting corridors, #triangles =", triList.size(), "#vertices =", posList.size());
+    // println("After converting corridors, size of pids =", pids.size());
+
+    {  // verify the swing lists
+      // fill(cyan);
+      // for (int i = 0; i < nRings; ++i) {
+      //   ArrayList<Integer> sl = swingLists[i];
+      //   for (int j = 0; j < sl.size() - 1; ++j) {
+      //     pt a = posList.get(sl.get(j));
+      //     pt b = posList.get(sl.get(j + 1));
+      //     arrow(a, V(a, b), 3);
+      //   }
+      // }
+    }
+
+    {  // setup borders
+      borders = new ArrayList[nRings];
+      for (int i = 0; i < nRings; ++i) {
+        borders[i] = new ArrayList<pt>();
+        ArrayList<Integer> sl = swingLists[i];
+        for (int j = 0; j < sl.size(); ++j) {
+          borders[i].add(posList.get(sl.get(j)));
+        }
+      }
+    }
 
     if (triList.size() == 0) return null;
     TriangleMesh tm = new TriangleMesh(posList, triList);

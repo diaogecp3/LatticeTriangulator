@@ -63,8 +63,6 @@ void keyPressed() {
   if (key == 'i') {
     gPoints.addPt(Pick);  // append the new vertex Pick in P
   }
-  if (key == 'W') { gPoints.savePts("data/pts"); }  // save vertices
-  if (key == 'L') { gPoints.loadPts("data/pts"); }  // load vertices
   if (key == 'w') {  // save data
     if (gPoints != null) gPoints.savePts("data/pts_unnamed");
     if (gRingSet != null) gRingSet.save("data/rs_unnamed");
@@ -249,7 +247,12 @@ void keyPressed() {
   if (key == 'P') {
     if (test == 3) projectOnSphere = !projectOnSphere;
     if (test == 16) projectOnHub = !projectOnHub;
-
+  }
+  if (key == 'L') {
+    if (test == 16) showLiftedCones = !showLiftedCones;
+  }
+  if (key == 'G') {
+    showGapMesh = !showGapMesh;
   }
 
   change = true;
