@@ -93,8 +93,9 @@ class TruncatedCone {
     }
   }
 
-  void generateSamples() {
+  void generateSamples(boolean isSmooth) {
     int n = numPointsPerRing;  // global variable
+    if (isSmooth) n = 20;
     samples = new pt[2 * n];
     vec vi = constructNormal(normal);
     vec vj = N(normal, vi);
@@ -170,10 +171,10 @@ class TruncatedCone {
     }
   }
 
-  void show() {
-    if (samples == null || samples.length == 0) generateSamples();
+  void show(boolean isSmooth) {
+    if (samples == null || samples.length == 0) generateSamples(isSmooth);
     int n = samples.length / 2;
-    stroke(0);
+    if (!isSmooth) stroke(0);
     beginShape(QUAD_STRIP);
     for (int i = 0; i < n; ++i) {
       vertex(samples[n + i]);
@@ -182,7 +183,7 @@ class TruncatedCone {
     vertex(samples[n]);
     vertex(samples[0]);
     endShape();
-    noStroke();
+    if (!isSmooth) noStroke();
   }
 }
 
@@ -524,7 +525,7 @@ class Hub {
   private int triangulateBeam(int b, int k, TriangleMesh tm) {
     TruncatedCone beam = liftedCones[b];
     assert beam != null;
-    if (beam.samples == null) beam.generateSamples();
+    if (beam.samples == null) beam.generateSamples(false);
     pt[] samples = beam.samples;
 
     ArrayList<pt> positions = new ArrayList<pt>();
@@ -573,7 +574,7 @@ class Hub {
 
     for (int i = 0; i < nNeighbors; ++i) {
       ArrayList<pt> innerLoop = innerLoops[i];
-      if (liftedCones[i].samples == null) liftedCones[i].generateSamples();
+      if (liftedCones[i].samples == null) liftedCones[i].generateSamples(false);
       ArrayList<pt> outerLoop = new ArrayList<pt>();
       pt[] samples = liftedCones[i].samples;
       int n = samples.length / 2;  // or numPointsPerRings
@@ -610,7 +611,7 @@ class Hub {
 
   void showLiftedCones() {
     for (int i = 0; i < nNeighbors; ++i) {
-      if (liftedCones[i] != null) liftedCones[i].show();
+      if (liftedCones[i] != null) liftedCones[i].show(false);
     }
   }
 
@@ -619,7 +620,7 @@ class Hub {
     noStroke();
     ball.showBall();
     for (int i = 0; i < nNeighbors; ++i) {
-      tCones[i].show();
+      tCones[i].show(true);
       // neighbors[i].showBall();
     }
     return;

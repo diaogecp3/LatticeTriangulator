@@ -43,3 +43,15 @@ Wrong intersection circles. A circle is not on the negative side of the other. F
 
 ps_arcs_14:
 Wrong intersection circles. A circle is on the wrong side of the cone.
+
+ps_arcs_15:
+Source of pictures in paper. About corridor visibility definition.
+
+ps_arcs_16:
+Source of picture in paper. About elliptical cone.
+
+ps_arcs_17:
+Source of picture in paper. About Apollonius diagram.
+
+ps_arcs_18:
+Source of picture in paper. About hub triangulation.

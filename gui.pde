@@ -70,13 +70,6 @@ void keyPressed() {
     if (gEdgeCircle != null) gEdgeCircle.save("data/ec_unnamed");
     if (gTriangleMesh != null) gTriangleMesh.save("data/tm_unnamed");
   }
-  if (key == 'l') {  // load data
-    if (gPoints != null) gPoints.loadPts("data/pts_unnamed");
-    if (gRingSet != null) gRingSet.load("data/rs_unnamed");
-    if (gHub != null) gHub.load("data/hub.unnamed");
-    if (gEdgeCircle != null) gEdgeCircle.load("data/ec_unnamed");
-    if (gTriangleMesh != null) gTriangleMesh.load("data/tm_unnamed");
-  }
   // if (key == 'a') animating = !animating; // toggle animation
   if (key == ',') viewpoint = true;
   if (key == '>') showFrame = !showFrame;
@@ -90,7 +83,7 @@ void keyPressed() {
     debug2RT = !debug2RT;
     debugST = !debugST;
     if (test == 13) {
-      debugIncCH = !debugIncCH;
+      // debugIncCH = !debugIncCH;
       debugApolloniusDiagram = !debugApolloniusDiagram;
     }
   }
@@ -253,6 +246,9 @@ void keyPressed() {
   }
   if (key == 'G') {
     showGapMesh = !showGapMesh;
+  }
+  if (key == 'S') {
+    showTriangleStrokes = !showTriangleStrokes;
   }
 
   change = true;

@@ -802,9 +802,7 @@ void interactiveHubTest() {
 
   gBeamMesh = gHub.triangulateBeams();
   if (showLiftedCones) {
-    // fill(cyan, 100);
-    // gHub.showLiftedCones();
-    gBeamMesh.showTriangleMesh(cyan, true);
+    gBeamMesh.showTriangleMesh(cyan, showTriangleStrokes);
   }
 
   gRingSet = gHub.circlesToRingSet();
@@ -831,7 +829,7 @@ void interactiveHubTest() {
   gHub.initGaps(gRingSet.borders);
   gGapMesh = gHub.gapMesh();
   if (showGapMesh) {
-    gGapMesh.showTriangleMesh(navy, true);
+    gGapMesh.showTriangleMesh(navy, showTriangleStrokes);
   }
 
   gTriangleMesh.subdivide(subdivisionTimes);
@@ -839,14 +837,12 @@ void interactiveHubTest() {
     gTriangleMesh.projectOnHub(gHub, projectMethod);
   }
 
-  // gTriangleMesh.augmentWithShift(gBeamMesh.positions, gBeamMesh.triangles);
-
   if (showTriMesh) {
-    gTriangleMesh.showTriangleMesh(purple, true);
+    gTriangleMesh.showTriangleMesh(purple, showTriangleStrokes);
   }
 
   if (showHub) {
-    gHub.showHub(lightSalmon, 100);
+    gHub.showHub(lightSalmon, 130);
   }
 
   if (showBoundingSphere) {

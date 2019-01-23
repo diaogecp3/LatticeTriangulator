@@ -228,7 +228,7 @@ boolean intersectionCirclePlane(pt c, float r, vec n, pt p, vec d, pt p0, pt p1)
 /*
  * Return the points of contact between the plane that passes through line (a, b)
  * and the circle (c, r, n). (vi, vj), which is optional, is the local frame on
- * the circle.
+ * the circle. May be deprecated.
  */
 pt[] pivotPlaneAroundLineHitCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec vj) {
   pt[] ps = new pt[2];
@@ -267,6 +267,48 @@ pt[] pivotPlaneAroundLineHitCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec
   assert thetas.length == 2;
   ps[0] = P(c, r * cos(thetas[0]), vi, r * sin(thetas[0]), vj);
   ps[1] = P(c, r * cos(thetas[1]), vi, r * sin(thetas[1]), vj);
+  return ps;
+}
+
+/*
+ * Return the points of contact between the plane that passes through line (a, b)
+ * and the circle (c, r, n). (vi, vj), which is optional, is the local frame on
+ * the circle.
+ */
+pt[] contactsOnSupportingPlaneOfEdgeCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec vj) {
+  pt[] ps = new pt[2];
+  boolean empty = emptyIntersectionLineDisk(a, b, c, r, n);
+  if (!empty) {
+    println("Line AB intersects disk C");
+    ps[0] = P(c, r, vi);
+    ps[1] = P(c, -r, vi);
+    return ps;
+  }
+
+  vec ac = V(a, c);
+  vec ab = V(a, b);
+  if (vi == null) vi = constructNormal(n);
+  float dnab = dot(n, ab);
+  float dnac = dot(n, ac);
+  if (isZero(dnab) && isZero(dnac)) {
+    println("Line AB is on the supporting plane of Circle C");
+    ps[0] = P(c, r, vi);
+    ps[1] = P(c, -r, vi);
+    return ps;
+  }
+
+  if (vj == null) vj = N(n, vi);  // cross product
+  float t = dnac / dnab;
+  pt tmp = P(a, t, ab);
+  float cosa = r / d(c, tmp);  // 0 < cosa <= 1
+  float alpha = acos(cosa);  // [0, PI/2)
+  float sina = sin(alpha);
+  vec v0 = U(c, tmp);
+  vec v1 = R(v0, HALF_PI, vi, vj);
+  float rc = r * cosa;
+  float rs = r * sina;
+  ps[0] = P(c, rc, v0, rs, v1);
+  ps[1] = P(c, rc, v0, -rs, v1);
   return ps;
 }
 

@@ -284,6 +284,7 @@ void showCircle(pt c, vec n, float r) {
     vertex(P(c, r * cos(a), vi, r * sin(a), vj));
   }
   endShape(CLOSE);
+  strokeWeight(1);
   fill(black);
 }
 

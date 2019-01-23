@@ -1,5 +1,6 @@
 .DS_Store
 data/tmp/*
+data/*_unnamed
 applet
 application.linux-arm64
 application.linux-armv6hf

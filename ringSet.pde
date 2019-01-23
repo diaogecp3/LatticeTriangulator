@@ -36,7 +36,7 @@ boolean debugIncCHNewView = false;
 boolean debugIncCHCor = false;
 boolean showCorridorFaces = false;
 boolean showTriangleFaces = false;
-boolean showCorridorStrokes = true;
+boolean showCorridorStrokes = false;
 boolean showTriangleStrokes = true;
 boolean showBeams = false;
 boolean showApolloniusDiagram = false;
@@ -357,7 +357,9 @@ class RingSet {
 
       if (numPointsPerRing >= 3) delta = TWO_PI / (numPointsPerRing + 1);
       else delta = TWO_PI / 20;
-      generateSamples();
+      // delta = TWO_PI / 40;
+
+      // generateSamples();
       if (showApolloniusDiagram) generatePointsAD();
     }
 
@@ -392,7 +394,7 @@ class RingSet {
       edges[i].setAdjFace(adjFace);
     }
 
-    void generateSamples() {
+    private void generateSamples(float delta) {
       int left = vertices[3].rid;  // left ring
       int right = vertices[0].rid;  // right ring
       pt c0 = centers[left], c1 = centers[right];
@@ -473,8 +475,10 @@ class RingSet {
 
     @Override
     void showFace() {
-      if (showCorridorStrokes) stroke(0);
-      else noStroke();
+      generateSamples(TWO_PI / 40);  // high resolution
+      if (showCorridorStrokes) {
+        stroke(0);
+      } else noStroke();
 
       // show correspondences
       beginShape(QUAD_STRIP);
@@ -485,7 +489,9 @@ class RingSet {
       vertex(vertices[1].position);  // B
       endShape();
 
-      if (showCorridorStrokes) noStroke();  // restore state
+      if (showCorridorStrokes) {
+        noStroke();  // restore state
+      }
     }
 
     void showCircumcircles() {
@@ -528,26 +534,32 @@ class RingSet {
 
       stroke(springGreen);
       showCircle(center, nor, radius);
+
+      hint(DISABLE_DEPTH_TEST);
+      strokeWeight(3);
       beginShape(LINES);
       vertex(pa);
       vertex(pb);
       endShape();
+      strokeWeight(1);
       noStroke();
+      hint(ENABLE_DEPTH_TEST);
     }
 
     /* Show things related to debug, e.g. circumcircles of two adjacent triangles. */
     void showDebugInfo() {
       /* Show the circumcircles of the two adjacent triangles. */
-      stroke(magenta);
-      for (int i = 0; i < 2; ++i) {
-        IncFace f = edges[i].getAdjFace();
-        if (f != null) {
-          assert f instanceof IncTriangle;
-          IncTriangle t = (IncTriangle)f;
-          t.showCircumcircle();
-        }
-      }
+      // stroke(magenta);
+      // for (int i = 0; i < 2; ++i) {
+      //   IncFace f = edges[i].getAdjFace();
+      //   if (f != null) {
+      //     assert f instanceof IncTriangle;
+      //     IncTriangle t = (IncTriangle)f;
+      //     t.showCircumcircle();
+      //   }
+      // }
 
+      /* Show the circumcircles of triangle ABC and CDA. These two circles are actually the same. */
       // stroke(cyan);
       // showCircumcircles();
 
@@ -585,6 +597,8 @@ class RingSet {
         generateExtendedPoints(samples.get(i), samples.get(i+1), d, extPoints);
       }
       generateExtendedPoints(vertices[2].position, vertices[1].position, d, extPoints);
+
+      // hint(DISABLE_DEPTH_TEST);
       stroke(0);
       strokeWeight(1);
       beginShape(LINES);
@@ -593,6 +607,8 @@ class RingSet {
         vertex(extPoints.get(i+1));
       }
       endShape();
+      noStroke();
+      // hint(ENABLE_DEPTH_TEST);
     }
 
     private pt generateADPoint(pt pa, pt pb, pt cLeft, float rLeft, vec xLeft, vec yLeft) {
@@ -675,10 +691,10 @@ class RingSet {
 
     /*
      * Generate a list of triangles which approximate the corridor. The list of
-     * positions will be updated as sampled points will be inserted. Note that
-     * there is no need to update the hash map vids.
+     * positions will be updated as sampled points will be inserted.
      */
     ArrayList<Triangle> toTriangles(ArrayList<pt> positions, HashMap<pt, Integer> pids) {
+      generateSamples(delta);
       ArrayList<Triangle> triangles = new ArrayList<Triangle>();
       if (samples == null || samples.size() == 0) {
         int a = pids.get(vertices[0].position);
@@ -692,6 +708,7 @@ class RingSet {
 
       int td = pids.get(vertices[3].position);  // ID of tmp vertex D
       int ta = pids.get(vertices[0].position);  // ID of tmp vertex A
+
       int k = positions.size();  // k is the next valid vertex ID
       for (int i = 0; i < samples.size(); i += 2) {
         pt tpc = samples.get(i);
@@ -1929,7 +1946,7 @@ class RingSet {
     pt pa = null;
     {
       pt pdd = P(pd, rLeft, yAxes[ridLeft]);  // sampled point + tangent at that point
-      pt[] candidates = pivotPlaneAroundLineHitCircle(cRight, rRight, nRight, pd, pdd, xAxes[ridRight], yAxes[ridRight]);
+      pt[] candidates = contactsOnSupportingPlaneOfEdgeCircle(cRight, rRight, nRight, pd, pdd, xAxes[ridRight], yAxes[ridRight]);
       pa = candidates[0];
       if (dot(V(pd, cRight), N(pd, pa, pdd)) > 0) {
         pa = candidates[1];
@@ -1940,7 +1957,7 @@ class RingSet {
     pt pb = null;
     {
       pt pcc = P(pc, -rLeft, yAxes[ridLeft]);
-      pt[] candidates = pivotPlaneAroundLineHitCircle(cRight, rRight, nRight, pc, pcc, xAxes[ridRight], yAxes[ridRight]);
+      pt[] candidates = contactsOnSupportingPlaneOfEdgeCircle(cRight, rRight, nRight, pc, pcc, xAxes[ridRight], yAxes[ridRight]);
       pb = candidates[0];
       if (dot(V(pc, cRight), N(pc, pb, pcc)) > 0) {
         pb = candidates[1];
@@ -2358,7 +2375,7 @@ class RingSet {
       float c = cos(angle), s = sin(angle);
       pt p0 = P(cu, ru * c, viu, ru * s, vju);  // sampled point
       pt p1 = P(p0, -ru * s, viu, ru * c, vju);  // sampled point + tangent at that point
-      pt[] candidates = pivotPlaneAroundLineHitCircle(cv, rv, nv, p0, p1, viv, vjv);
+      pt[] candidates = contactsOnSupportingPlaneOfEdgeCircle(cv, rv, nv, p0, p1, viv, vjv);
       pt candidate = candidates[0];
       if (dot(V(p0, cv), N(p0, candidate, p1)) > 0) {
         candidate = candidates[1];
@@ -2885,20 +2902,21 @@ class RingSet {
 
   void showDebugIncCHInfo() {
     if (nRings == 2) {
+
       incCorridors.get(0).showDebugInfo();
       incCorridors.get(1).showDebugInfo();
 
       {  // show the line connecting the two centers
-        vec v = U(centers[0], centers[1]);
-        float d = 1000;
-        pt p0 = P(centers[0], -d, v);
-        pt p1 = P(centers[1], d, v);
-        stroke(darkRed);
-        strokeWeight(2);
-        beginShape(LINES);
-        vertex(p0);
-        vertex(p1);
-        endShape();
+        // vec v = U(centers[0], centers[1]);
+        // float d = 1000;
+        // pt p0 = P(centers[0], -d, v);
+        // pt p1 = P(centers[1], d, v);
+        // stroke(darkRed);
+        // strokeWeight(2);
+        // beginShape(LINES);
+        // vertex(p0);
+        // vertex(p1);
+        // endShape();
       }
     }
 

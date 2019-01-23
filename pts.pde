@@ -94,6 +94,7 @@ class pts { // class for manipulaitng and sisplaying polyloops
   pt Picked() {return G[pv];}
 
 void savePts(String fn) {
+  println("saving point set:", fn);
   String [] inppts = new String [nv+1];
   int s=0;
   inppts[s++]=str(nv);
