@@ -13,7 +13,7 @@ In rs_easy_3:
 Three-ring triangles fail convexity test (now succeed)
 
 In rs_easy_5:
-fail on generating the extreme triangle for 3 circles
+fail on generating the supporting plane of 3 circles
 
 In rs_medium_0:
 Edge flip occurs!

@@ -86,7 +86,7 @@ pt[] generateContactsOnSphere(pt C, float R, int nc, float rMax) {
 
 
 
-
+// TODO: need to revisit
 pt[] generatePointsForOneCircle(pt p,                                // in
                                 float r,                             // in
                                 pt C,                                // in

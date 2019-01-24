@@ -1,45 +1,54 @@
 // points, vectors, frames in 3D
-class vec { float x=0,y=0,z=0;
-   vec () {};
-   vec (float px, float py, float pz) {x = px; y = py; z = pz;};
-   vec (float px, float py) {x = px; y = py;};
-   vec set (float px, float py, float pz) {x = px; y = py; z = pz; return this;};
-   vec setTo(vec V) {x = V.x; y = V.y; z = V.z; return this;};
-   vec set (vec V) {x = V.x; y = V.y; z = V.z; return this;};
-   vec add(vec V) {x+=V.x; y+=V.y; z+=V.z; return this;};
-   vec add(float s, vec V) {x+=s*V.x; y+=s*V.y; z+=s*V.z; return this;};
-   vec sub(vec V) {x-=V.x; y-=V.y; z-=V.z; return this;};
-   vec mul(float f) {x*=f; y*=f; z*=f; return this;};
-   vec div(float f) {x/=f; y/=f; z/=f; return this;};
-   vec div(int f) {x/=f; y/=f; z/=f; return this;};
-   vec rev() {x=-x; y=-y; z=-z; return this;};
-   float norm() {return(sqrt(sq(x)+sq(y)+sq(z)));};
-   vec normalize() {float n=norm(); if (n>0.000001) {div(n);}; return this;};
-   vec rotate(float a, vec I, vec J) { // Rotate this by angle a parallel in plane (I,J) Assumes I and J are orthogonal
-     float x=d(this,I), y=d(this,J); // dot products
-     float c=cos(a), s=sin(a);
-     add(x*c-x-y*s,I); add(x*s+y*c-y,J);
-     return this; };
-   } // end class vec
+class vec {
+  float x=0,y=0,z=0;
+  vec () {};
+  vec (float px, float py, float pz) {x = px; y = py; z = pz;};
+  vec (float px, float py) {x = px; y = py;};
+  vec set (float px, float py, float pz) {x = px; y = py; z = pz; return this;};
+  vec setTo(vec V) {x = V.x; y = V.y; z = V.z; return this;};
+  vec set (vec V) {x = V.x; y = V.y; z = V.z; return this;};
+  vec add(vec V) {x+=V.x; y+=V.y; z+=V.z; return this;};
+  vec add(float s, vec V) {x+=s*V.x; y+=s*V.y; z+=s*V.z; return this;};
+  vec sub(vec V) {x-=V.x; y-=V.y; z-=V.z; return this;};
+  vec mul(float f) {x*=f; y*=f; z*=f; return this;};
+  vec div(float f) {x/=f; y/=f; z/=f; return this;};
+  vec div(int f) {x/=f; y/=f; z/=f; return this;};
+  vec rev() {x=-x; y=-y; z=-z; return this;};
+  float norm() {return(sqrt(sq(x)+sq(y)+sq(z)));};
+  vec normalize() {float n=norm(); if (n>0.000001) {div(n);}; return this;};
+  vec rotate(float a, vec I, vec J) { // Rotate this by angle a parallel in plane (I,J) Assumes I and J are orthogonal
+    float x=d(this,I), y=d(this,J); // dot products
+    float c=cos(a), s=sin(a);
+    add(x*c-x-y*s,I); add(x*s+y*c-y,J);
+    return this;
+  };
+  String toString() {
+    return "(" + x + ", " + y + ", " + z + ")";
+  }
+}
 
-class pt { float x=0,y=0,z=0;
-   pt () {};
-   pt (float px, float py) {x = px; y = py;};
-   pt (float px, float py, float pz) {x = px; y = py; z = pz; };
-   pt set (float px, float py, float pz) {x = px; y = py; z = pz; return this;};
-   pt set (pt P) {x = P.x; y = P.y; z = P.z; return this;};
-   pt setTo(pt P) {x = P.x; y = P.y; z = P.z; return this;};
-   pt setTo(float px, float py, float pz) {x = px; y = py; z = pz; return this;};
-   pt add(pt P) {x+=P.x; y+=P.y; z+=P.z; return this;};
-   pt add(vec V) {x+=V.x; y+=V.y; z+=V.z; return this;};
-   pt sub(vec V) {x-=V.x; y-=V.y; z-=V.z; return this;};
-   pt add(float s, vec V) {x+=s*V.x; y+=s*V.y; z+=s*V.z; return this;};
-   pt sub(pt P) {x-=P.x; y-=P.y; z-=P.z; return this;};
-   pt mul(float f) {x*=f; y*=f; z*=f; return this;};
-   pt snapToSphere(float r) {float d=r/sqrt(sq(x)+sq(y)+sq(z)); x*=d; y*=d; z*=d; return this;};
-   pt div(float f) {x/=f; y/=f; z/=f; return this;};
-   pt div(int f) {x/=f; y/=f; z/=f; return this;};
-   }
+class pt {
+  float x=0,y=0,z=0;
+  pt () {};
+  pt (float px, float py) {x = px; y = py;};
+  pt (float px, float py, float pz) {x = px; y = py; z = pz; };
+  pt set (float px, float py, float pz) {x = px; y = py; z = pz; return this;};
+  pt set (pt P) {x = P.x; y = P.y; z = P.z; return this;};
+  pt setTo(pt P) {x = P.x; y = P.y; z = P.z; return this;};
+  pt setTo(float px, float py, float pz) {x = px; y = py; z = pz; return this;};
+  pt add(pt P) {x+=P.x; y+=P.y; z+=P.z; return this;};
+  pt add(vec V) {x+=V.x; y+=V.y; z+=V.z; return this;};
+  pt sub(vec V) {x-=V.x; y-=V.y; z-=V.z; return this;};
+  pt add(float s, vec V) {x+=s*V.x; y+=s*V.y; z+=s*V.z; return this;};
+  pt sub(pt P) {x-=P.x; y-=P.y; z-=P.z; return this;};
+  pt mul(float f) {x*=f; y*=f; z*=f; return this;};
+  pt snapToSphere(float r) {float d=r/sqrt(sq(x)+sq(y)+sq(z)); x*=d; y*=d; z*=d; return this;};
+  pt div(float f) {x/=f; y/=f; z/=f; return this;};
+  pt div(int f) {x/=f; y/=f; z/=f; return this;};
+  String toString() {
+    return "(" + x + ", " + y + ", " + z + ")";
+  }
+}
 
 // =====  vector functions
 vec V() {return new vec(); };                                                                          // make vector (x,y,z)
@@ -67,7 +76,7 @@ vec Normal(vec V) {
   if (abs(V.z)<=min(abs(V.x),abs(V.y))) return V(-V.y,V.x,0);
   if (abs(V.x)<=min(abs(V.z),abs(V.y))) return V(0,-V.z,V.y);
   return V(V.z,0,-V.x);
-  }
+}
 
 
 // ===== point functions
@@ -100,9 +109,10 @@ vec MouseDrag() {return V(mouseX-pmouseX,mouseY-pmouseY,0);};                   
 pt ScreenCenter() {return P(width/2,height/2);}                                                        //  point in center of  canvas
 
 // ===== measures
+float dot(pt p, vec v) {return p.x * v.x + p.y * v.y + p.z * v.z;}
+float dot(vec v, pt p) {return p.x * v.x + p.y * v.y + p.z * v.z;}
 float d(vec U, vec V) {return U.x*V.x+U.y*V.y+U.z*V.z; };                                            //U*V dot product
 float dot(vec U, vec V) {return U.x*V.x+U.y*V.y+U.z*V.z; };                                            //U*V dot product
-float dot(vec U, pt P) {return U.x*P.x+U.y*P.y+U.z*P.z; };
 float det2(vec U, vec V) {return -U.y*V.x+U.x*V.y; };                                       // U|V det product
 float det3(vec U, vec V) {return sqrt(d(U,U)*d(V,V) - sq(d(U,V))); };                                       // U|V det product
 float m(vec U, vec V, vec W) {return d(U,N(V,W)); };                                                 // (UxV)*W  mixed product, determinant
@@ -127,13 +137,12 @@ vec R(vec V, float a, vec I, vec J) {float x=d(V,I), y=d(V,J); float c=cos(a), s
 pt R(pt Q, pt C, pt P, pt R) { // returns rotated version of Q by angle(CP,CR) parallel to plane (C,P,R)
    vec I0=U(C,P), I1=U(C,R), V=V(C,Q);
    float c=d(I0,I1), s=sqrt(1.-sq(c));
-     if (abs(s)<0.00001) return Q;
+   if (abs(s)<0.00001) return Q;
    vec J0=V(1./s,I1,-c/s,I0);
    vec J1=V(-s,I0,c,J0);
    float x=d(V,I0), y=d(V,J0);
-                                //  stroke(red); show(C,400,I0); stroke(blue); show(C,400,I1); stroke(orange); show(C,400,J0); stroke(magenta); show(C,400,J1); noStroke();
    return P(Q,x,M(I1,I0),y,M(J1,J0));
-  }
+}
 pt R(pt Q, float a) {float dx=Q.x, dy=Q.y, c=cos(a), s=sin(a); return P(c*dx+s*dy,-s*dx+c*dy,Q.z); };  // Q rotated by angle a around the origin
 pt R(pt Q, float a, pt C) {float dx=Q.x-C.x, dy=Q.y-C.y, c=cos(a), s=sin(a); return P(C.x+c*dx-s*dy, C.y+s*dx+c*dy, Q.z); };  // Q rotated by angle a around point P
 
@@ -155,6 +164,7 @@ void show(pt P, String s, vec D) {text(s, P.x+D.x, P.y+D.y, P.z+D.z);  }; // pri
 void showShadow(pt P, float r) {pushMatrix(); translate(P.x,P.y,0); scale(1,1,0.01); sphere(r); popMatrix();}
 
 String toText(vec V){ return "("+nf(V.x,1,5)+","+nf(V.y,1,5)+","+nf(V.z,1,5)+")";}
+
 // ==== curve
 void bezier(pt A, pt B, pt C, pt D) {bezier(A.x,A.y,A.z,B.x,B.y,B.z,C.x,C.y,C.z,D.x,D.y,D.z);} // draws a cubic Bezier curve with control points A, B, C, D
 void bezier(pt [] C) {bezier(C[0],C[1],C[2],C[3]);} // draws a cubic Bezier curve with control points A, B, C, D
@@ -174,93 +184,109 @@ boolean intersect(pt P, pt Q, pt A, pt B, pt C, pt X)  {return intersect(P,V(P,Q
 boolean intersect(pt E, vec T, pt A, pt B, pt C, pt X) { // if ray from E along T intersects triangle (A,B,C), return true and set X to the intersection point
   vec EA=V(E,A), EB=V(E,B), EC=V(E,C), AB=V(A,B), AC=V(A,C);
   boolean s=cw(EA,EB,EC), sA=cw(T,EB,EC), sB=cw(EA,T,EC), sC=cw(EA,EB,T);
-  if ( (s==sA) && (s==sB) && (s==sC) ) return false;
+  if ((s==sA) && (s==sB) && (s==sC)) return false;
   float t = m(EA,AC,AB) / m(T,AC,AB);
   X.set(P(E,t,T));
   return true;
-  }
+}
 boolean rayIntersectsTriangle(pt E, vec T, pt A, pt B, pt C) { // true if ray from E with direction T hits triangle (A,B,C)
   vec EA=V(E,A), EB=V(E,B), EC=V(E,C);
   boolean s=cw(EA,EB,EC), sA=cw(T,EB,EC), sB=cw(EA,T,EC), sC=cw(EA,EB,T);
-  return  (s==sA) && (s==sB) && (s==sC) ;};
-boolean edgeIntersectsTriangle(pt P, pt Q, pt A, pt B, pt C)  {
+  return  (s==sA) && (s==sB) && (s==sC);
+};
+boolean edgeIntersectsTriangle(pt P, pt Q, pt A, pt B, pt C) {
   vec PA=V(P,A), PQ=V(P,Q), PB=V(P,B), PC=V(P,C), QA=V(Q,A), QB=V(Q,B), QC=V(Q,C);
   boolean p=cw(PA,PB,PC), q=cw(QA,QB,QC), a=cw(PQ,PB,PC), b=cw(PA,PQ,PC), c=cw(PA,PB,PQ);
   return (p!=q) && (p==a) && (p==b) && (p==c);
-  }
-float rayParameterToIntersection(pt E, vec T, pt A, pt B, pt C) {vec AE=V(A,E), AB=V(A,B), AC=V(A,C); return - m(AE,AC,AB) / m(T,AC,AB);}
+}
+float rayParameterToIntersection(pt E, vec T, pt A, pt B, pt C) {
+  vec AE=V(A,E), AB=V(A,B), AC=V(A,C);
+  return -m(AE,AC,AB) / m(T,AC,AB);
+}
 
 float angleDraggedAround(pt G) {  // returns angle in 2D dragged by the mouse around the screen projection of G
-   pt S=P(screenX(G.x,G.y,G.z),screenY(G.x,G.y,G.z),0);
-   vec T=V(S,Pmouse()); vec U=V(S,Mouse());
-   return atan2(d(R(U),T),d(U,T));
-   }
+  pt S=P(screenX(G.x,G.y,G.z),screenY(G.x,G.y,G.z),0);
+  vec T=V(S,Pmouse()); vec U=V(S,Mouse());
+  return atan2(d(R(U),T),d(U,T));
+}
 
-float scaleDraggedFrom(pt G) {pt S=P(screenX(G.x,G.y,G.z),screenY(G.x,G.y,G.z),0); return d(S,Mouse())/d(S,Pmouse()); }
+float scaleDraggedFrom(pt G) {
+  pt S=P(screenX(G.x,G.y,G.z),screenY(G.x,G.y,G.z),0);
+  return d(S,Mouse())/d(S,Pmouse());
+}
 
 // FANS, CONES, AND ARROWS
 void disk(pt P, vec V, float r) {
   vec I = U(Normal(V));
   vec J = U(N(I,V));
   disk(P,I,J,r);
-  }
+}
 
 void disk(pt P, vec I, vec J, float r) {
   float da = TWO_PI / 36;
   float a = 0;
   beginShape(TRIANGLE_FAN);
-    v(P);
-    for(int i = 0; i < 36; ++i) {
-      v(P(P,r*cos(a),I,r*sin(a),J));
-      a += da;
-    }
-    v(P(P, r, I));
-  endShape();
+  v(P);
+  for(int i = 0; i < 36; ++i) {
+    v(P(P,r*cos(a),I,r*sin(a),J));
+    a += da;
   }
-
+  v(P(P, r, I));
+  endShape();
+}
 
 void fan(pt P, vec V, float r) {
   vec I = U(Normal(V));
   vec J = U(N(I,V));
   fan(P,V,I,J,r);
-  }
+}
 
 void fan(pt P, vec V, vec I, vec J, float r) {
   float da = TWO_PI/36;
   beginShape(TRIANGLE_FAN);
-    v(P(P,V));
-    for(float a=0; a<=TWO_PI+da; a+=da) v(P(P,r*cos(a),I,r*sin(a),J));
+  v(P(P,V));
+  for(float a=0; a<=TWO_PI+da; a+=da) v(P(P,r*cos(a),I,r*sin(a),J));
   endShape();
-  }
+}
 
 void collar(pt P, vec V, float r, float rd) {
   vec I = U(Normal(V));
   vec J = U(N(I,V));
   collar(P,V,I,J,r,rd);
-  }
+}
 
 void collar(pt P, vec V, vec I, vec J, float r, float rd) {
   float da = TWO_PI/36;
   beginShape(QUAD_STRIP);
-    for(float a=0; a<=TWO_PI+da; a+=da) {v(P(P,r*cos(a),I,r*sin(a),J,0,V)); v(P(P,rd*cos(a),I,rd*sin(a),J,1,V));}
-  endShape();
+  for(float a=0; a<=TWO_PI+da; a+=da) {
+    v(P(P,r*cos(a),I,r*sin(a),J,0,V));
+    v(P(P,rd*cos(a),I,rd*sin(a),J,1,V));
   }
+  endShape();
+}
 
-void cone(pt P, vec V, float r) {fan(P,V,r); disk(P,V,r);}
+void cone(pt P, vec V, float r) {
+  fan(P,V,r);
+  disk(P,V,r);
+}
 
 void stub(pt P, vec V, float r, float rd) {
-  collar(P,V,r,rd); disk(P,V,r); disk(P(P,V),V,rd);
-  }
+  collar(P,V,r,rd);
+  disk(P,V,r);
+  disk(P(P,V),V,rd);
+}
 
 void stub(pt P, pt Q, float r, float rd) {
   vec V = V(P,Q);
-  collar(P,V,r,rd); disk(P,V,r); disk(P(P,V),V,rd);
-  }
+  collar(P,V,r,rd);
+  disk(P,V,r);
+  disk(P(P,V),V,rd);
+}
 
 void arrow(pt P, vec V, float r) {
   stub(P,V(.8,V),r*2/3,r/3);
   cone(P(P,V(.8,V)),V(.2,V),r);
-  }
+}
 
 // **************************** PRIMITIVE
 void showFrame(float d) {
@@ -269,39 +295,55 @@ void showFrame(float d) {
   fill(blue);  showArrow(d,d/10);
   fill(red); pushMatrix(); rotateY(PI/2); showArrow(d,d/10); popMatrix();
   fill(green); pushMatrix(); rotateX(-PI/2); showArrow(d,d/10); popMatrix();
-  }
+}
 
 void showFan(float d, float r) {
   float da = TWO_PI/36;
   beginShape(TRIANGLE_FAN);
-    vertex(0,0,d);
-    for(float a=0; a<=TWO_PI+da; a+=da) vertex(r*cos(a),r*sin(a),0);
+  vertex(0,0,d);
+  for(float a=0; a<=TWO_PI+da; a+=da) vertex(r*cos(a),r*sin(a),0);
   endShape();
-  }
+}
 
 void showCollar(float d, float r, float rd) {
   float da = TWO_PI/36;
   beginShape(QUAD_STRIP);
-    for(float a=0; a<=TWO_PI+da; a+=da) {vertex(r*cos(a),r*sin(a),0); vertex(rd*cos(a),rd*sin(a),d);}
+  for(float a=0; a<=TWO_PI+da; a+=da) {vertex(r*cos(a),r*sin(a),0); vertex(rd*cos(a),rd*sin(a),d);}
   endShape();
-  }
+}
 
-void showCone(float d, float r) {showFan(d,r);  showFan(0,r);}
+void showCone(float d, float r) {
+  showFan(d,r);
+  showFan(0,r);
+}
 
 void showStub(float d, float r, float rd) {
-  showCollar(d,r,rd); showFan(0,r);  pushMatrix(); translate(0,0,d); showFan(0,rd); popMatrix();
-  }
+  showCollar(d,r,rd);
+  showFan(0,r);
+  pushMatrix();
+  translate(0,0,d);
+  showFan(0,rd);
+  popMatrix();
+}
 
 void showArrow(float d, float r) {
   float dd=d/5;
-  showStub(d-dd,r*2/3,r/3); pushMatrix(); translate(0,0,d-dd); showCone(dd,r); popMatrix();
-  }
+  showStub(d-dd,r*2/3,r/3);
+  pushMatrix();
+  translate(0,0,d-dd);
+  showCone(dd,r);
+  popMatrix();
+}
 
 void showBlock(float w, float d, float h, float x, float y, float z, float a) {
-  pushMatrix(); translate(x,y,h/2); rotateZ(TWO_PI*a); box(w, d, h); popMatrix();
-  }
+  pushMatrix();
+  translate(x,y,h/2);
+  rotateZ(TWO_PI*a);
+  box(w, d, h);
+  popMatrix();
+}
 
-//*********** PICK
+// *********** PICK
 vec I=V(1,0,0), J=V(0,1,0), K=V(0,0,1); // screen projetions of global model frame
 
 void computeProjectedVectors() {
@@ -309,18 +351,18 @@ void computeProjectedVectors() {
   pt A = ToScreen(P(1,0,0));
   pt B = ToScreen(P(0,1,0));
   pt C = ToScreen(P(0,0,1));
-  I=V(O,A);
-  J=V(O,B);
-  K=V(O,C);
-  }
+  I = V(O,A);
+  J = V(O,B);
+  K = V(O,C);
+}
 
 vec ToIJ(vec V) {
- float x = det2(V,J) / det2(I,J);
- float y = det2(V,I) / det2(J,I);
- return V(x,y,0);
- }
+  float x = det2(V,J) / det2(I,J);
+  float y = det2(V,I) / det2(J,I);
+  return V(x,y,0);
+}
 
 vec ToK(vec V) {
- float z = dot(V,K) / dot(K,K);
- return V(0,0,z);
- }
+  float z = dot(V,K) / dot(K,K);
+  return V(0,0,z);
+}

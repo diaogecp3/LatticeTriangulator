@@ -3,7 +3,7 @@
  ******************************************************************************/
 
 void displayDebugText() {
-  if (test >=12 && test <= 15) {
+  if (test >=12 && test <= 17) {
     scribeHeader("valid ring set? " + (validRS ? "yes" : "no"), 3);
   }
   if (numTriangles >= 0) {
@@ -83,7 +83,7 @@ void keyPressed() {
     debug2RT = !debug2RT;
     debugST = !debugST;
     if (test == 13) {
-      // debugIncCH = !debugIncCH;
+      debugIncCH = !debugIncCH;
       debugApolloniusDiagram = !debugApolloniusDiagram;
     }
   }
@@ -100,10 +100,10 @@ void keyPressed() {
     show3RT = !show3RT;
   }
   if (key == '4') {
-    if (test >= 12 && test <= 16) showCorridorFaces = !showCorridorFaces;
+    if (test >= 12 && test <= 17) showCorridorFaces = !showCorridorFaces;
   }
   if (key == '5') {
-    if (test >= 12 && test <= 16) showTriangleFaces = !showTriangleFaces;
+    if (test >= 12 && test <= 17) showTriangleFaces = !showTriangleFaces;
   }
   if (key == '7') {
     if (test == 12 || test == 13) {

@@ -134,7 +134,7 @@ boolean findFirstTriangle(ArrayList<Vertex> vertices,                // in/out
   }
   vb = vertices.get(b);
   vc = vertices.get(c);
-  vec normalABC = normalToTriangle(va.position, vb.position, vc.position);
+  vec normalABC = normalOfTriangle(va.position, vb.position, vc.position);
   FrontEdge e0, e1, e2;
   e0 = new FrontEdge(a, b, c, normalABC);
   e1 = new FrontEdge(b, c, a, normalABC);
@@ -171,7 +171,7 @@ void initFronts(int nGroups,                                         // in
     pt A = vertices.get(head).position;
     pt B = vertices.get(head + 1).position;
     pt C = vertices.get(head + 2).position;
-    vec N = normalToTriangle(A, B, C);
+    vec N = normalOfTriangle(A, B, C);
 
     for (int j = 0; j < nPointsPerGroup - 1; ++j) {
       int current = head + j;
@@ -216,7 +216,7 @@ int pivot(FrontEdge e,                                               // in/out
     if (manifoldMask[a][i] || manifoldMask[i][b]) continue;
     if (gid >= 0 && vertices.get(i).groupID == gid) continue;
     pt D = vertices.get(i).position;
-    vec normalADB = normalToTriangle(A, D, B);
+    vec normalADB = normalOfTriangle(A, D, B);
     float cosTheta = dot(normalABC, normalADB);
     if (cosTheta > maxCosTheta) {  // the angle should be [0, pi]
       maxCosTheta = cosTheta;

@@ -55,3 +55,15 @@ Source of picture in paper. About Apollonius diagram.
 
 ps_arcs_18:
 Source of picture in paper. About hub triangulation.
+
+ps_arcs_19:
+About supporting plane of 3 circles (special case).
+
+ps_arcs_20:
+About convex hull of 2 circles. The corridor sampling is wrong.
+
+ps_arcs_21:
+About convex hull of 2 circles. The corridor sampling is wrong.
+
+ps_arcs_22:
+Should revisit the definition of each circle.

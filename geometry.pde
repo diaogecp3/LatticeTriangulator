@@ -7,18 +7,17 @@
  ******************************************************************************/
 
 
-int methodEP = 0;  // 0: basic, 1: heuristic normal, 2: heuristic plane
+int methodIterSP = 0;  // 0: basic, 1: heuristic normal, 2: heuristic plane
 
-
-class DebugEPInfo {
+class DebugIterSPInfo {  // debug info about iterative supporting plane of 3 circles
   int iter = 0;
-  DebugEPInfo() {}
+  DebugIterSPInfo() {}
 }
 
 /*
- * Construct the normal to triangle (A, B, C).
+ * Construct the normal of triangle (A, B, C).
  */
-vec normalToTriangle(pt A, pt B, pt C) {
+vec normalOfTriangle(pt A, pt B, pt C) {
   return U(N(A, B, C));
 }
 
@@ -57,65 +56,47 @@ vec constructNormal(vec v) {
 }
 
 /*
- * This is a helper function to find the two intersection points of two planes.
+ * Compute the intersection line of two planes, defined by:
+ * a0x + b0y + c0z = d0
+ * a1x + b1y + c1z = d1
  */
-void constructAndSolveLE(vec A,                                      // in
-                         vec B,                                      // in
-                         vec C,                                      // in
-                         vec D,                                      // in
-                         vec2 yz0,                                   // out
-                         vec2 yz1) {                                 // out
-  float dotAC = dot(A, C);
-  float dotBD = dot(B, D);
-  vec2 t0 = solveLinearEquationsInTwoVars(C.y, C.z, D.y, D.z, dotAC, dotBD);
-  vec2 t1 = solveLinearEquationsInTwoVars(C.y, C.z, D.y, D.z, dotAC - C.x, dotBD - D.x);
-  yz0.set(t0);
-  yz1.set(t1);
-  return;
-}
-
-/*
- * Compute the intersection line of two planes, given that they are not parallel.
- */
-boolean intersectionTwoPlanes(pt A,                                     // in
-                              vec C,                                    // in
-                              pt B,                                     // in
-                              vec D,                                    // in
-                              pt p0,                                    // out
-                              pt p1) {                                  // out
-  vec a, b, c, d;
-  if (notZero(C.y * D.z - D.y * C.z)) {
-    vec2 yz0 = new vec2(), yz1 = new vec2();
-    a = new vec(A.x, A.y, A.z);
-    b = new vec(B.x, B.y, B.z);
-    c = new vec(C.x, C.y, C.z);
-    d = new vec(D.x, D.y, D.z);
-    constructAndSolveLE(a, b, c, d, yz0, yz1);
-    p0.set(0.0, yz0.x, yz0.y);
-    p1.set(1.0, yz1.x, yz1.y);
-  } else if (notZero(C.x * D.z - D.x * C.z)) {
-    vec2 xz0 = new vec2(), xz1 = new vec2();
-    a = new vec(A.y, A.x, A.z);
-    b = new vec(B.y, B.x, B.z);
-    c = new vec(C.y, C.x, C.z);
-    d = new vec(D.y, D.x, D.z);
-    constructAndSolveLE(a, b, c, d, xz0, xz1);
-    p0.set(xz0.x, 0.0, xz0.y);
-    p1.set(xz1.x, 1.0, xz1.y);
-  } else if (notZero(C.x * D.y - D.x * C.y)) {
-    vec2 xy0 = new vec2(), xy1 = new vec2();
-    a = new vec(A.z, A.x, A.y);
-    b = new vec(B.z, B.x, B.y);
-    c = new vec(C.z, C.x, C.y);
-    d = new vec(D.z, D.x, D.y);
-    constructAndSolveLE(a, b, c, d, xy0, xy1);
-    p0.set(xy0.x, xy0.y, 0.0);
-    p1.set(xy1.x, xy1.y, 1.0);
+boolean intersectionTwoPlanes(float a0, float b0, float c0, float d0,
+                              float a1, float b1, float c1, float d1,
+                              pt p0, pt p1) {
+  if (notZero(b0 * c1 - c0 * b1)) {
+    vec2 t0 = solveLinearEquationsInTwoVars(b0, c0, b1, c1, d0, d1);
+    vec2 t1 = solveLinearEquationsInTwoVars(b0, c0, b1, c1, d0 - a0, d1 - a1);
+    p0.set(0.0, t0.x, t0.y);
+    p1.set(1.0, t1.x, t1.y);
+  } else if (notZero(a0 * c1 - c0 * a1)) {
+    vec2 t0 = solveLinearEquationsInTwoVars(a0, c0, a1, c1, d0, d1);
+    vec2 t1 = solveLinearEquationsInTwoVars(a0, c0, a1, c1, d0 - b0, d1 - b1);
+    p0.set(t0.x, 0.0, t0.y);
+    p1.set(t1.x, 1.0, t1.y);
+  } else if (notZero(a0 * b1 - b0 * a1)) {
+    vec2 t0 = solveLinearEquationsInTwoVars(a0, b0, a1, b1, d0, d1);
+    vec2 t1 = solveLinearEquationsInTwoVars(a0, b0, a1, b1, d0 - c0, d1 - c1);
+    p0.set(t0.x, t0.y, 0.0);
+    p1.set(t1.x, t1.y, 1.0);
   } else {
-    println("Can't find intersection of these two planes!");
+    println("No intersection between these two planes!");
     return false;
   }
   return true;
+}
+
+/*
+ * Compute the intersection line of two planes.
+ */
+boolean intersectionTwoPlanes(pt pa,                                     // in
+                              vec va,                                    // in
+                              pt pb,                                     // in
+                              vec vb,                                    // in
+                              pt p0,                                    // out
+                              pt p1) {                                  // out
+  float a0 = va.x, b0 = va.y, c0 = va.z, d0 = dot(pa, va);
+  float a1 = vb.x, b1 = vb.y, c1 = vb.z, d1 = dot(pb, vb);
+  return intersectionTwoPlanes(a0, b0, c0, d0, a1, b1, c1, d1, p0, p1);
 }
 
 /*
@@ -226,6 +207,20 @@ boolean intersectionCirclePlane(pt c, float r, vec n, pt p, vec d, pt p0, pt p1)
 }
 
 /*
+ * Compute the intersection points between a line (o, d) and a sphere (c, r).
+ * d is not necessarily a unit vector.
+ */
+pt[] intersectionLineSphere(pt o, vec d, pt c, float r) {
+  vec co = V(c, o);
+  float c2 = dot(d, d);
+  float c1 = 2 * dot(co, d);
+  float c0 = dot(co, co) - r * r;
+  float[] ts = solveQuadraticEquation(c2, c1, c0);
+  if (ts == null) return null;
+  return new pt[] {P(o, ts[0], d), P(o, ts[1], d)};
+}
+
+/*
  * Return the points of contact between the plane that passes through line (a, b)
  * and the circle (c, r, n). (vi, vj), which is optional, is the local frame on
  * the circle. May be deprecated.
@@ -275,7 +270,7 @@ pt[] pivotPlaneAroundLineHitCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec
  * and the circle (c, r, n). (vi, vj), which is optional, is the local frame on
  * the circle.
  */
-pt[] contactsOnSupportingPlaneOfEdgeCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec vj) {
+pt[] contactsOnSupportingPlaneOfLineCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec vj) {
   pt[] ps = new pt[2];
   boolean empty = emptyIntersectionLineDisk(a, b, c, r, n);
   if (!empty) {
@@ -494,15 +489,15 @@ void exactCHEdgeCircle(pt a, pt b, pt c, float r, vec n, vec vi, vec vj) {
 }
 
 /*
- * Return the points of contact that define the tangent plane of the three
- * circles (c0, r0, n0), (c1, r1, n1), and (c2, r2, n2). (vi0, vj0), (vi1, vj1),
- * (vi2, vj2), which are optional, are local frames on the three circles,
+ * Return the 3 points of contact that define the oriented supporting plane of
+ * the 3 circles (c0, r0, n0), (c1, r1, n1), and (c2, r2, n2). (vi0, vj0),
+ * (vi1, vj1) and (vi2, vj2), which are optional, are local frames on the 3 circles,
  * respectively. This function uses an iterative method.
  */
-pt[] tangentPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
-                                  pt c1, float r1, vec n1, vec vi1, vec vj1,
-                                  pt c2, float r2, vec n2, vec vi2, vec vj2,
-                                  DebugEPInfo dInfo) {
+pt[] supPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
+                            pt c1, float r1, vec n1, vec vi1, vec vj1,
+                            pt c2, float r2, vec n2, vec vi2, vec vj2,
+                            DebugIterSPInfo dInfo) {
   if (vi0 == null) vi0 = constructNormal(n0);
   if (vj0 == null) vj0 = N(n0, vi0);
   if (vi1 == null) vi1 = constructNormal(n1);
@@ -513,20 +508,20 @@ pt[] tangentPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
   /* Initialize a triangle with each vertex from each circle. */
   pt p0, p1, p2;
   vec t0, t1, t2, n;
-  // println("methodEP = ", methodEP);
-  switch (methodEP) {
+  // println("methodIterSP = ", methodIterSP);
+  switch (methodIterSP) {
     case 1:
-      vec tmpN1 = normalToTriangle(c0, c1, c2);
+      vec tmpN1 = normalOfTriangle(c0, c1, c2);
       p0 = P(c0, r0, U(A(tmpN1, -dot(tmpN1, n0), n0)));
       p1 = P(c1, r1, U(A(tmpN1, -dot(tmpN1, n1), n1)));
       p2 = P(c2, r2, U(A(tmpN1, -dot(tmpN1, n2), n2)));
       t0 = U(N(n0, V(c0, p0)));
       t1 = U(N(n1, V(c1, p1)));
       t2 = U(N(n2, V(c2, p2)));
-      n = normalToTriangle(p0, p1, p2);
+      n = normalOfTriangle(p0, p1, p2);
       break;
     case 2:
-      vec tmpN2 = normalToTriangle(c0, c1, c2);
+      vec tmpN2 = normalOfTriangle(c0, c1, c2);
       p0 = new pt();
       intersectionCirclePlane(c0, r0, n0, c0, tmpN2, p0, null);
       p1 = new pt();
@@ -536,7 +531,7 @@ pt[] tangentPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
       t0 = U(N(n0, V(c0, p0)));
       t1 = U(N(n1, V(c1, p1)));
       t2 = U(N(n2, V(c2, p2)));
-      n = normalToTriangle(p0, p1, p2);
+      n = normalOfTriangle(p0, p1, p2);
       break;
     default:
       p0 = P(c0, r0, vi0);
@@ -545,7 +540,7 @@ pt[] tangentPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
       t0 = vj0;
       t1 = vj1;
       t2 = vj2;
-      n = normalToTriangle(p0, p1, p2);
+      n = normalOfTriangle(p0, p1, p2);
   }
 
   int maxIter = 10;
@@ -600,10 +595,8 @@ pt[] tangentPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
   // println("iter =", iter);
   if (dInfo != null) dInfo.iter = iter;
 
-  pt[] ps = new pt[3];
-  ps[0] = p0;
-  ps[1] = p1;
-  ps[2] = p2;
+  pt[] ps = new pt[] {p0, p1, p2};
+  // println("ps.length =", ps.length);
   return ps;
 }
 
@@ -675,9 +668,9 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
 
   ArrayList<pt> points = new ArrayList<pt>();
   pt[] ps;
-  ps = tangentPlaneThreeCirclesIter(c0, r0, n0, vi0, vj0, c1, r1, n1, vi1, vj1, c2, r2, n2, vi2, vj2, null);
+  ps = supPlaneThreeCirclesIter(c0, r0, n0, vi0, vj0, c1, r1, n1, vi1, vj1, c2, r2, n2, vi2, vj2, null);
   for (pt p : ps) points.add(p);
-  ps = tangentPlaneThreeCirclesIter(c0, r0, n0, vi0, vj0, c2, r2, n2, vi2, vj2, c1, r1, n1, vi1, vj1, null);
+  ps = supPlaneThreeCirclesIter(c0, r0, n0, vi0, vj0, c2, r2, n2, vi2, vj2, c1, r1, n1, vi1, vj1, null);
   for (pt p : ps) points.add(p);
 
   int[] oppo = {3, 5, 4};

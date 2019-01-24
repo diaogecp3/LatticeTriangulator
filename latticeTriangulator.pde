@@ -13,22 +13,25 @@ import processing.pdf.*;
  * 8: one supporting-plane-of-three-circles-iter test (iterative method with 3 different initializations)
  * 9: one exact-convex-hull-of-three-circles test
  * 10: one three-ring-triangle test
- * 11: one triangle-mesh test
+ * 11:
  * 12: one interactive-naive-exact-convex-hull test
  * 13: one interactive-incremental-exact-convex-hull test
  * 14: one corridor test
  * 15: one mesh-from-exact-convex-hull test
  * 16: one interactive-hub test
+ * 17: one supporting-plane-of-three-circles-special-case test
  * ...
  * 100: many convex-hull tests
  * 101: many ring-set-triangulation tests
  * 102: many three-ring-triangle tests
- * 103: many extreme-plane tests
+ * 103: many supporting-plane-of-three-circles tests
  * ...
  * 200: one circle-plane-intersection test
  * 201: one hub-line-intersection test
+ * 202: one round-cone-distance test
+ * 203: one intersection-between-two-planes test
  */
-int test = 16;
+int test = 13;
 
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
@@ -112,7 +115,7 @@ void setup() {
 
   switch (inputMethodPointSet) {
     case 0:  // read from file
-      gPoints.loadPts("data/point_set/ps_arcs_14");
+      gPoints.loadPts("data/point_set/ps_arcs_22");
       break;
     case 1:  // generate randomly
       generatePointsOnSphere(gPoints, centerOfSphere, radiusOfSphere, 10);
@@ -248,7 +251,7 @@ void draw() {
       exactCHTwoCirclesTest();
       break;
     case 8:
-      tangentPlaneThreeCirclesIterTest();
+      supPlaneThreeCirclesIterTest();
       break;
     case 9:
       exactCHThreeCirclesTest();
@@ -257,7 +260,6 @@ void draw() {
       threeRingTriangleTest();
       break;
     case 11:
-      triangleMeshTest();
       break;
     case 12:
       exactCHNaiveTest();
@@ -274,6 +276,9 @@ void draw() {
     case 16:
       interactiveHubTest();
       break;
+    case 17:
+      supPlaneThreeCirclesSpecialTest();
+      break;
 
     case 100:  // many convex-hull tests
       convexHullTests(numTests, numPointsPerTest);
@@ -284,8 +289,8 @@ void draw() {
     case 102:  // many three-ring-triangle tests
       threeRingTriangleTests(numTests, numPointsPerRing, attenuation);
       break;
-    case 103:  // many extreme-plane(-of-three-circles) tests
-      extremePlaneTests(numTests, attenuation);
+    case 103:  // many supporting-plane-of-three-circles tests
+      supPlaneThreeCirclesTests(numTests, attenuation);
       break;
     case 104:
       exactCHAllCirclesTests(numTests, numRings);
@@ -299,6 +304,9 @@ void draw() {
       break;
     case 202:
       roundConeDistTest();
+      break;
+    case 203:
+      intersectionTwoPlanesTest();
       break;
     default:
       println("Please enter a correct test number");

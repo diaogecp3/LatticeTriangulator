@@ -199,45 +199,24 @@ void threeRingTriangleTests(int n, int np, float attenuation) {
 }
 
 /*
- * Test the performance of extreme-plane generation. n is the number of tests.
- * attenuation controls the size of each circle.
+ * Test the performance of supporting-plane-of-three-circles. n is the number of
+ * tests. attenuation controls the size of each circle.
  */
-void extremePlaneTests(int n, float attenuation) {
+void supPlaneThreeCirclesTests(int n, float attenuation) {
   float[] times = new float[n];
-  int[] iters = new int[n];
   for (int i = 0; i < n; ++i) {
     RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere, 3, 3);
     ringSet.init();
     ringSet.generatePoints(attenuation);
-    DebugEPInfo dInfo = new DebugEPInfo();
     long st = System.nanoTime();
-    ringSet.generateExTriThreeRings(0, 1, 2, dInfo);
+    ringSet.oneSupPlaneThreeCircles(0, 1, 2);  // closed-form solution
     long ed = System.nanoTime();
     times[i] = (ed - st) / 1000000.0;
-    iters[i] = dInfo.iter;
   }
   float avgTime = average(times, n, 0, n);
-  switch (methodEP) {
-    case 1:
-      System.out.format("Heuristic initialization using normal defined by 3 centers\n");
-      break;
-    case 2:
-      System.out.format("Heuristic initialization using plane defined by 3 centers\n");
-      break;
-    default:
-      System.out.format("Basic initialization using 3 x-axes\n");
-  }
   System.out.format("Extreme plane generation (n = %d, attenuation = %f): " +
                     "average time = %f ms.\n", n, attenuation, avgTime);
-
-  int max = 0;
-  for (int i = 0; i < n; ++i) {
-    //System.out.format("%d-th: %d\n", i, iters[i]);
-    if (iters[i] > max) max = iters[i];
-  }
-  System.out.format("max number of iterations = %d\n", max);
 }
-
 
 void exactCHAllCirclesTests(int n, int nRings) {
   float[] times = new float[n];
@@ -415,8 +394,6 @@ void pivotPlaneAroundLineHitCircleTest() {
   pt[] contacts = pivotPlaneAroundLineHitCircle(c, r, n, a, b, gRingSet.xAxes[0], gRingSet.yAxes[0]);
   assert contacts != null && contacts.length == 2;
 
-
-
   fill(violet, 200);
   showTriangle(a, b, contacts[0]);
   // fill(violet, 100);
@@ -487,7 +464,7 @@ void exactCHTwoCirclesTest() {
                     gRingSet.centers[1], gRingSet.radii[1], gRingSet.normals[1], gRingSet.xAxes[1], gRingSet.yAxes[1]);
 }
 
-void tangentPlaneThreeCirclesIterTest() {
+void supPlaneThreeCirclesIterTest() {
   assert gRingSet.nRings >= 3;
   gRingSet.generatePoints(attenuation);
   assert gRingSet.points != null && gRingSet.centers != null && gRingSet.normals != null &&
@@ -502,7 +479,7 @@ void tangentPlaneThreeCirclesIterTest() {
     disk(gRingSet.centers[2], gRingSet.normals[2], gRingSet.radii[2]);
   }
 
-  pt[] ps = tangentPlaneThreeCirclesIter(gRingSet.centers[0], gRingSet.radii[0], gRingSet.normals[0], gRingSet.xAxes[0], gRingSet.yAxes[0],
+  pt[] ps = supPlaneThreeCirclesIter(gRingSet.centers[0], gRingSet.radii[0], gRingSet.normals[0], gRingSet.xAxes[0], gRingSet.yAxes[0],
                                      gRingSet.centers[1], gRingSet.radii[1], gRingSet.normals[1], gRingSet.xAxes[1], gRingSet.yAxes[1],
                                      gRingSet.centers[2], gRingSet.radii[2], gRingSet.normals[2], gRingSet.xAxes[2], gRingSet.yAxes[2],
                                      null);
@@ -512,7 +489,7 @@ void tangentPlaneThreeCirclesIterTest() {
     fill(cyan, 100);
     showNormalToTriangle(ps[0], ps[1], ps[2], 20, 4);
   }
-  ps = tangentPlaneThreeCirclesIter(gRingSet.centers[0], gRingSet.radii[0], gRingSet.normals[0], gRingSet.xAxes[0], gRingSet.yAxes[0],
+  ps = supPlaneThreeCirclesIter(gRingSet.centers[0], gRingSet.radii[0], gRingSet.normals[0], gRingSet.xAxes[0], gRingSet.yAxes[0],
                                 gRingSet.centers[2], gRingSet.radii[2], gRingSet.normals[2], gRingSet.xAxes[2], gRingSet.yAxes[2],
                                 gRingSet.centers[1], gRingSet.radii[1], gRingSet.normals[1], gRingSet.xAxes[1], gRingSet.yAxes[1],
                                 null);
@@ -586,11 +563,6 @@ void exactCHNaiveTest() {
     rs.showDisks();
   }
 
-  if (showAuxPlane) {
-    fill(gray, 100);
-    showPlane(centerOfSphere, new vec(0, 0, 1), radiusOfSphere + 5);
-  }
-
   rs.generateExTrisNaive();
   if (show3RT) {
     rs.showExTris();
@@ -640,9 +612,9 @@ void exactCHIncrementalTest() {
   }
 
   int nv = gPoints.nv - gPoints.nv % 2;
-  RingSet rs = new RingSet(centerOfSphere, radiusOfSphere, gPoints.G, nv);
+  gRingSet = new RingSet(centerOfSphere, radiusOfSphere, gPoints.G, nv);
 
-  if (!rs.isValid()) {
+  if (!gRingSet.isValid()) {
     validRS = false;
     return;
   } else {
@@ -650,36 +622,41 @@ void exactCHIncrementalTest() {
   }
 
   if (showCircleSet) {
-    rs.showCircles();
+    gRingSet.showCircles();
   }
 
   if (showDiskSet) {
-    rs.showDisks();
+    gRingSet.showDisks();
   }
 
-  rs.generateExactCHIncremental();
+  gRingSet.generateExactCHIncremental();
 
   if (showTriangleFaces) {
     fill(blue);
-    rs.showIncTriangles();
+    gRingSet.showIncTriangles();
   }
+
+  // if (gRingSet.nRings == 2) {
+  //   gRingSet.incCorridors.get(0).showFace();
+  //   gRingSet.incCorridors.get(1).showFace();
+  // }
 
   if (showCorridorFaces) {
     fill(green);
-    rs.showIncCorridors();
+    gRingSet.showIncCorridors();
   }
 
-  // if (debugIncCH) {
-  //   rs.showDebugIncCHInfo();
+  if (debugIncCH) {
+    gRingSet.showDebugIncCHInfo();
+  }
+
+  // if (showApolloniusDiagram) {
+  //   gRingSet.showApolloniusDiagram();
   // }
 
-  if (showApolloniusDiagram) {
-    rs.showApolloniusDiagram();
-  }
-
-  if (debugApolloniusDiagram) {
-    rs.showADDebugInfo();
-  }
+  // if (debugApolloniusDiagram) {
+  //   gRingSet.showADDebugInfo();
+  // }
 }
 
 void corridorTest() {
@@ -777,11 +754,6 @@ void meshFromExactCHTest() {
   }
 }
 
-void triangleMeshTest() {
-  if (gTriangleMesh == null) return;
-  if (showTriMesh) gTriangleMesh.showTriangleMesh(hotPink, true);
-}
-
 void interactiveHubTest() {
   if (gPoints.nv < 2) {
     println("Should use at least 2 points.");
@@ -850,6 +822,88 @@ void interactiveHubTest() {
   }
 }
 
+/* Test the case when mix(N1, N2, N3) = 0. */
+void supPlaneThreeCirclesSpecialTest() {
+  if (gPoints.nv < 6) return;
+  pt[] points = gPoints.G;
+
+  /* If we fix the 3 centers: */
+  // vec v1 = U(V(1, 1, 0));
+  // vec v2 = U(V(0, 1, 1));
+  // vec v3 = U(V(-0.5, v1, -0.8, v2));
+  // points[0].set(P(centerOfSphere, radiusOfSphere, v1));
+  // points[2].set(P(centerOfSphere, radiusOfSphere, v2));
+  // points[4].set(P(centerOfSphere, radiusOfSphere, v3));
+
+  /* If we don't fix the 3 centers: */
+  vec v1 = U(centerOfSphere, points[0]);
+  vec v2 = U(centerOfSphere, points[2]);
+  vec v3 = U(V(-0.5, v1, 0.8, v2));
+  points[4].set(P(centerOfSphere, radiusOfSphere, v3));
+
+  gRingSet = new RingSet(centerOfSphere, radiusOfSphere, points, 6);
+
+  if (!gRingSet.isValid()) {
+    validRS = false;
+    return;
+  } else {
+    validRS = true;
+  }
+
+  if (showDiskSet) gRingSet.showDisks();
+
+  // pt[] contacts = gRingSet.twoSupPlanesThreeCircles(0, 1, 2, null, null, false);
+
+  // {
+  //   fill(chocolate, 200);
+  //   showPlane(points[0], points[2], points[4], radiusOfSphere);
+  // }
+
+  gRingSet.generateExactCHIncremental();
+
+  if (showTriangleFaces) {
+    fill(blue);
+    gRingSet.showIncTriangles();
+  }
+
+  if (showCorridorFaces) {
+    fill(green);
+    gRingSet.showIncCorridors();
+  }
+
+  return;
+}
+
+
+
+/* Some other tests for small features. */
+
+void circlePlaneIntersectionTest() {
+  assert gRingSet.nRings >= 3;
+  pt p0 = new pt();
+  pt p1 = new pt();
+  gRingSet.generatePoints(attenuation);
+
+  pt c0 = gRingSet.centers[0];
+  float r0 = gRingSet.radii[0];
+  vec n0 = gRingSet.normals[0];
+  pt c1 = gRingSet.centers[1];
+  pt c2 = gRingSet.centers[2];
+  vec d = normalOfTriangle(c0, c1, c2);
+
+  fill(orange, 100);
+  showPlane(c0, d, r0);
+  fill(red, 100);
+  disk(c0, n0, r0);
+
+  if (intersectionCirclePlane(c0, r0, n0, c0, d, p0, p1)) {
+    fill(green, 100);
+    show(p0, 3);
+    fill(blue, 100);
+    show(p1, 3);
+  }
+}
+
 void hubLineIntersectionTest() {
   if (gPoints.nv < 4) {
     println("Should use at least 4 points.");
@@ -903,4 +957,30 @@ void roundConeDistTest() {
 
   fill(cyan, 100);
   show(p, d);
+}
+
+void intersectionTwoPlanesTest() {
+  if (gPoints.nv < 6) return;
+
+  pt[] points = gPoints.G;
+  pt pa = points[0];
+  vec va = normalOfTriangle(points[0], points[1], points[2]);
+
+  pt pb = points[3];
+  vec vb = normalOfTriangle(points[3], points[4], points[5]);
+
+  fill(red);
+  showPlane(pa, va, 200);
+  fill(blue);
+  showPlane(pb, vb, 200);
+
+  pt p0 = P();
+  pt p1 = P();
+  boolean intersect = intersectionTwoPlanes(pa, va, pb, vb, p0, p1);
+  if (intersect) {
+    pen(green, 3);
+    showLine(p0, U(p0, p1));
+    strokeWeight(1);
+    noStroke();
+  }
 }

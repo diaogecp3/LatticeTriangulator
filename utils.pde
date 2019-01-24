@@ -232,7 +232,7 @@ void showManifoldEdges(boolean[][] manifoldMask, pt[] G, int nv) {
  * the arrow and r controls the size of the arrow tip.
  */
 void showNormalToTriangle(pt A, pt B, pt C, float d, float r) {
-  vec N = normalToTriangle(A, B, C);
+  vec N = normalOfTriangle(A, B, C);
   pt D = P(A, B, C);
   arrow(D, V(d, N), r);
 }
@@ -251,7 +251,8 @@ void showLine(pt o, vec d) {
 }
 
 /*
- * Show the plane defined by (p, n). s controls the size of the plane shown.
+ * Show the plane defined by (p, n). The plane is a finite square centered at p,
+ * with side length being 2s.
  */
 void showPlane(pt p, vec n, float s) {
   vec vi = constructNormal(n);
@@ -266,6 +267,16 @@ void showPlane(pt p, vec n, float s) {
   vertex(p2);
   vertex(p3);
   endShape();
+}
+
+/*
+ * Show the plane defined by (a, b, c). The plane is a finite square centered at
+ * the center of the triangle (a, b, c), with side length being 2s.
+ */
+void showPlane(pt a, pt b, pt c, float s) {
+  vec n = normalOfTriangle(a, b, c);
+  pt p = P(a, b, c);
+  showPlane(p, n, s);
 }
 
 /*
@@ -293,7 +304,7 @@ void showCircle(pt c, vec n, float r) {
  */
 void showCircumcircleOfTriangle(pt pa, pt pb, pt pc, pt center, vec normal, Float radius) {
   if (center == null) center = circumcenterOfTriangle(pa, pb, pc);
-  if (normal == null) normal = normalToTriangle(pa, pb, pc);
+  if (normal == null) normal = normalOfTriangle(pa, pb, pc);
   if (radius == null) radius = d(center, pa);
   showCircle(center, normal, radius);
 }

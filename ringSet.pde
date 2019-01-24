@@ -36,7 +36,7 @@ boolean debugIncCHNewView = false;
 boolean debugIncCHCor = false;
 boolean showCorridorFaces = false;
 boolean showTriangleFaces = false;
-boolean showCorridorStrokes = false;
+boolean showCorridorStrokes = true;
 boolean showTriangleStrokes = true;
 boolean showBeams = false;
 boolean showApolloniusDiagram = false;
@@ -53,7 +53,7 @@ boolean validRS = false;
  * 2: Breadth first search. Time: roughly O(min(3^d, n^3)) where d is the length
       from initial state to optimal state. Space: O(min(3^d, n^3)). Not converge?
  * 3: Breadth first search with heuristics. Time and space should be less than 2.
- * 4: Approximated extreme plane. Time: roughly O(1), Space: roughly O(1).
+ * 4: Approximated supporting plane. Time: roughly O(1), Space: roughly O(1).
  */
 int method3RT = 3;
 
@@ -369,9 +369,9 @@ class RingSet {
     private void setupNormalsAndAngles() {
       coneNormals = new vec[2];
       coneAngles = new float[2];
-      coneNormals[0] = normalToTriangle(vertices[0].position, vertices[1].position,
+      coneNormals[0] = normalOfTriangle(vertices[0].position, vertices[1].position,
                                        vertices[2].position);
-      coneNormals[1] = normalToTriangle(vertices[2].position, vertices[3].position,
+      coneNormals[1] = normalOfTriangle(vertices[2].position, vertices[3].position,
                                        vertices[0].position);
       float r0 = circumradiusOfTriangle(vertices[0].position, vertices[1].position,
                                         vertices[2].position);
@@ -406,18 +406,37 @@ class RingSet {
       vec vc = V(c0, vertices[2].position);
       vec vb = V(c1, vertices[1].position);
       vec va = V(c1, vertices[0].position);
-      float a0 = acos(dot(vd, vc) / (r0 * r0));  // [0, PI]
+
+      float a0 = acos(clamp(dot(vd, vc) / (r0 * r0), -1.0, 1.0));  // [0, PI]
       if (dot(n0, N(vd, vc)) < 0) a0 = TWO_PI - a0;
-      float a1 = acos(dot(vb, va) / (r1 * r1));
+      {
+        // fill(yellow);
+        // show(vertices[3].position, 5);
+        // fill(cyan);
+        // show(vertices[2].position, 5);
+        // println("dot(vd, vc) = ", dot(vd, vc));
+        // println("r0 * r0 = ", r0 * r0);
+        // println("a0 = ", a0);
+      }
+      float a1 = acos(clamp(dot(vb, va) / (r1 * r1), -1.0, 1.0));
       if (dot(n1, N(vb, va)) < 0) a1 = TWO_PI - a1;
+      {
+        // fill(springGreen);
+        // show(vertices[1].position, 5);
+        // fill(firebrick);
+        // show(vertices[0].position, 5);
+        // println("dot(vb, va) = ", dot(vb, va));
+        // println("r1 * r1 = ", r1 * r1);
+        // println("a1 = ", a1);
+      }
 
       if (a0 > a1) {
-        float stAng = acos(dot(vd, xAxes[left]) / r0);  // starting theta for D w.r.t. the left ring
+        float stAng = acos(clamp(dot(vd, xAxes[left]) / r0, -1.0, 1.0));  // starting theta for D w.r.t. the left ring
         if (dot(vd, yAxes[left]) < 0) stAng = TWO_PI - stAng;
         int n = int(a0 / delta);
         samples = fillExEdgeWithPoints(stAng, delta, n, left, right);
       } else {
-        float stAng = acos(dot(vb, xAxes[right]) / r1);
+        float stAng = acos(clamp(dot(vb, xAxes[right]) / r1, -1.0, 1.0));
         if (dot(vb, yAxes[right]) < 0) stAng = TWO_PI - stAng;
         int n = int(a1 / delta);
         samples = fillExEdgeWithPoints(stAng, delta, n, right, left);
@@ -476,6 +495,7 @@ class RingSet {
     @Override
     void showFace() {
       generateSamples(TWO_PI / 40);  // high resolution
+      // println("#samples =", samples.size());
       if (showCorridorStrokes) {
         stroke(0);
       } else noStroke();
@@ -775,7 +795,7 @@ class RingSet {
 
   int nSamples = 30;
   float dAngle = 0;
-  ArrayList<pt> exTriPoints = null;  // points for extreme triangles, every 3 consecutive points form a trianle
+  ArrayList<pt> exTriPoints = null;  // points for extreme triangles, every 3 consecutive points form a triangle
   ArrayList<Float> halfAnglesExCones = null;
   ArrayList<vec> normalsExTris = null;
   ArrayList<Integer> exTriRIDs = null;
@@ -796,8 +816,8 @@ class RingSet {
   ArrayList<Integer> corridorsApprox1 = new ArrayList<Integer>();
   ArrayList<Integer> corridorsApprox2 = new ArrayList<Integer>();
 
-  Debug3RTInfo debug3RTInfo = new Debug3RTInfo();  // for debug
-  Debug2RTInfo debug2RTInfo = new Debug2RTInfo();  // for debug
+  Debug3RTInfo debug3RTInfo = new Debug3RTInfo();
+  Debug2RTInfo debug2RTInfo = new Debug2RTInfo();
   DebugSTInfo debugSTInfo = new DebugSTInfo();
   DebugIncCHInfo debugIncCHInfo = new DebugIncCHInfo();
 
@@ -847,7 +867,11 @@ class RingSet {
       normals[j] = U(c, ps[i]);
       xAxes[j] = constructNormal(normals[j]);
       yAxes[j] = N(normals[j], xAxes[j]);
-      centers[j] = P(c, sqrt(r2 - radii[j] * radii[j]), normals[j]);
+      if (dot(V(c, ps[i+1]), normals[j]) > 0) {
+        centers[j] = P(c, sqrt(r2 - radii[j] * radii[j]), normals[j]);
+      } else {
+        centers[j] = P(c, -sqrt(r2 - radii[j] * radii[j]), normals[j]);
+      }
     }
   }
 
@@ -1155,10 +1179,10 @@ class RingSet {
   }
 
   /*
-   * Generate a three-ring triangle using approximated extreme plane method.
-   * This method first finds the exact extreme plane/triangle using the three
+   * Generate a three-ring triangle using approximated supporting plane method.
+   * This method first finds the exact supporting plane/triangle using the three
    * circles, and then trys to find a triangle defined by sampled points that
-   * can approximate the exact extreme triangle.
+   * can approximate the exact supporting plane/triangle.
    */
   private Triangle generateThreeRingTriangleApprox(int rid0, int rid1, int rid2) {
     pt[] cs = {centers[rid0], centers[rid1], centers[rid2]};
@@ -1166,7 +1190,7 @@ class RingSet {
     vec[] ns = {normals[rid0], normals[rid1], normals[rid2]};
     vec[] vis = {xAxes[rid0], xAxes[rid1], xAxes[rid2]};
     vec[] vjs = {yAxes[rid0], yAxes[rid1], yAxes[rid2]};
-    pt[] ps = tangentPlaneThreeCirclesIter(cs[0], rs[0], ns[0], vis[0], vjs[0],
+    pt[] ps = supPlaneThreeCirclesIter(cs[0], rs[0], ns[0], vis[0], vjs[0],
                                        cs[1], rs[1], ns[1], vis[1], vjs[1],
                                        cs[2], rs[2], ns[2], vis[2], vjs[2],
                                        null);
@@ -1587,13 +1611,16 @@ class RingSet {
 
 
   /*
-   * Generate an extreme triangle touching three rings given the three ring IDs.
-   * Two extreme triangles will be generated, i.e. 6 points will be returned.
-   * The first 3 points correspond to orientation (i, j, k) while the last 3
-   * points correspond to orientation (i, k, j).
+   * Generate two supporting planes, with each touching three rings (i, j, k).
+   * An array of 6 points will be returned. The first 3 points correspond to
+   * orientation (i, j, k) while the last 3 points correspond to orientation
+   * (i, k, j). If oneSolution is true, then the first 3 points are correct while
+   * the last 3 points may be wrong.
+   * normalsEx and halfAnglesEx are output. They define the two supporting
+   * triangles.
    */
-  private pt[] generateExTriThreeRingsTwo(int i, int j, int k, vec[] normalsEx,
-                                          float[] halfAnglesEx, boolean oneSolution) {
+  pt[] twoSupPlanesThreeCircles(int i, int j, int k, vec[] normalsEx,
+                                float[] halfAnglesEx, boolean oneSolution) {
     float s1 = radii[i] / r, s2 = radii[j] / r, s3 = radii[k] / r;
     float a1 = asin(s1), a2 = asin(s2), a3 = asin(s3);  // TODO: may store these half-angles?
     float c1 = cos(a1), c2 = cos(a2), c3 = cos(a3);
@@ -1606,9 +1633,7 @@ class RingSet {
     float[] ts = new float[2];  // the 2 values of tan(alpha)
     vec[] ns = new vec[2];  // the 2 normals
     pt[] ps = new pt[2];  // the 2 centers
-    // println("mix product = ", mix);
     if (notZero(mix)) {
-      // println("mix product is not 0");
       float invMix = 1.0 / mix;
       n23 = V(invMix, n23);
       n31 = V(invMix, n31);
@@ -1638,28 +1663,61 @@ class RingSet {
         ps[ii] = P(c, r * cosa, ns[ii]);
       }
     } else {
-      println("mix product is 0, not done yet!");
+      println("mix product is 0. But I fixed it.");
       vec va = V(c1, n23, c2, n31, c3, n12);
       vec vb = V(s1, n23, s2, n31, s3, n12);
-      bb = dot(vb, vb);
-      if (isZero(bb)) {
-        println("dot(b, b) = 0");
-        return null;
-      }
-      aa = dot(va, va);
-      ab = dot(va, vb);
-      det = ab * ab - aa * bb;
-      if (det < 0) {
-        println("determinant < 0");
-        return null;
-      }
-      float sqrtDet = sqrt(det);
-      ts[0] = (ab + sqrtDet) / bb;
-      ts[1] = (ab - sqrtDet) / bb;
-      /* Compute the 2 centers and 2 normals. */
-      println("The 2 normals and 2 centers have not yet been computed.");
-    }
 
+      if (notZero(va.x)) ts[0] = va.x / vb.x;
+      else if (notZero(va.y)) ts[0] = va.y / vb.y;
+      else ts[0] = va.z / vb.z;
+      ts[1] = ts[0];
+
+      /* Compute the 2 centers and 2 normals. */
+      float alpha = atan(ts[0]);
+      float cosa = cos(alpha);
+      float sina = sin(alpha);
+
+      pt p1 = new pt();
+      pt p2 = new pt();
+
+      float d1 = cosa * c1 - sina * s1;
+      float d2 = cosa * c2 - sina * s2;
+      float d3 = cosa * c3 - sina * s3;
+      if (intersectionTwoPlanes(normals[i].x, normals[i].y, normals[i].z, d1,
+                                normals[j].x, normals[j].y, normals[j].z, d2,
+                                p1, p2)) {
+      } else if (intersectionTwoPlanes(normals[j].x, normals[j].y, normals[j].z, d2,
+                                       normals[k].x, normals[k].y, normals[k].z, d3,
+                                       p1, p2)) {
+      } else if (intersectionTwoPlanes(normals[k].x, normals[k].y, normals[k].z, d3,
+                                       normals[i].x, normals[i].y, normals[i].z, d1,
+                                       p1, p2)) {
+      } else {
+        println("No intersection between any 2 planes of the 3 planes!");
+        return null;
+      }
+
+      pt[] tmp = intersectionLineSphere(p1, V(p1, p2), P(), 1);
+      if (tmp == null) {
+        println("No intersection between line and unit sphere!");
+        return null;
+      }
+      ns[0] = V(tmp[0].x, tmp[0].y, tmp[0].z);
+      ns[1] = V(tmp[1].x, tmp[1].y, tmp[1].z);
+      ps[0] = P(c, r * cosa, ns[0]);
+      ps[1] = P(c, r * cosa, ns[1]);
+      {  // show the two centers and the normals
+        // stroke(cyan);
+        // showCircle(ps[0], ns[0], r * sina);
+        // stroke(magenta);
+        // showCircle(ps[1], ns[1], r * sina);
+        // noStroke();
+        // fill(cyan);
+        // arrow(ps[0], V(20, ns[0]), 4);
+        // fill(magenta);
+        // arrow(ps[1], V(20, ns[1]), 4);
+      }
+    }
 
     /*
      * For each computed circle, make sure all input circles on its negative side.
@@ -1701,7 +1759,6 @@ class RingSet {
         pointsTangency[5] = p;
       }
     } else {  // flip the first triplet, swap the two triplets
-      // println("swap the two triplets");
       pt[] tmpPointsTangency = new pt[6];
       tmpPointsTangency[0] = pointsTangency[3];
       tmpPointsTangency[1] = pointsTangency[4];
@@ -1712,7 +1769,7 @@ class RingSet {
         tmpPointsTangency[5] = pointsTangency[1];
       }
       pointsTangency = tmpPointsTangency;
-      {  // swap normals and tan(alpha)s
+      {  // swap normals and tan(alpha)'s
         vec v = ns[0];
         ns[0] = ns[1];
         ns[1] = v;
@@ -1760,10 +1817,12 @@ class RingSet {
   }
 
   /*
-   * Generate an extreme triangle touching three rings given the three ring IDs.
+   * Generate an supporting plane touching 3 circles (i, j, k). 3 points that
+   * define the plane will be returned. These 3 points are on the 3 circles,
+   * respectively.
    * TODO: this function is deprecated.
    */
-  pt[] generateExTriThreeRings(int i, int j, int k, DebugEPInfo dInfo) {
+  pt[] oneSupPlaneThreeCircles(int i, int j, int k) {
     float s1 = radii[i] / r, s2 = radii[j] / r, s3 = radii[k] / r;
     float a1 = asin(s1), a2 = asin(s2), a3 = asin(s3);  // TODO: may store these half-angles?
     float c1 = cos(a1), c2 = cos(a2), c3 = cos(a3);
@@ -1900,7 +1959,7 @@ class RingSet {
     for (int i = 0; i < nRings; ++i) {
       for (int j = i + 1; j < nRings; ++j) {
         for (int k = j + 1; k < nRings; ++k) {
-          pt[] tmp = generateExTriThreeRingsTwo(i, j, k, null, null, false);
+          pt[] tmp = twoSupPlanesThreeCircles(i, j, k, null, null, false);
           if (tmp == null || tmp.length != 6) {
             System.out.format("No ex tris among (%d, %d, %d)\n", i, j, k);
           }
@@ -1921,6 +1980,11 @@ class RingSet {
     }
   }
 
+  /*
+   * The exact convex hull of two circles should be a corridor (and two disks,
+   * of course). I split this corridor into two pieces.
+   * TODO: why sometimes the two pieces are the same?
+   */
   private void generateExactCHTwoCircles() {
     if (incCorridors == null) incCorridors = new ArrayList<IncCorridor>();
     else incCorridors.clear();
@@ -1940,13 +2004,15 @@ class RingSet {
     vec nLeft = normals[ridLeft];
     vec nRight = normals[ridRight];
     pt pd = P(cLeft, rLeft, xAxes[ridLeft]);
+
     pt pc = P(cLeft, -rLeft, xAxes[ridLeft]);
+    // pt pc = P(cLeft, rLeft, yAxes[ridLeft]);
 
     /* Find the corresponding point of pd. */
     pt pa = null;
     {
       pt pdd = P(pd, rLeft, yAxes[ridLeft]);  // sampled point + tangent at that point
-      pt[] candidates = contactsOnSupportingPlaneOfEdgeCircle(cRight, rRight, nRight, pd, pdd, xAxes[ridRight], yAxes[ridRight]);
+      pt[] candidates = contactsOnSupportingPlaneOfLineCircle(cRight, rRight, nRight, pd, pdd, xAxes[ridRight], yAxes[ridRight]);
       pa = candidates[0];
       if (dot(V(pd, cRight), N(pd, pa, pdd)) > 0) {
         pa = candidates[1];
@@ -1957,7 +2023,9 @@ class RingSet {
     pt pb = null;
     {
       pt pcc = P(pc, -rLeft, yAxes[ridLeft]);
-      pt[] candidates = contactsOnSupportingPlaneOfEdgeCircle(cRight, rRight, nRight, pc, pcc, xAxes[ridRight], yAxes[ridRight]);
+      // pt pcc = P(pc, -rLeft, xAxes[ridLeft]);
+
+      pt[] candidates = contactsOnSupportingPlaneOfLineCircle(cRight, rRight, nRight, pc, pcc, xAxes[ridRight], yAxes[ridRight]);
       pb = candidates[0];
       if (dot(V(pc, cRight), N(pc, pb, pcc)) > 0) {
         pb = candidates[1];
@@ -1987,7 +2055,7 @@ class RingSet {
     ArrayList<IncFace> fs = new ArrayList<IncFace>();
     vec[] nors = new vec[2];
     float[] angs = new float[2];
-    pt[] ps = generateExTriThreeRingsTwo(0, 1, 2, nors, angs, false);
+    pt[] ps = twoSupPlanesThreeCircles(0, 1, 2, nors, angs, false);
     assert ps != null && ps.length == 6;
     IncVertex v0 = new IncVertex(ps[0], 0);
     IncVertex v1 = new IncVertex(ps[1], 1);
@@ -2058,7 +2126,7 @@ class RingSet {
   private IncTriangle generateIncTri(int r0, int r1, int r2) {
     vec[] nors = new vec[1];
     float[] angs = new float[1];
-    pt[] ps = generateExTriThreeRingsTwo(r0, r1, r2, nors, angs, true);
+    pt[] ps = twoSupPlanesThreeCircles(r0, r1, r2, nors, angs, true);
     IncVertex v0 = new IncVertex(ps[0], r0);
     IncVertex v1 = new IncVertex(ps[1], r1);
     IncVertex v2 = new IncVertex(ps[2], r2);
@@ -2201,7 +2269,6 @@ class RingSet {
     for (int i = 3; i < nRings; ++i) {
       // System.out.format("Insert the %d-th (0-base) circle\n", i);
       if (debugIncCH && debugIncCHIter < i) {
-        // println("break when debug");
         break;
       }
 
@@ -2313,6 +2380,7 @@ class RingSet {
     }
 
     {  // collect triangles and corridors separately
+      // println("#faces =", faces.size());
       incTriangles = new ArrayList<IncTriangle>();
       incCorridors = new ArrayList<IncCorridor>();
       for (IncFace f : faces) {
@@ -2375,7 +2443,7 @@ class RingSet {
       float c = cos(angle), s = sin(angle);
       pt p0 = P(cu, ru * c, viu, ru * s, vju);  // sampled point
       pt p1 = P(p0, -ru * s, viu, ru * c, vju);  // sampled point + tangent at that point
-      pt[] candidates = contactsOnSupportingPlaneOfEdgeCircle(cv, rv, nv, p0, p1, viv, vjv);
+      pt[] candidates = contactsOnSupportingPlaneOfLineCircle(cv, rv, nv, p0, p1, viv, vjv);
       pt candidate = candidates[0];
       if (dot(V(p0, cv), N(p0, candidate, p1)) > 0) {
         candidate = candidates[1];
