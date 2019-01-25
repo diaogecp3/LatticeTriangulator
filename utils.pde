@@ -237,6 +237,12 @@ void showNormalToTriangle(pt A, pt B, pt C, float d, float r) {
   arrow(D, V(d, N), r);
 }
 
+void showBall(pt c, float r) {
+  pushMatrix();
+  translate(c.x, c.y, c.z);
+  sphere(r);
+  popMatrix();
+}
 
 /*
  * Show the line defined by (o, d).

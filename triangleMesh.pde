@@ -275,7 +275,7 @@ class TriangleMesh {
       for (int j = 0; j < maxIter; ++j) {
         float dist = hub.blendedDistanceFrom(p);
         if (dist < 0.0001) break;
-        p.add(dist, d);
+        p.add(dist, d);  // as p approaches to the hub, dist will be NaN
       }
       o.set(p);
     }

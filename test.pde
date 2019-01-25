@@ -774,7 +774,8 @@ void interactiveHubTest() {
 
   gBeamMesh = gHub.triangulateBeams();
   if (showLiftedCones) {
-    gBeamMesh.showTriangleMesh(cyan, showTriangleStrokes);
+    // gBeamMesh.showTriangleMesh(cyan, showTriangleStrokes);
+    gHub.showLiftedCones(cyan, 255);
   }
 
   gRingSet = gHub.circlesToRingSet();
@@ -874,6 +875,49 @@ void supPlaneThreeCirclesSpecialTest() {
   return;
 }
 
+/*
+ * Given two circles, tangent to each other, on a sphere, test whether the two
+ * circle centers, the sphere center, and the point of tangency are coplanar.
+ */
+void geodesicDistanceTest() {
+  if (gPoints.nv < 4) return;
+  pt[] points = gPoints.G;
+  vec n0 = U(centerOfSphere, points[0]);  // n1 is normal to n0
+  vec n1 = U(N(centerOfSphere, points[0], points[2]));
+  vec n2 = N(n1, n0);
+
+  float rr = radiusOfSphere + radiusOfSphere;
+  float r2 = radiusOfSphere * radiusOfSphere;
+  float d = d(points[0], points[1]);
+  float r0 = d * sqrt((rr-d)*(rr+d)) / rr;
+  pt c0 = null;
+  if (dot(V(centerOfSphere, points[1]), n0) > 0) {
+    c0 = P(centerOfSphere, sqrt(r2 - r0 * r0), n0);
+  } else {
+    c0 = P(centerOfSphere, -sqrt(r2 - r0 * r0), n0);
+  }
+  points[3].set(P(c0, r0, n2));
+
+  gRingSet = new RingSet(centerOfSphere, radiusOfSphere, points, 4);
+
+  if (showAuxPlane) {
+    fill(orange, 100);
+    showPlane(centerOfSphere, points[0], points[2], 100);
+  }
+
+  hint(DISABLE_DEPTH_TEST);
+  pen(cyan, 10);
+  show(centerOfSphere, points[0]);
+  show(centerOfSphere, points[2]);
+  showCircle(centerOfSphere, n1, radiusOfSphere);
+  strokeWeight(1);
+  noStroke();
+  hint(ENABLE_DEPTH_TEST);
+
+  if (showCircleSet) {
+    gRingSet.showCircles();
+  }
+}
 
 
 /* Some other tests for small features. */

@@ -20,6 +20,7 @@ import processing.pdf.*;
  * 15: one mesh-from-exact-convex-hull test
  * 16: one interactive-hub test
  * 17: one supporting-plane-of-three-circles-special-case test
+ * 18: one geodesic-distance test
  * ...
  * 100: many convex-hull tests
  * 101: many ring-set-triangulation tests
@@ -31,7 +32,7 @@ import processing.pdf.*;
  * 202: one round-cone-distance test
  * 203: one intersection-between-two-planes test
  */
-int test = 13;
+int test = 16;
 
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
@@ -115,7 +116,7 @@ void setup() {
 
   switch (inputMethodPointSet) {
     case 0:  // read from file
-      gPoints.loadPts("data/point_set/ps_arcs_22");
+      gPoints.loadPts("data/point_set/ps_arcs_14");
       break;
     case 1:  // generate randomly
       generatePointsOnSphere(gPoints, centerOfSphere, radiusOfSphere, 10);
@@ -278,6 +279,9 @@ void draw() {
       break;
     case 17:
       supPlaneThreeCirclesSpecialTest();
+      break;
+    case 18:
+      geodesicDistanceTest();
       break;
 
     case 100:  // many convex-hull tests

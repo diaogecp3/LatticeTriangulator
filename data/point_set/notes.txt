@@ -66,4 +66,8 @@ ps_arcs_21:
 About convex hull of 2 circles. The corridor sampling is wrong.
 
 ps_arcs_22:
-Should revisit the definition of each circle.
+Should revisit the definition of each circle. Done.
+
+ps_arcs_23:
+About geodesic distance test.
+

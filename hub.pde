@@ -93,9 +93,8 @@ class TruncatedCone {
     }
   }
 
-  void generateSamples(boolean isSmooth) {
-    int n = numPointsPerRing;  // global variable
-    if (isSmooth) n = 20;
+  void generateSamples(int numSamples) {
+    int n = numSamples;  // the number of samples on a base
     samples = new pt[2 * n];
     vec vi = constructNormal(normal);
     vec vj = N(normal, vi);
@@ -171,10 +170,10 @@ class TruncatedCone {
     }
   }
 
-  void show(boolean isSmooth) {
-    if (samples == null || samples.length == 0) generateSamples(isSmooth);
+  void show(int numSamples, boolean showStroke) {
+    if (samples == null || samples.length == 0) generateSamples(numSamples);
     int n = samples.length / 2;
-    if (!isSmooth) stroke(0);
+    if (showStroke) stroke(0);
     beginShape(QUAD_STRIP);
     for (int i = 0; i < n; ++i) {
       vertex(samples[n + i]);
@@ -183,7 +182,14 @@ class TruncatedCone {
     vertex(samples[n]);
     vertex(samples[0]);
     endShape();
-    if (!isSmooth) noStroke();
+    if (showStroke) noStroke();
+  }
+
+  void showDebugInfo() {
+    fill(snow, 255);
+    showBall(c0, 5);
+    fill(black, 255);
+    showBall(c1, 5);
   }
 }
 
@@ -407,6 +413,20 @@ class Hub {
     } else {
       r0 += gapWidth * tan(tCones[i].cone.alpha);
     }
+
+    if (dot(V(c0, tCones[i].c1), tCones[i].normal) < 0) {
+      // println("The inner base is lifted too much." +
+      //         "The axis direction will be reversed." +
+      //         "To fix this, the outer base will also be lifted.");
+      pt c1 = P(tCones[i].c1, 2 * gapWidth, tCones[i].normal);
+      float r1 = tCones[i].r1;
+      if (tCones[i].r1 < tCones[i].r0) {
+        r1 -= 2 * gapWidth * tan(tCones[i].cone.alpha);
+      } else {
+        r1 += 2 * gapWidth * tan(tCones[i].cone.alpha);
+      }
+      return new TruncatedCone(c0, r0, c1, r1, tCones[i].normal, tCones[i].cone);
+    }
     return new TruncatedCone(c0, r0, tCones[i].c1, tCones[i].r1, tCones[i].normal, tCones[i].cone);
   }
 
@@ -446,7 +466,9 @@ class Hub {
     liftedCones = new TruncatedCone[nNeighbors];
     for (int i = 0; i < nNeighbors; ++i) {
       circles[i] = intersectionCircleWithBoundingSphere(i);
-      liftedCones[i] = liftCone(i, circles[i].c, circles[i].r);
+      if (circles[i] != null) {
+        liftedCones[i] = liftCone(i, circles[i].c, circles[i].r);
+      }
     }
     return;
   }
@@ -461,6 +483,7 @@ class Hub {
   float distanceFrom(pt p) {
     float d = Float.MAX_VALUE;
     for (int i = 0; i < nNeighbors; ++i) {
+      // println("i =", i, " round cone dist =", roundConeDist(p, ball.c, ball.r, neighbors[i].c, neighbors[i].r));
       d = min(d, roundConeDist(p, ball.c, ball.r, neighbors[i].c, neighbors[i].r));
     }
     return d;
@@ -474,8 +497,12 @@ class Hub {
     float d = 0;
     float k = 8;  // shouldn't be too large
     for (int i = 0; i < nNeighbors; ++i) {
+      println("round cone dist = ", roundConeDist(p, ball.c, ball.r, neighbors[i].c, neighbors[i].r));
+      float t = exp(-k * roundConeDist(p, ball.c, ball.r, neighbors[i].c, neighbors[i].r));
+      // println("t = ", t);
       d += exp(-k * roundConeDist(p, ball.c, ball.r, neighbors[i].c, neighbors[i].r));
     }
+    // println("d = ", d);
     return -log(d) / k;
   }
 
@@ -524,8 +551,10 @@ class Hub {
    */
   private int triangulateBeam(int b, int k, TriangleMesh tm) {
     TruncatedCone beam = liftedCones[b];
+    if (beam == null) return 0;
     assert beam != null;
-    if (beam.samples == null) beam.generateSamples(false);
+
+    if (beam.samples == null) beam.generateSamples(numPointsPerRing);
     pt[] samples = beam.samples;
 
     ArrayList<pt> positions = new ArrayList<pt>();
@@ -574,7 +603,7 @@ class Hub {
 
     for (int i = 0; i < nNeighbors; ++i) {
       ArrayList<pt> innerLoop = innerLoops[i];
-      if (liftedCones[i].samples == null) liftedCones[i].generateSamples(false);
+      if (liftedCones[i].samples == null) liftedCones[i].generateSamples(numPointsPerRing);
       ArrayList<pt> outerLoop = new ArrayList<pt>();
       pt[] samples = liftedCones[i].samples;
       int n = samples.length / 2;  // or numPointsPerRings
@@ -609,9 +638,14 @@ class Hub {
     }
   }
 
-  void showLiftedCones() {
+  void showLiftedCones(color c, int a) {
+    fill(c, a);
+    int n = numPointsPerRing;
     for (int i = 0; i < nNeighbors; ++i) {
-      if (liftedCones[i] != null) liftedCones[i].show(false);
+      if (liftedCones[i] != null) {
+        liftedCones[i].show(n, true);
+        // liftedCones[i].showDebugInfo();
+      }
     }
   }
 
@@ -620,7 +654,7 @@ class Hub {
     noStroke();
     ball.showBall();
     for (int i = 0; i < nNeighbors; ++i) {
-      tCones[i].show(true);
+      tCones[i].show(40, false);
       // neighbors[i].showBall();
     }
     return;

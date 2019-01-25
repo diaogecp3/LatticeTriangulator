@@ -112,10 +112,10 @@ void keyPressed() {
     }
   }
   if (key == '8') {
-    if (test >= 12 && test <= 15) showArcSet = !showArcSet;
+    if ((test >= 12 && test <= 15) || test == 18) showArcSet = !showArcSet;
   }
   if (key == '9') {
-    if (test >=12 && test <= 15) showAuxPlane = !showAuxPlane;
+    if ((test >=12 && test <= 15) || test == 18) showAuxPlane = !showAuxPlane;
   }
 
   /* Keys: increase/decrease operators. */
