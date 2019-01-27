@@ -82,11 +82,6 @@ class pts { // class for manipulaitng and sisplaying polyloops
   pts drawBalls(float r) {for (int v=0; v<nv; v++) show(G[v],r); return this;}
   pts showPicked(float r) {show(G[pv],r); return this;}
   pts drawClosedCurve(float r) {for (int v=0; v<nv-1; v++) stub(G[v],V(G[v],G[v+1]),r,r/2);  stub(G[nv-1],V(G[nv-1],G[0]),r,r/2); return this;}
-  pts drawArcs(float sr, float r) {
-    for (int v=0; v<nv-1; v++) drawArc(G[v],P(),G[v+1],r,r/2);
-    drawArc(G[nv-1],P(),G[0],r,r/2,false);
-    return this;
-    }
   pts setPickedIndexTo(int pp) {pv=pp; return this;}
   pts movePicked(vec V) { G[pv].add(V); return this;}      // moves selected point (index p) by amount mouse moved recently
   pts movePickedTo(pt P) { G[pv].set(P); return this;}      // moves selected point (index p) by amount mouse moved recently

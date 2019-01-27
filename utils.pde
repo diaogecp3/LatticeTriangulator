@@ -132,7 +132,6 @@ float[] solveQuadraticEquation(float a, float b, float c) {
  * be in [0, 2pi].
  */
 float[] solveLinearEquationInCosSin(float a, float b, float c) {
-  // assert a * a + b * b > 0.0000001;  // at least one of {a, b} is non-zero
   if (a * a + b * b < 0.0000001) {
     println("In a*cos(theta) + b*sin(theta) = c, a and b might be too small!");
   }
@@ -176,29 +175,39 @@ void showTriangle(pt a, pt b, pt c) {
 /*
  * Show triangles.
  */
-void showTriangles(ArrayList<Triangle> triangles, pt[] G) {
+void showTriangles(ArrayList<Triangle> triangles, pt[] points) {
   int n = triangles.size();
   beginShape(TRIANGLES);
   for (int i = 0; i < n; ++i) {
     if (triangles.get(i) == null) continue;
-    vertex(G[triangles.get(i).a]);
-    vertex(G[triangles.get(i).b]);
-    vertex(G[triangles.get(i).c]);
+    vertex(points[triangles.get(i).a]);
+    vertex(points[triangles.get(i).b]);
+    vertex(points[triangles.get(i).c]);
   }
   endShape();
 }
 
 /*
+ * Show the normal to triangle (A, B, C) as an arrow. d controls the length of
+ * the arrow and r controls the size of the arrow tip.
+ */
+void showNormalToTriangle(pt A, pt B, pt C, float d, float r) {
+  vec N = normalOfTriangle(A, B, C);
+  pt D = P(A, B, C);
+  arrow(D, V(d, N), r);
+}
+
+/*
  * Show normals of triangles, one normal per triangle face starting at its center.
  */
-void showTriangleNormals(ArrayList<Triangle> triangles, pt[] G) {
+void showTriangleNormals(ArrayList<Triangle> triangles, pt[] points) {
   int n = triangles.size();
   for (int i = 0; i < n; ++i) {
     if (triangles.get(i) == null) continue;
-    pt A = G[triangles.get(i).a];
-    pt B = G[triangles.get(i).b];
-    pt C = G[triangles.get(i).c];
-    showNormalToTriangle(A, B, C, 10, 1);
+    pt pa = points[triangles.get(i).a];
+    pt pb = points[triangles.get(i).b];
+    pt pc = points[triangles.get(i).c];
+    showNormalToTriangle(pa, pb, pc, 10, 1);
   }
 }
 
@@ -228,15 +237,8 @@ void showManifoldEdges(boolean[][] manifoldMask, pt[] G, int nv) {
 }
 
 /*
- * Show the normal to triangle (A, B, C) as an arrow. d controls the length of
- * the arrow and r controls the size of the arrow tip.
+ * Show the ball defined by (c, r).
  */
-void showNormalToTriangle(pt A, pt B, pt C, float d, float r) {
-  vec N = normalOfTriangle(A, B, C);
-  pt D = P(A, B, C);
-  arrow(D, V(d, N), r);
-}
-
 void showBall(pt c, float r) {
   pushMatrix();
   translate(c.x, c.y, c.z);
@@ -291,7 +293,6 @@ void showPlane(pt a, pt b, pt c, float s) {
  */
 void showCircle(pt c, vec n, float r) {
   noFill();
-  strokeWeight(3);
   float a = 0;
   float da = TWO_PI / 36;
   vec vi = constructNormal(n);
@@ -301,7 +302,6 @@ void showCircle(pt c, vec n, float r) {
     vertex(P(c, r * cos(a), vi, r * sin(a), vj));
   }
   endShape(CLOSE);
-  strokeWeight(1);
   fill(black);
 }
 
@@ -316,6 +316,40 @@ void showCircumcircleOfTriangle(pt pa, pt pb, pt pc, pt center, vec normal, Floa
 }
 
 /*
+ * Spherical linear interpolation.
+ */
+vec slerp(vec U, float t, vec W) {
+  float a = angle(U, W);
+  float su = sin(a * (1.0 - t));
+  float sw = sin(a * t);
+  float s = sin(a);
+  return V(su / s, U, sw / s, W);
+}
+
+/*
+ * Sample a point on arc, centered at C, between A and B. t is the parameter
+ * of the arc.
+ */
+pt onArc(pt A, pt C, pt B, float t) {
+  vec U = V(C, A);
+  vec W = V(C, B);
+  vec V = slerp(U, t, W);
+  return P(C, V);
+}
+
+/*
+ * Draw an arc on sphere, centered at C, from A to B using weignt w.
+ */
+void showArc(pt A, pt C, pt B, float w) {
+  pt PP = P(A);
+  for(float t = 0.05; t <= 1.01; t += 0.05) {
+    pt QQ = onArc(A, C, B, t);
+    stub(PP, QQ, w, w);
+    PP.setTo(QQ);
+  }
+}
+
+/*
  * Show some arcs on sphere (c, r). Each arc is (ps[i], ps[i+1]) with weight w.
  */
 void showArcs(pt[] ps, int nv, pt c, float r, float w0, float w1, float w2) {
@@ -327,7 +361,7 @@ void showArcs(pt[] ps, int nv, pt c, float r, float w0, float w1, float w2) {
 
   fill(green);
   for (int i = 0; i < nv; i += 2) {
-    drawArc(ps[i], c, ps[i+1], r, w1);
+    showArc(ps[i], c, ps[i+1], w1);
   }
 
   fill(blue);

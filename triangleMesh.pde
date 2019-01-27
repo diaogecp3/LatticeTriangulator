@@ -60,6 +60,19 @@ class TriangleMesh {
     nt = triangles.size();
   }
 
+  TriangleMesh(TriangleMesh triMesh) {
+    nv = triMesh.nv;
+    nt = triMesh.nt;
+
+    positions = new ArrayList<pt>();
+    triangles = new ArrayList<Triangle>();
+
+    ArrayList<pt> ps = triMesh.positions;
+    ArrayList<Triangle> ts = triMesh.triangles;
+    for (int i = 0; i < nv; ++i) positions.add(ps.get(i));
+    for (int i = 0; i < nt; ++i) triangles.add(ts.get(i));
+  }
+
   void augmentWithoutShift(ArrayList<pt> newPositions, ArrayList<Triangle> newTriangles) {
     positions.addAll(newPositions);
     triangles.addAll(newTriangles);
@@ -67,6 +80,12 @@ class TriangleMesh {
     nt = triangles.size();
   }
 
+  /*
+   * Augment the current triangle mesh with a new set of triangles, assuming
+   * the new triangles are all formed by new vertices. "shift" means that the
+   * vertex IDs stored in each new triangle will be shifted, i.e. from local
+   * vertex ID to global vertex ID.
+   */
   void augmentWithShift(ArrayList<pt> newPositions, ArrayList<Triangle> newTriangles) {
     positions.addAll(newPositions);
     for (Triangle tri : newTriangles) {
@@ -74,6 +93,16 @@ class TriangleMesh {
     }
     nv = positions.size();
     nt = triangles.size();
+  }
+
+  /*
+   * Augment the current triangle mesh with a new triangle mesh, assuming these
+   * two triangle meshes don't share common vertices. "shift" means that the
+   * vertex IDs stored in each new triangle will be shifted, i.e. from local
+   * vertex ID to global vertex ID.
+   */
+  void augmentWithShift(TriangleMesh triMesh) {
+    augmentWithShift(triMesh.positions, triMesh.triangles);
   }
 
   void addTriangle(Triangle tri) {
@@ -298,12 +327,12 @@ class TriangleMesh {
     fill(c, 255);
     noStroke();
     for (int i = 0; i < nv; ++i) {
-      show(positions.get(i), r);
+      showBall(positions.get(i), r);
     }
     return;
   }
 
-  void showTriangleMesh(color c, boolean useStroke) {
+  void show(color c, boolean useStroke) {
     fill(c, 255);
     if (useStroke) {
       stroke(0);

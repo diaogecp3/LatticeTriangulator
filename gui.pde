@@ -3,16 +3,10 @@
  ******************************************************************************/
 
 void displayDebugText() {
-  if (test >=12 && test <= 17) {
+  if (test >= 10 && test <= 20) {
     scribeHeader("valid ring set? " + (validRS ? "yes" : "no"), 3);
   }
-  if (numTriangles >= 0) {
-    if (test < 12) {
-      scribeHeader("#triangles =" + numTriangles, 4);
-    }
-  }
 
-  //scribeHeader("time for triangle mesh generation = " + timeTM + "ms", 5);
   if (subdivisionTimes >= 0) {
     if (test == 3) {
       scribeHeader("time for subdivision = " + timeSD + "ms", 6);
@@ -34,8 +28,6 @@ void displayDebugText() {
         scribeHeader("Project method: shooting rays", 7);
     }
   }
-
-  //scribeHeader("regenerate = " + str(regenerateCH), 8);
 
   if (gRingSet.exTriPoints != null) {
     if (test == 11) {
@@ -73,7 +65,7 @@ void keyPressed() {
   // if (key == 'a') animating = !animating; // toggle animation
   if (key == ',') viewpoint = true;
   if (key == '>') showFrame = !showFrame;
-  if (key == '#') exit();
+  // if (key == '#') exit();
 
   /* Following are Yaohong's keys. */
   /* Keys: numbers. */
@@ -82,7 +74,7 @@ void keyPressed() {
     debug3RT = !debug3RT;
     debug2RT = !debug2RT;
     debugST = !debugST;
-    if (test == 13) {
+    if (test == 13 || test == 20) {
       debugIncCH = !debugIncCH;
       debugApolloniusDiagram = !debugApolloniusDiagram;
     }
@@ -95,24 +87,29 @@ void keyPressed() {
   if (key == '2') {
     show2RT = !show2RT;
     fix3RT = show2RT;
+    if (test == 19) showFirstCone = !showFirstCone;
   }
   if (key == '3') {
     show3RT = !show3RT;
+    if (test == 19) showSecondCone = !showSecondCone;
   }
   if (key == '4') {
-    if (test >= 12 && test <= 17) showCorridorFaces = !showCorridorFaces;
+    if (test >= 12 && test <= 20) showCorridorFaces = !showCorridorFaces;
   }
   if (key == '5') {
-    if (test >= 12 && test <= 17) showTriangleFaces = !showTriangleFaces;
+    if (test >= 12 && test <= 20) showTriangleFaces = !showTriangleFaces;
+  }
+  if (key == '6') {
+    showPolygons = !showPolygons;
   }
   if (key == '7') {
-    if (test == 12 || test == 13) {
-      approxMethodCorridor++;
-      if (approxMethodCorridor > 2) approxMethodCorridor = 0;
-    }
+    // if (test == 12 || test == 13) {
+    //   approxMethodCorridor++;
+    //   if (approxMethodCorridor > 2) approxMethodCorridor = 0;
+    // }
   }
   if (key == '8') {
-    if ((test >= 12 && test <= 15) || test == 18) showArcSet = !showArcSet;
+    if (test >= 12 && test <= 20) showArcSet = !showArcSet;
   }
   if (key == '9') {
     if ((test >=12 && test <= 15) || test == 18) showAuxPlane = !showAuxPlane;
@@ -121,9 +118,9 @@ void keyPressed() {
   /* Keys: increase/decrease operators. */
   if (key == '+') {
     if (test == 13) {
-      debugIncCHIter = min(debugIncCHIter + 1, int(gPoints.nv / 2) - 1);
+      // debugIncCHIter = min(debugIncCHIter + 1, int(gPoints.nv / 2) - 1);
     }
-    if (test == 15 || test == 16) {
+    if (test == 13 || test == 15 || test == 16 || test == 21) {
       numPointsPerRing++;
     }
     if (numTriangles >= 0) {
@@ -135,9 +132,9 @@ void keyPressed() {
   }
   if (key == '-') {
     if (test == 13) {
-      debugIncCHIter = max(debugIncCHIter - 1, 3);
+      // debugIncCHIter = max(debugIncCHIter - 1, 3);
     }
-    if (test == 15 || test == 16) {
+    if (test == 13 || test == 15 || test == 16 || test == 21) {
       numPointsPerRing = max(numPointsPerRing - 1, 3);
     }
     if (numFaces > 0) {
@@ -191,6 +188,9 @@ void keyPressed() {
         debug2RT = false;
         gRingSet.generateTriangleMesh(1);  // generate a triangle mesh and store it
       }
+    }
+    if (test == 20) {
+      showCoarseCorridor = !showCoarseCorridor;
     }
   }
   if (key == 'n') {
@@ -249,6 +249,9 @@ void keyPressed() {
   }
   if (key == 'S') {
     showTriangleStrokes = !showTriangleStrokes;
+  }
+  if (key == 'K') {
+    if (test == 19) showCones = !showCones;
   }
 
   change = true;

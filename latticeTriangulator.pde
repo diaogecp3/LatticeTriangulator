@@ -6,7 +6,7 @@ import processing.pdf.*;
  * 1: one convex-hull-with-holes test
  * 2: one ring-set-triangulation test (2 methods)
  * 3: one subdivision test
- * 4: one hub test
+ * 4:
  * 5: one pivot-plane-around-line-until-hit-circle test
  * 6: one exact-convex-hull-of-edge-circle test
  * 7: one exact-convex-hull-of-two-circles test
@@ -21,6 +21,9 @@ import processing.pdf.*;
  * 16: one interactive-hub test
  * 17: one supporting-plane-of-three-circles-special-case test
  * 18: one geodesic-distance test
+ * 19: one supporting-plane-of-three-circles test
+ * 20: one elliptic-cone test
+ * 21: one hub-to-mesh test
  * ...
  * 100: many convex-hull tests
  * 101: many ring-set-triangulation tests
@@ -32,7 +35,7 @@ import processing.pdf.*;
  * 202: one round-cone-distance test
  * 203: one intersection-between-two-planes test
  */
-int test = 16;
+int test = 21;
 
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
@@ -116,7 +119,8 @@ void setup() {
 
   switch (inputMethodPointSet) {
     case 0:  // read from file
-      gPoints.loadPts("data/point_set/ps_arcs_14");
+      gPoints.loadPts("data/point_set/ps_arcs_18");
+      // gPoints.loadPts("data/point_set/out3.pts");
       break;
     case 1:  // generate randomly
       generatePointsOnSphere(gPoints, centerOfSphere, radiusOfSphere, 10);
@@ -240,7 +244,6 @@ void draw() {
       subdivisionTest();
       break;
     case 4:
-      hubTest();
       break;
     case 5:
       pivotPlaneAroundLineHitCircleTest();
@@ -282,6 +285,15 @@ void draw() {
       break;
     case 18:
       geodesicDistanceTest();
+      break;
+    case 19:
+      supPlaneThreeCirclesTest();
+      break;
+    case 20:
+      ellipticConeTest();
+      break;
+    case 21:
+      hubToMeshTest();
       break;
 
     case 100:  // many convex-hull tests

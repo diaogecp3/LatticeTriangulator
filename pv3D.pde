@@ -242,10 +242,15 @@ void fan(pt P, vec V, float r) {
 }
 
 void fan(pt P, vec V, vec I, vec J, float r) {
-  float da = TWO_PI/36;
+  int n = 36;
+  float da = TWO_PI / n;
   beginShape(TRIANGLE_FAN);
   v(P(P,V));
-  for(float a=0; a<=TWO_PI+da; a+=da) v(P(P,r*cos(a),I,r*sin(a),J));
+  float a = 0;
+  for(int i = 0; i <= n; ++i) {
+    v(P(P,r*cos(a),I,r*sin(a),J));
+    a += da;
+  }
   endShape();
 }
 

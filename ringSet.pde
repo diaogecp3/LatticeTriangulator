@@ -29,6 +29,8 @@ int idxIncTri = 0;  // the ID of a triangle
 boolean showRingSet = true;
 boolean showCircleSet = false;
 boolean showDiskSet = false;
+boolean showCones = false;
+boolean showPolygons = false;
 
 boolean debugIncCH = false;
 int debugIncCHIter = 3;
@@ -314,10 +316,20 @@ class RingSet {
                                  vertices[2].position, null, normal, null);
     }
 
+    void showCone(pt apex, float height) {
+      pt p = P(apex, height, normal);
+      float r = height * tan(angle);
+      fan(p, V(p, apex), r);
+    }
+
+    void showCone(pt apex, vec n, float height) {
+      pt p = P(apex, height, n);
+      float r = abs(height * tan(angle));
+      fan(p, V(p, apex), r);
+    }
+
     void showADCircle() {
-      stroke(navy);
       showCircumcircle();
-      noStroke();
     }
   }
 
@@ -387,6 +399,10 @@ class RingSet {
         coneAngles[1] = PI - coneAngles[1];  // the angle should be > PI/2
       }
       assert isZero(coneNormals[0].norm() - 1) && isZero(coneNormals[1].norm() - 1);
+    }
+
+    void setDelta(float delta) {
+      this.delta = delta;
     }
 
     void setAdjFace(IncFace adjFace, int i) {
@@ -494,8 +510,12 @@ class RingSet {
 
     @Override
     void showFace() {
-      generateSamples(TWO_PI / 40);  // high resolution
-      // println("#samples =", samples.size());
+      show(delta);
+      // show(TWO_PI / 40);
+    }
+
+    void show(float delta) {
+      generateSamples(delta);
       if (showCorridorStrokes) {
         stroke(0);
       } else noStroke();
@@ -552,17 +572,13 @@ class RingSet {
       pt center = P(c, d, nor);
       float radius = sin(acos(d / r)) * r;
 
-      stroke(springGreen);
       showCircle(center, nor, radius);
 
       hint(DISABLE_DEPTH_TEST);
-      strokeWeight(3);
       beginShape(LINES);
       vertex(pa);
       vertex(pb);
       endShape();
-      strokeWeight(1);
-      noStroke();
       hint(ENABLE_DEPTH_TEST);
     }
 
@@ -570,6 +586,7 @@ class RingSet {
     void showDebugInfo() {
       /* Show the circumcircles of the two adjacent triangles. */
       // stroke(magenta);
+      // strokeWeight(3);
       // for (int i = 0; i < 2; ++i) {
       //   IncFace f = edges[i].getAdjFace();
       //   if (f != null) {
@@ -582,13 +599,14 @@ class RingSet {
       /* Show the circumcircles of triangle ABC and CDA. These two circles are actually the same. */
       // stroke(cyan);
       // showCircumcircles();
+      // strokeWeight(1);
 
       // fill(purple);
       // stroke(0);
       // showTriangle(vertices[0].position, vertices[1].position, vertices[2].position);
       // showTriangle(vertices[2].position, vertices[3].position, vertices[0].position);
 
-      checkCoplanarity();
+      checkCoplanarity(null, null);
     }
 
     private void generateExtendedPoints(pt pa, pt pb, float d, ArrayList<pt> extPoints) {
@@ -597,7 +615,12 @@ class RingSet {
       extPoints.add(P(pb, d, v));
     }
 
-    void checkCoplanarity() {
+    void checkCoplanarity(Float del, Boolean disableDepthTest) {
+      if (del == null) {
+        generateSamples(TWO_PI / 40);
+      } else {
+        generateSamples(del);
+      }
       coplanarFourPoints(vertices[3].position, vertices[0].position, vertices[2].position, vertices[1].position);
       if (samples.size() > 0) {  // >= 2
         int n = samples.size();
@@ -618,7 +641,9 @@ class RingSet {
       }
       generateExtendedPoints(vertices[2].position, vertices[1].position, d, extPoints);
 
-      // hint(DISABLE_DEPTH_TEST);
+      if (disableDepthTest == null || disableDepthTest == true) {
+        hint(DISABLE_DEPTH_TEST);
+      }
       stroke(0);
       strokeWeight(1);
       beginShape(LINES);
@@ -628,7 +653,9 @@ class RingSet {
       }
       endShape();
       noStroke();
-      // hint(ENABLE_DEPTH_TEST);
+      if (disableDepthTest == null || disableDepthTest == true) {
+        hint(ENABLE_DEPTH_TEST);
+      }
     }
 
     private pt generateADPoint(pt pa, pt pb, pt cLeft, float rLeft, vec xLeft, vec yLeft) {
@@ -691,21 +718,21 @@ class RingSet {
       if (t0 != null) {
         p0 = t0.pAD;
         fill(cyan);
-        show(p0, 3);
+        showBall(p0, 3);
       }
       for (pt p : psAD) {
         if (p0 != null) {
           showPolyArc(p0, p, c, r);
         }
         fill(lime);
-        show(p, 2);
+        showBall(p, 2);
         p0 = p;
       }
       if (t1 != null) {
         p1 = t1.pAD;
         showPolyArc(p0, p1, c, r);
         fill(cyan);
-        show(p1, 3);
+        showBall(p1, 3);
       }
     }
 
@@ -875,11 +902,11 @@ class RingSet {
     }
   }
 
-  RingSet(pt c, float r, Circle[] circles, int nc) {
+  RingSet(pt c, float r, Circle[] circles, int nc, int np) {
     this.c = c;
     this.r = r;
     this.nRings = nc;
-    this.nPointsPerRing = 3;  // default
+    this.nPointsPerRing = np;
     sameRadius = false;  // default
     centers = new pt[nc];
     normals = new vec[nc];
@@ -1706,17 +1733,6 @@ class RingSet {
       ns[1] = V(tmp[1].x, tmp[1].y, tmp[1].z);
       ps[0] = P(c, r * cosa, ns[0]);
       ps[1] = P(c, r * cosa, ns[1]);
-      {  // show the two centers and the normals
-        // stroke(cyan);
-        // showCircle(ps[0], ns[0], r * sina);
-        // stroke(magenta);
-        // showCircle(ps[1], ns[1], r * sina);
-        // noStroke();
-        // fill(cyan);
-        // arrow(ps[0], V(20, ns[0]), 4);
-        // fill(magenta);
-        // arrow(ps[1], V(20, ns[1]), 4);
-      }
     }
 
     /*
@@ -2389,25 +2405,6 @@ class RingSet {
       }
     }
 
-    {  // show faces
-      // show circumcircles of faces
-      // for (IncFace f : faces) {
-        // if (f instanceof IncCorridor){
-          // IncCorridor cor = (IncCorridor)f;
-          // pt pa, pb, pc, pd;
-          // pa = cor.vertices[0].position;
-          // pb = cor.vertices[1].position;
-          // pc = cor.vertices[2].position;
-          // pd = cor.vertices[3].position;
-          // fill(gold, 100);
-          // showCircumcircleOfTriangle(pa, pb, pc, null, cor.normals[0], r * sin(cor.angles[0]));
-          // showCircumcircleOfTriangle(pc, pd, pa, null, cor.normals[1], r * sin(cor.angles[1]));
-          // cor.showDebugInfo();
-          // break;
-        // }
-      // }
-    }
-
     {  // print something
       // for (IncFace f : faces) {
       //   if (f instanceof IncCorridor) {
@@ -2741,11 +2738,10 @@ class RingSet {
     return tm;
   }
 
-  void showRings() {
-    noStroke();
+  void show() {
     fill(orange);
     for (int i = 0; i < nRings; ++i) {
-      show(centers[i], 1);
+      showBall(centers[i], 1);
     }
     fill(green);
     for (int i = 0; i < nRings; ++i) {
@@ -2754,7 +2750,7 @@ class RingSet {
     fill(blue);
     for (int i = 0; i < nRings; ++i) {
       for (int j = 0; j < nPointsPerRing; ++j) {
-        show(points[i][j], 2);
+        showBall(points[i][j], 2);
       }
     }
     fill(cyan);
@@ -2763,10 +2759,6 @@ class RingSet {
         collar(points[i][j], V(points[i][j], points[i][(j + 1) % nPointsPerRing]), 1, 1);
       }
     }
-    // fill(violet);
-    // for (int i = 0; i < nRings; ++i) {
-    //   arrow(centers[i], V(20, normals[i]), 4);
-    // }
     return;
   }
 
@@ -2795,6 +2787,23 @@ class RingSet {
     }
   }
 
+  /*
+   * A polygon corresponds to a hole of the exact convex hull. Typically, each
+   * polygon is a irregular polygon.
+   */
+  void showPolygons() {
+    for (int i = 0; i < nRings; ++i) {
+      ArrayList<pt> ps = borders[i];
+      beginShape(TRIANGLE_FAN);
+      vertex(centers[i]);
+      for (int j = 0; j < ps.size(); ++j) {
+        vertex(ps.get(j));
+      }
+      vertex(ps.get(0));
+      endShape();
+    }
+  }
+
   void showExEdges() {
     if (exTriPoints == null || exEdges == null) return;
     stroke(0);
@@ -2815,6 +2824,19 @@ class RingSet {
       vertex(pd);
       endShape(QUAD_STRIP);
     }
+  }
+
+  void showExTris() {
+    if (exTriPoints == null) return;
+    noStroke();
+    fill(blue, 200);
+    beginShape(TRIANGLES);
+    for (int i = 0; i < exTriPoints.size(); i += 3) {
+      vertex(exTriPoints.get(i));
+      vertex(exTriPoints.get(i+1));
+      vertex(exTriPoints.get(i+2));
+    }
+    endShape();
   }
 
   void showApproxCorridors(int option) {
@@ -2852,19 +2874,6 @@ class RingSet {
     incCorridors.get(idx).showDebugInfo();
   }
 
-  void showExTris() {
-    if (exTriPoints == null) return;
-    noStroke();
-    fill(blue, 200);
-    beginShape(TRIANGLES);
-    for (int i = 0; i < exTriPoints.size(); i += 3) {
-      vertex(exTriPoints.get(i));
-      vertex(exTriPoints.get(i+1));
-      vertex(exTriPoints.get(i+2));
-    }
-    endShape();
-  }
-
   void showIncTriangles() {
     if (incTriangles == null || incTriangles.size() == 0) return;
     for (IncTriangle tri : incTriangles) tri.showFace();
@@ -2899,18 +2908,12 @@ class RingSet {
       }
     }
     endShape();
-
-    // show normals
-    // fill(firebrick);
-    // noStroke();
-    // for (Triangle t : twoRingTriangles) {
-    //   pt pa = getPointFromGlobalID(t.get(0));
-    //   pt pb = getPointFromGlobalID(t.get(1));
-    //   pt pc = getPointFromGlobalID(t.get(2));
-    //   showNormalToTriangle(pa, pb, pc, 10, 1);
-    // }
   }
 
+  /*
+   * A beam is a cylinder. The i-th beam is the cylinder defined by the i-th
+   * circle and its normal. length is the length of each cylinder.
+   */
   void showBeams(float length) {
     if (points == null) return;
     stroke(0);
@@ -2928,6 +2931,23 @@ class RingSet {
     }
   }
 
+  /*
+   * Show the cones, each defined by a circle and the center of the sphere.
+   */
+  void showCones(float extendDist) {
+    for (int i = 0; i < nRings; ++i) {
+      pt p = P(centers[i], extendDist, normals[i]);
+      float r_tmp = -1.0;
+      if (dot(V(c, centers[i]), V(c, contacts[i])) > 0) {
+        r_tmp = radii[i] + extendDist * tan(asin(radii[i] / r));
+      } else {
+        r_tmp = abs(radii[i] - extendDist * tan(asin(radii[i] / r)));
+      }
+      vec v = V(p, c);
+      fan(p, v, r_tmp);
+    }
+  }
+
   void showApolloniusDiagram() {
     assert incCorridors != null && incCorridors.size() != 0;
 
@@ -2940,32 +2960,41 @@ class RingSet {
   void showADDebugInfo() {
     int i = idxIncTri % incTriangles.size();
     int j = idxIncCor % incCorridors.size();
+    strokeWeight(3);
+    stroke(navy);
     incTriangles.get(i).showADCircle();
+    stroke(springGreen);
     incCorridors.get(j).showADCircle();
+    strokeWeight(1);
+    noStroke();
   }
 
   void showDebug3RTInfo() {
-    noStroke();
     fill(red, 150);
-    show(contacts[debug3RTInfo.idr0], 3);
+    showBall(contacts[debug3RTInfo.idr0], 3);
     fill(green, 150);
-    show(contacts[debug3RTInfo.idr1], 3);
+    showBall(contacts[debug3RTInfo.idr1], 3);
     fill(blue, 150);
-    show(contacts[debug3RTInfo.idr2], 3);
+    showBall(contacts[debug3RTInfo.idr2], 3);
     fill(#BF6868, 200);  // light red
-    show(points[debug3RTInfo.idr0][debug3RTInfo.idp0], 5);
+    showBall(points[debug3RTInfo.idr0][debug3RTInfo.idp0], 5);
     fill(#40935D, 200);  // light green
-    show(points[debug3RTInfo.idr1][debug3RTInfo.idp1], 5);
+    showBall(points[debug3RTInfo.idr1][debug3RTInfo.idp1], 5);
     fill(#517EC9, 200);  // light blue
-    show(points[debug3RTInfo.idr2][debug3RTInfo.idp2], 5);
+    showBall(points[debug3RTInfo.idr2][debug3RTInfo.idp2], 5);
   }
 
   void showDebug2RTInfo() {
-    fill(red, 200); show(debug2RTInfo.pa0, 5);
-    fill(yellow, 200); show(debug2RTInfo.pa1, 5);
-    fill(green, 100); show(debug2RTInfo.pb0, 5);
-    fill(blue, 100); show(debug2RTInfo.pb1, 5);
-    fill(#8B7373, 200); show(centers[debug2RTInfo.numGlobalStep - 1], 5);  // center of current ring
+    fill(red, 200);
+    showBall(debug2RTInfo.pa0, 5);
+    fill(yellow, 200);
+    showBall(debug2RTInfo.pa1, 5);
+    fill(green, 100);
+    showBall(debug2RTInfo.pb0, 5);
+    fill(blue, 100);
+    showBall(debug2RTInfo.pb1, 5);
+    fill(#8B7373, 200);
+    showBall(centers[debug2RTInfo.numGlobalStep - 1], 5);  // center of current ring
   }
 
   void showDebugIncCHInfo() {

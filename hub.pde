@@ -290,8 +290,8 @@ class ConicGap {
 /*
  * Hub class.
  *
- * A hub is the union of a ball and a set of tangential cones
- * defined by it and each of its neighboring balls.
+ * A hub is the union of a ball and a set of tangential cones defined by it and
+ * each of its neighboring balls.
  */
 class Hub {
   Ball ball = null;  // inner ball
@@ -305,7 +305,7 @@ class Hub {
   Circle[] circles = null;  // intersection between cones and bounding sphere
 
   float gapWidth = 10.0;  // the width of the gap between the convex hull and beams
-  TruncatedCone[] liftedCones = null;
+  TruncatedCone[] liftedCones = null;  // truncated-beams
 
   ConicGap[] gaps = null;
 
@@ -459,7 +459,7 @@ class Hub {
     return null;
   }
 
-  void intersectionCircles() {
+  void generateIntersectionCircles() {
     if (maxIntersectDist <= 0.0) return;
 
     circles = new Circle[nNeighbors];
@@ -473,8 +473,8 @@ class Hub {
     return;
   }
 
-  RingSet circlesToRingSet() {
-    return new RingSet(ball.c, maxIntersectDist, circles, nNeighbors);
+  RingSet circlesToRingSet(int m) {
+    return new RingSet(ball.c, maxIntersectDist, circles, nNeighbors, m);
   }
 
   /*
@@ -545,16 +545,16 @@ class Hub {
   }
 
   /*
-   * Triangulate the i-th beam. The ID of the first point of this beam is k.
-   * Augment the triangle mesh tm with new positions and new triangles. Return
-   * the number of new positions.
+   * Triangulate the i-th beam. m is the number of edges of a beam cross section.
+   * The ID of the first point of this beam is k. The triangle mesh tm will be
+   * augmented with new points and new triangles. Return the number of new points.
    */
-  private int triangulateBeam(int b, int k, TriangleMesh tm) {
+  private int triangulateBeam(int b, int m, int k, TriangleMesh tm) {
     TruncatedCone beam = liftedCones[b];
     if (beam == null) return 0;
     assert beam != null;
 
-    if (beam.samples == null) beam.generateSamples(numPointsPerRing);
+    if (beam.samples == null) beam.generateSamples(m);
     pt[] samples = beam.samples;
 
     ArrayList<pt> positions = new ArrayList<pt>();
@@ -585,17 +585,20 @@ class Hub {
   }
 
   /*
-   * Triangulate the beams.
+   * Triangulate all the incident beams. Return a single mesh.
    */
-  TriangleMesh triangulateBeams() {
+  TriangleMesh generateBeamMesh(int m) {
     TriangleMesh tm = new TriangleMesh();
-    int k = 0;
-    for (int i = 0; i < nNeighbors; ++i) {
-      k += triangulateBeam(i, k, tm);
+    for (int i = 0, k = 0; i < nNeighbors; ++i) {
+      k += triangulateBeam(i, m, k, tm);
     }
     return tm;
   }
 
+  /*
+   * Initialize gaps, each formed by a hole of the convex hull and the base of
+   * its corresponding beam.
+   */
   void initGaps(ArrayList<pt>[] innerLoops) {
     assert innerLoops.length == nNeighbors;
     assert liftedCones != null;
@@ -612,7 +615,10 @@ class Hub {
     }
   }
 
-  TriangleMesh gapMesh() {
+  /*
+   * Triangulate all the gaps. Return a single mesh.
+   */
+  TriangleMesh generateGapMesh() {
     if (gaps == null || gaps.length == 0) return null;
 
     TriangleMesh gapMesh = new TriangleMesh();
@@ -621,6 +627,58 @@ class Hub {
       gapMesh.augmentWithShift(tm.positions, tm.triangles);
     }
     return gapMesh;
+  }
+
+  /*
+   * Generate a triangle mesh that approximates the hub. This mesh is made of
+   * convex hull mesh, gap mesh and beam mesh. m is the number of edges on a
+   * beam cross section.
+   */
+  TriangleMesh generateTriMesh(int m) {
+    generateIntersectionCircles();
+    RingSet rs = circlesToRingSet(m);
+
+    rs.generateExactCHIncremental();
+    TriangleMesh convexHullMesh = rs.generateConvexTriMesh();
+
+    initGaps(rs.borders);
+    TriangleMesh gapMesh = generateGapMesh();
+
+    TriangleMesh beamMesh = generateBeamMesh(m);
+
+    /* Merge the 3 meshes into 1 mesh. */
+    TriangleMesh triMesh = new TriangleMesh(convexHullMesh);  // copy
+
+    triMesh.augmentWithShift(beamMesh);
+
+    HashMap<pt, Integer> vIDs = new HashMap<pt, Integer>();
+
+    {  // store the global vertex ID for each vertex of the gap mesh
+      for (int i = 0; i < gapMesh.nv; ++i) {
+        pt p = gapMesh.positions.get(i);
+        ArrayList<pt> ps = triMesh.positions;
+        for (int j = 0; j < triMesh.nv; ++j) {
+          if (p == ps.get(j)) {
+            vIDs.put(p, j);
+            break;
+          }
+        }
+      }
+      assert vIDs != null && vIDs.size() > 0;
+    }
+
+    {  // merge the current triangle mesh with the gap mesh
+      ArrayList<pt> ps = gapMesh.positions;
+      for (int i = 0; i < gapMesh.nt; ++i) {
+        Triangle t = gapMesh.triangles.get(i);
+        int a = vIDs.get(ps.get(t.a));
+        int b = vIDs.get(ps.get(t.b));
+        int c = vIDs.get(ps.get(t.c));
+        triMesh.addTriangle(new Triangle(a, b, c));
+      }
+    }
+
+    return triMesh;
   }
 
   void showIntersectionCircles() {
@@ -634,7 +692,7 @@ class Hub {
     if (maxIntersectDist > 0) {
       fill(c, a);
       noStroke();
-      show(ball.c, maxIntersectDist);
+      showBall(ball.c, maxIntersectDist);
     }
   }
 
@@ -649,10 +707,10 @@ class Hub {
     }
   }
 
-  void showHub(color c, int a) {
+  void show(color c, int a) {
     fill(c, a);
     noStroke();
-    ball.showBall();
+    ball.show();
     for (int i = 0; i < nNeighbors; ++i) {
       tCones[i].show(40, false);
       // neighbors[i].showBall();

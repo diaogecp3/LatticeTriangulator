@@ -5,6 +5,7 @@ int pictureCounter = 0, frameCounter = 0;
 boolean filming = false, change = false;
 
 void snapPicture() {
+  println("saving picture", pictureCounter);
   saveFrame("pictures/P"+nf(pictureCounter++,3)+".png");
 }
 

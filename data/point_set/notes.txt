@@ -71,3 +71,6 @@ Should revisit the definition of each circle. Done.
 ps_arcs_23:
 About geodesic distance test.
 
+ps_arcs_24:
+About supporting planes of 3 circles.
+

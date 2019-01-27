@@ -15,6 +15,9 @@ int numBackup3RT = 0;
 int numPointsPerTest = 64;
 boolean saveFailures = false;
 
+boolean showFirstCone = false;
+boolean showSecondCone = false;
+boolean showCoarseCorridor = false;
 
 class DebugInfoConvexity {
   pt[] points;
@@ -266,7 +269,7 @@ void convexHullTest() {
 
 void convexHullWithHolesTest() {
   gRingSet.generatePoints(attenuation);
-  if (showRingSet) gRingSet.showRings();
+  if (showRingSet) gRingSet.show();
   if (generateCH) {
     pt[] pointArray = gRingSet.get1DPointArray();
     if (regenerateCH) {  // regenerate a convex hull
@@ -286,7 +289,7 @@ void convexHullWithHolesTest() {
 
 void ringSetTriangulationTest() {
   gRingSet.generatePoints(attenuation);
-  if (showRingSet) gRingSet.showRings();
+  if (showRingSet) gRingSet.show();
   if (generateCH) {
     pt[] pointArray = gRingSet.get1DPointArray();
     if (regenerateCH) {
@@ -347,7 +350,7 @@ void ringSetTriangulationTest() {
 void subdivisionTest() {
   debugCH = false;
   gRingSet.generatePoints(attenuation);
-  if (showRingSet) gRingSet.showRings();
+  if (showRingSet) gRingSet.show();
   if (generateCH) {
     ArrayList<pt> positions = gRingSet.get1DPointArrayList();
     long startTime = System.nanoTime();
@@ -368,18 +371,13 @@ void subdivisionTest() {
     endTime = System.nanoTime();
     timeSD = (endTime - startTime) / 1000000.0;
 
-    triMesh.showTriangleMesh(red, true);
+    triMesh.show(red, true);
     // triMesh.showCornerPairs(blue, 3);
     // triMesh.showVertices(green, 1);
     numTriangles = triMesh.nt;
   } else {
     numTriangles = -1;
   }
-}
-
-void hubTest() {
-  gHub.showHub(red, 150);
-  gHub.showBoundingSphere(blue, 100);
 }
 
 void pivotPlaneAroundLineHitCircleTest() {
@@ -500,7 +498,7 @@ void supPlaneThreeCirclesIterTest() {
     showNormalToTriangle(ps[0], ps[1], ps[2], 20, 4);
   }
 
-  if (showRingSet) gRingSet.showRings();
+  if (showRingSet) gRingSet.show();
 }
 
 void exactCHThreeCirclesTest() {
@@ -515,7 +513,7 @@ void exactCHThreeCirclesTest() {
 
 void threeRingTriangleTest() {
   gRingSet.generatePoints(attenuation);
-  if (showRingSet) gRingSet.showRings();
+  if (showRingSet) gRingSet.show();
   if (generateCH) {
     pt[] pointArray = gRingSet.get1DPointArray();
     if (regenerateCH) {
@@ -636,14 +634,15 @@ void exactCHIncrementalTest() {
     gRingSet.showIncTriangles();
   }
 
-  // if (gRingSet.nRings == 2) {
-  //   gRingSet.incCorridors.get(0).showFace();
-  //   gRingSet.incCorridors.get(1).showFace();
-  // }
-
   if (showCorridorFaces) {
     fill(green);
     gRingSet.showIncCorridors();
+  }
+
+  if (showPolygons) {
+    gRingSet.generateConvexTriMesh();
+    fill(red);
+    gRingSet.showPolygons();
   }
 
   if (debugIncCH) {
@@ -717,7 +716,7 @@ void meshFromExactCHTest() {
   gRingSet.setNumPointsPerRing(numPointsPerRing);
   gRingSet.generatePoints(attenuation);
   if (showRingSet) {
-    gRingSet.showRings();
+    gRingSet.show();
   }
 
   if (showDiskSet) {
@@ -735,7 +734,7 @@ void meshFromExactCHTest() {
 
   if (showTriMesh) {
     if (gRingSet.triMesh != null) {
-      gRingSet.triMesh.showTriangleMesh(khaki, true);
+      gRingSet.triMesh.show(khaki, true);
     }
   } else {
     if (show3RT) {
@@ -767,18 +766,18 @@ void interactiveHubTest() {
     return;
   }
 
-  gHub.intersectionCircles();
+  gHub.generateIntersectionCircles();
   if (showIntersectionCircles) {
     gHub.showIntersectionCircles();
   }
 
-  gBeamMesh = gHub.triangulateBeams();
+  gBeamMesh = gHub.generateBeamMesh(numPointsPerRing);
   if (showLiftedCones) {
-    // gBeamMesh.showTriangleMesh(cyan, showTriangleStrokes);
-    gHub.showLiftedCones(cyan, 255);
+    gBeamMesh.show(cyan, showTriangleStrokes);
+    // gHub.showLiftedCones(cyan, 255);
   }
 
-  gRingSet = gHub.circlesToRingSet();
+  gRingSet = gHub.circlesToRingSet(numPointsPerRing);
 
   if (showDiskSet) {
     gRingSet.showDisks();
@@ -800,9 +799,9 @@ void interactiveHubTest() {
 
   /* Generate gap mesh. */
   gHub.initGaps(gRingSet.borders);
-  gGapMesh = gHub.gapMesh();
+  gGapMesh = gHub.generateGapMesh();
   if (showGapMesh) {
-    gGapMesh.showTriangleMesh(navy, showTriangleStrokes);
+    gGapMesh.show(navy, showTriangleStrokes);
   }
 
   gTriangleMesh.subdivide(subdivisionTimes);
@@ -811,11 +810,11 @@ void interactiveHubTest() {
   }
 
   if (showTriMesh) {
-    gTriangleMesh.showTriangleMesh(purple, showTriangleStrokes);
+    gTriangleMesh.show(purple, showTriangleStrokes);
   }
 
   if (showHub) {
-    gHub.showHub(lightSalmon, 130);
+    gHub.show(lightSalmon, 130);
   }
 
   if (showBoundingSphere) {
@@ -853,13 +852,6 @@ void supPlaneThreeCirclesSpecialTest() {
 
   if (showDiskSet) gRingSet.showDisks();
 
-  // pt[] contacts = gRingSet.twoSupPlanesThreeCircles(0, 1, 2, null, null, false);
-
-  // {
-  //   fill(chocolate, 200);
-  //   showPlane(points[0], points[2], points[4], radiusOfSphere);
-  // }
-
   gRingSet.generateExactCHIncremental();
 
   if (showTriangleFaces) {
@@ -873,6 +865,74 @@ void supPlaneThreeCirclesSpecialTest() {
   }
 
   return;
+}
+
+/*
+ * Make some nice pictures about the supporting plane of 3 circles.
+ */
+void supPlaneThreeCirclesTest() {
+  if (gPoints.nv < 6) return;
+  gRingSet = new RingSet(centerOfSphere, radiusOfSphere, gPoints.G, 6);
+
+  if (!gRingSet.isValid()) {
+    validRS = false;
+    return;
+  } else {
+    validRS = true;
+  }
+
+  if (showDiskSet) {
+    fill(red);
+    gRingSet.showDisks();
+  }
+  gRingSet.generateExactCHIncremental();
+
+  if (showTriangleFaces) {
+    fill(blue);
+    gRingSet.showIncTriangles();
+  }
+
+  if (showCones) {
+    fill(purple);
+    float extDist = 0;
+    gRingSet.showCones(extDist);
+  }
+
+  if (showFirstCone) {
+    RingSet.IncTriangle t0 = gRingSet.incTriangles.get(0);
+    stroke(blue);
+    strokeWeight(3);
+    t0.showCircumcircle();
+    strokeWeight(1);
+    noStroke();
+    fill(cyan, 100);
+    t0.showCone(centerOfSphere, 120);
+    fill(navy, 100);
+    t0.showFace();
+  }
+
+  if (showSecondCone) {
+    RingSet.IncTriangle t1 = gRingSet.incTriangles.get(1);
+    stroke(green);
+    strokeWeight(3);
+    t1.showCircumcircle();
+    strokeWeight(1);
+    noStroke();
+    fill(lime, 100);
+    t1.showCone(centerOfSphere, M(t1.normal), 120);
+    fill(springGreen, 100);
+    t1.showFace();
+  }
+
+
+
+  if (showCircleSet) {
+    hint(DISABLE_DEPTH_TEST);
+    stroke(black);
+    gRingSet.showCircles();
+    noStroke();
+    hint(ENABLE_DEPTH_TEST);
+  }
 }
 
 /*
@@ -909,6 +969,7 @@ void geodesicDistanceTest() {
   pen(cyan, 10);
   show(centerOfSphere, points[0]);
   show(centerOfSphere, points[2]);
+  strokeWeight(3);
   showCircle(centerOfSphere, n1, radiusOfSphere);
   strokeWeight(1);
   noStroke();
@@ -916,6 +977,76 @@ void geodesicDistanceTest() {
 
   if (showCircleSet) {
     gRingSet.showCircles();
+  }
+}
+
+
+void ellipticConeTest() {
+  if (gPoints.nv < 4) return;
+
+  gRingSet = new RingSet(centerOfSphere, radiusOfSphere, gPoints.G, 4);
+
+  if (!gRingSet.isValid()) {
+    validRS = false;
+    return;
+  } else {
+    validRS = true;
+  }
+
+  if (showCircleSet) {
+    gRingSet.showCircles();
+  }
+
+  if (showDiskSet) {
+    gRingSet.showDisks();
+  }
+
+  gRingSet.generateExactCHIncremental();
+
+  if (showCorridorFaces) {
+    fill(green);
+    gRingSet.showIncCorridors();
+  }
+
+  if (debugIncCH) {
+    gRingSet.showDebugIncCHInfo();
+  }
+
+  if (showCoarseCorridor) {
+    float del = TWO_PI / 10;
+    fill(green);
+    gRingSet.incCorridors.get(0).show(del);
+    gRingSet.incCorridors.get(1).show(del);
+    gRingSet.incCorridors.get(0).checkCoplanarity(del, false);
+    gRingSet.incCorridors.get(1).checkCoplanarity(del, false);
+  }
+}
+
+
+/*
+ * Test about converting a hub into a triangle mesh.
+ */
+void hubToMeshTest() {
+  if (gPoints.nv < 4) {
+    println("Should use at least 4 points.");
+    return;
+  }
+
+  int nv = gPoints.nv - gPoints.nv % 2;
+  gHub = new Hub(centerOfSphere, rInnerBall, gPoints.G, nv);
+  if (!gHub.valid) {
+    println("Hub is not valid!");
+    return;
+  }
+
+  gTriangleMesh = gHub.generateTriMesh(numPointsPerRing);
+
+  if (showTriMesh) {
+    gTriangleMesh.show(cyan, true);
+  }
+
+  if (showHub) {
+    gHub.show(lightSalmon, 130);
   }
 }
 
@@ -962,7 +1093,7 @@ void hubLineIntersectionTest() {
   }
 
   if (showHub) {
-    gHub.showHub(lightSalmon, 100);
+    gHub.show(lightSalmon, 100);
   }
 
   if (gPoints.nv % 2 == 1) return;
@@ -993,7 +1124,7 @@ void roundConeDistTest() {
     return;
   }
 
-  gHub.showHub(lightSalmon, 100);
+  gHub.show(lightSalmon, 100);
 
   pt p = gPoints.G[2];
   float d = roundConeDist(p, gHub.ball.c, gHub.ball.r, gHub.neighbors[0].c, gHub.neighbors[0].r);

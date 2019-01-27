@@ -299,8 +299,8 @@ class Ball {
     return solveQuadraticEquation(c2, c1, c0);
   }
 
-  void showBall() {
-    show(c, r);
+  void show() {
+    showBall(c, r);
   }
 }
 

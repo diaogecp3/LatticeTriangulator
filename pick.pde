@@ -1,7 +1,7 @@
 import java.nio.*;
 import processing.core.PMatrix3D;
-pt PP=P(); // picked point
-Boolean  picking=false;
+pt PP = P(); // picked point
+boolean picking = false;
 
 public pt pick(int mX, int mY) { // returns point on visible surface at pixel (mX,My)
   PGL pgl = beginPGL();
@@ -28,7 +28,7 @@ public pt pick(int mX, int mY) { // returns point on visible surface at pixel (m
 
   modelViewProjInv.mult( normalized, unprojected );
   return P( unprojected[0]/unprojected[3], unprojected[1]/unprojected[3], unprojected[2]/unprojected[3] );
-  }
+}
 
 public pt pick(float mX, float mY, float mZ) {
   //get 3d matrices
@@ -45,7 +45,7 @@ public pt pick(float mX, float mY, float mZ) {
   float[] unprojected = new float[4];
   modelViewProjInv.mult( normalized, unprojected );
   return P( unprojected[0]/unprojected[3], unprojected[1]/unprojected[3], unprojected[2]/unprojected[3] );
-  }
+}
 
 pt viewPoint() {return pick( 0,0, (height/2) / tan(PI/6));}
 /*
@@ -56,5 +56,4 @@ in draw, before popMatrix, insert
 in keyPressed,
 
       if (key=='`') picking=true;
-
 */
