@@ -47,25 +47,23 @@ boolean showSphere = true;
 boolean showCenterOfSphere = true;
 boolean showArcSet = true;
 boolean showAuxPlane = false;
-int approxMethodCorridor = 0;
-boolean generateCH = false;
+
+boolean generateCH = true;
 boolean regenerateCH = true;  // for ring set, test shrink/grow
 boolean showPointSet = true;
 
-float dz = 500;  // distance to camera. Manipulated with mouse wheel
-float rx = -0.06 * TWO_PI, ry = -0.04 * TWO_PI;  // view angles manipulated when space pressed but not mouse
 boolean animating = true;
 boolean tracking = false;
 boolean center = true;
 boolean showFrame = false;
 boolean snappingPDF = false;
 boolean viewpoint = false;
-float t = 0, s = 0;
+
 pt Viewer = P();
-pt F = P(0,0,0);  // focus point: the camera is looking at it (moved when 'f or 'F' are pressed)
-pt Of = P(100,100,0), Ob = P(110,110,0);  // red point controlled by the user via mouseDrag: used for inserting vertices ...
-pt Vf = P(0,0,0), Vb = P(0,0,0);
-pt Pick=P();
+pt F = P(0, 0, 0);  // focus point: the camera is looking at it (moved when 'f or 'F' are pressed)
+pt Of = P(100, 100, 0), Ob = P(110, 110, 0);  // red point controlled by the user via mouseDrag: used for inserting vertices ...
+pt Vf = P(0, 0, 0), Vb = P(0, 0, 0);
+pt Pick = P();
 
 float radiusOfSphere = 100;
 pt centerOfSphere = new pt(0.0, 0.0, 0.0);
@@ -74,18 +72,16 @@ pt centerOfSphere = new pt(0.0, 0.0, 0.0);
 pts gPoints;  // the global points
 
 /* Global variables related to gRingSet. */
-float rMax = 50;
-float attenuationMin = 0.05;
-float attenuationDelta = 0.05;
-float attenuation = 1.0;
-int numRings = 5;
-int numPointsPerRing = 6;
+float gAttenuationMin = 0.05;
+float gAttenuationDelta = 0.05;
+float gAttenuation = 1.0;
+int gNumRings = 5;
+int gNumPointsPerRing = 6;
 RingSet gRingSet;  // the global ring set
 
 /* Global variables related to gHub. */
-float rInnerBall = 20;  // radius of the inner ball
-float rSphereOfOuterBalls = radiusOfSphere;  // radius of the sphere where the centers of the outer balls lie
-int nNeighbors = 4;  // number of outer balls
+float gRadiusInnerBall = 20;  // radius of the inner ball
+int gNumNeighbors = 4;  // number of outer balls
 Hub gHub;  // the global hub
 
 /* Global variables related to gTriangleMesh. */
@@ -96,7 +92,9 @@ TriangleMesh gGapMesh;  // the global triangle mesh for gaps
 /* Global variables related to gEdgeCircle. */
 EdgeCircle gEdgeCircle;  // the global edge circle
 
-int numTriangles = -1;
+Camera gCamera = new Camera(500, -0.06 * TWO_PI, -0.04 * TWO_PI);
+
+int gNumTriangles = -1;
 float timeTM = 0.0;
 float timeSD = 0.0;
 
@@ -133,11 +131,11 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       gRingSet = new RingSet(centerOfSphere, radiusOfSphere);
-      gRingSet.load("data/rs_unnamed");
+      gRingSet.load("data/ring_set/rs_easy_1");
       break;
     case 1:  // generate randomly
       gRingSet = new RingSet(centerOfSphere, radiusOfSphere,
-                       numRings, numPointsPerRing);
+                       gNumRings, gNumPointsPerRing);
       gRingSet.init();
       break;
     default:
@@ -151,7 +149,7 @@ void setup() {
       gHub.load("data/hub/hub_easy_3");
       break;
     case 1:  // generate randomly
-      gHub = generateHub(centerOfSphere, rInnerBall, rSphereOfOuterBalls, nNeighbors);
+      gHub = generateHub(centerOfSphere, gRadiusInnerBall, radiusOfSphere, gNumNeighbors);
       break;
     default:
       println("Please use a valid input method for hub");
@@ -188,8 +186,8 @@ void setup() {
   }
 
   if (regenerateCH == false) {
-    attenuation = attenuationMin;
-    gRingSet.generatePoints(attenuation);  // shrink all rings
+    gAttenuation = gAttenuationMin;
+    gRingSet.generatePoints(gAttenuation);  // shrink all rings
     if (test == 1) {
       debugCH = false;
       gRingSet.generateTriangleMesh(0);  // generate a triangle mesh and store it
@@ -215,9 +213,10 @@ void draw() {
   perspective(fov, 1.0, 1.0, 10000);
 
   // SET VIEW
-  translate(0, 0, dz);  // puts origin of model at screen center and moves forward/away by dz
+  translate(0, 0, gCamera.dz);  // puts origin of model at screen center and moves forward/away by dz
   lights();  // turns on view-dependent lighting
-  rotateX(rx); rotateY(ry);  // rotates the model around the new origin (center of screen)
+  rotateX(gCamera.rx);
+  rotateY(gCamera.ry);  // rotates the model around the new origin (center of screen)
   rotateX(HALF_PI);  // rotates frame around X to make X and Y basis vectors parallel to the floor
   if (center) translate(-F.x, -F.y, -F.z);
   if (viewpoint) {Viewer = viewPoint(); viewpoint = false;} // sets Viewer to the current viewpoint when ',' is pressed
@@ -300,16 +299,16 @@ void draw() {
       convexHullTests(numTests, numPointsPerTest);
       break;
     case 101:  // many ring-set-triangulation tests
-      ringSetTriangulationTests(numTests, numRings, numPointsPerRing, attenuation);
+      ringSetTriangulationTests(numTests, gNumRings, gNumPointsPerRing, gAttenuation);
       break;
     case 102:  // many three-ring-triangle tests
-      threeRingTriangleTests(numTests, numPointsPerRing, attenuation);
+      threeRingTriangleTests(numTests, gNumPointsPerRing, gAttenuation);
       break;
     case 103:  // many supporting-plane-of-three-circles tests
-      supPlaneThreeCirclesTests(numTests, attenuation);
+      supPlaneThreeCirclesTests(numTests, gAttenuation);
       break;
     case 104:
-      exactCHAllCirclesTests(numTests, numRings);
+      exactCHAllCirclesTests(numTests, gNumRings);
       break;
 
     case 200:
@@ -349,13 +348,12 @@ void draw() {
   }
 
   if (showSphere && showArcSet) {
-    noStroke();
     int nv = gPoints.nv - gPoints.nv % 2;
     showArcs(gPoints.G, nv, centerOfSphere, radiusOfSphere, 4, 3, 4);
     fill(red, 100);
     gPoints.showPicked(6); // show currently picked vertex of P
     fill(orange, 100);
-    show(pick(mouseX,mouseY), 5);  // show mouse position on the sphere
+    show(pick(mouseX, mouseY), 5);  // show mouse position on the sphere
   }
 
   if (exitDraw) noLoop();
@@ -374,11 +372,6 @@ void draw() {
 
   // show menu at bottom, only if not filming
   if (scribeText && !filming) displayFooter();
-  if (animating) {  // periodic change of time
-    t += PI/360;
-    if (t >= TWO_PI) t = 0;
-    s = (cos(t) + 1.0) / 2;
-  }
   if (filming && (animating || change)) {
     saveFrame("FRAMES/F" + nf(frameCounter++, 4) + ".tif");  // save next frame
   }

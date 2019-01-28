@@ -26,7 +26,8 @@ int prevCorner(int cid) {
 class TriangleMesh {
   ArrayList<pt> positions;
   ArrayList<Triangle> triangles;
-  int nv, nt;
+  int nv;
+  int nt;
 
   ArrayList<Integer> oppositeTable;
   ArrayList<ArrayList<Integer>> swingLists;
@@ -153,6 +154,7 @@ class TriangleMesh {
   }
 
   void setupSwingLists() {
+    if (oppositeTable == null) setupOppositeTable();
     assert triangles != null && oppositeTable != null;
     swingLists = new ArrayList<ArrayList<Integer>>();
     for (int i = 0; i < nv; ++i) swingLists.add(new ArrayList<Integer>());

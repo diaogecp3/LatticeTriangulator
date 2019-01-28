@@ -9,6 +9,8 @@ boolean showLiftedCones = false;
 boolean showGapMesh = false;
 
 
+float gGapWidth = 3.0;
+
 class Cone {
   pt apex;  // apex
   vec axis;  // in the direction of incresing radius
@@ -304,7 +306,6 @@ class Hub {
   TruncatedCone[] tCones = null;  // beams
   Circle[] circles = null;  // intersection between cones and bounding sphere
 
-  float gapWidth = 10.0;  // the width of the gap between the convex hull and beams
   TruncatedCone[] liftedCones = null;  // truncated-beams
 
   ConicGap[] gaps = null;
@@ -405,31 +406,6 @@ class Hub {
     maxIntersectDist += 10;  // slightly bigger such that circles are disjoint
   }
 
-  private TruncatedCone liftCone(int i, pt c, float r) {
-    pt c0 = P(c, gapWidth, tCones[i].normal);
-    float r0 = r;
-    if (tCones[i].r1 < tCones[i].r0) {
-      r0 -= gapWidth * tan(tCones[i].cone.alpha);
-    } else {
-      r0 += gapWidth * tan(tCones[i].cone.alpha);
-    }
-
-    if (dot(V(c0, tCones[i].c1), tCones[i].normal) < 0) {
-      // println("The inner base is lifted too much." +
-      //         "The axis direction will be reversed." +
-      //         "To fix this, the outer base will also be lifted.");
-      pt c1 = P(tCones[i].c1, 2 * gapWidth, tCones[i].normal);
-      float r1 = tCones[i].r1;
-      if (tCones[i].r1 < tCones[i].r0) {
-        r1 -= 2 * gapWidth * tan(tCones[i].cone.alpha);
-      } else {
-        r1 += 2 * gapWidth * tan(tCones[i].cone.alpha);
-      }
-      return new TruncatedCone(c0, r0, c1, r1, tCones[i].normal, tCones[i].cone);
-    }
-    return new TruncatedCone(c0, r0, tCones[i].c1, tCones[i].r1, tCones[i].normal, tCones[i].cone);
-  }
-
   private Circle intersectionCircleWithBoundingSphere(int i) {
     float r0 = ball.r * ball.r / tCones[i].r0;  // the radius of the base of ball.c
     float r1 = neighbors[i].r * neighbors[i].r / tCones[i].r1;  // the radius of the base of neighbors[i].c
@@ -461,16 +437,45 @@ class Hub {
 
   void generateIntersectionCircles() {
     if (maxIntersectDist <= 0.0) return;
-
     circles = new Circle[nNeighbors];
-    liftedCones = new TruncatedCone[nNeighbors];
     for (int i = 0; i < nNeighbors; ++i) {
       circles[i] = intersectionCircleWithBoundingSphere(i);
-      if (circles[i] != null) {
-        liftedCones[i] = liftCone(i, circles[i].c, circles[i].r);
-      }
     }
     return;
+  }
+
+  private TruncatedCone liftCone(int i, pt c, float r, float gapWidth) {
+    pt c0 = P(c, gapWidth, tCones[i].normal);
+    float r0 = r;
+    if (tCones[i].r1 < tCones[i].r0) {
+      r0 -= gapWidth * tan(tCones[i].cone.alpha);
+    } else {
+      r0 += gapWidth * tan(tCones[i].cone.alpha);
+    }
+
+    if (dot(V(c0, tCones[i].c1), tCones[i].normal) < 0) {
+      // println("The inner base is lifted too much." +
+      //         "The axis direction will be reversed." +
+      //         "To fix this, the outer base will also be lifted.");
+      pt c1 = P(tCones[i].c1, 2 * gapWidth, tCones[i].normal);
+      float r1 = tCones[i].r1;
+      if (tCones[i].r1 < tCones[i].r0) {
+        r1 -= 2 * gapWidth * tan(tCones[i].cone.alpha);
+      } else {
+        r1 += 2 * gapWidth * tan(tCones[i].cone.alpha);
+      }
+      return new TruncatedCone(c0, r0, c1, r1, tCones[i].normal, tCones[i].cone);
+    }
+    return new TruncatedCone(c0, r0, tCones[i].c1, tCones[i].r1, tCones[i].normal, tCones[i].cone);
+  }
+
+  void liftCones(float gapWidth) {
+    liftedCones = new TruncatedCone[nNeighbors];
+    for (int i = 0; i < nNeighbors; ++i) {
+      if (circles[i] != null) {
+        liftedCones[i] = liftCone(i, circles[i].c, circles[i].r, gapWidth);
+      }
+    }
   }
 
   RingSet circlesToRingSet(int m) {
@@ -599,17 +604,17 @@ class Hub {
    * Initialize gaps, each formed by a hole of the convex hull and the base of
    * its corresponding beam.
    */
-  void initGaps(ArrayList<pt>[] innerLoops) {
+  void initGaps(ArrayList<pt>[] innerLoops, int numEdges) {
     assert innerLoops.length == nNeighbors;
     assert liftedCones != null;
     gaps = new ConicGap[nNeighbors];
 
     for (int i = 0; i < nNeighbors; ++i) {
       ArrayList<pt> innerLoop = innerLoops[i];
-      if (liftedCones[i].samples == null) liftedCones[i].generateSamples(numPointsPerRing);
+      if (liftedCones[i].samples == null) liftedCones[i].generateSamples(numEdges);
       ArrayList<pt> outerLoop = new ArrayList<pt>();
       pt[] samples = liftedCones[i].samples;
-      int n = samples.length / 2;  // or numPointsPerRings
+      int n = samples.length / 2;
       for (int j = 0; j < n; ++j) outerLoop.add(samples[j]);
       gaps[i] = new ConicGap(innerLoop, outerLoop);
     }
@@ -631,28 +636,30 @@ class Hub {
 
   /*
    * Generate a triangle mesh that approximates the hub. This mesh is made of
-   * convex hull mesh, gap mesh and beam mesh. m is the number of edges on a
-   * beam cross section.
+   * convex hull mesh, gap mesh and beam mesh.
+   *
+   * Parameters:
+   * numEdges: integer, the number of edges on a beam cross section
+   * gapWidth: float, the width of each gap
    */
-  TriangleMesh generateTriMesh(int m) {
+  TriangleMesh generateTriMesh(int numEdges, float gapWidth) {
     generateIntersectionCircles();
-    RingSet rs = circlesToRingSet(m);
+    liftCones(gapWidth);
+    RingSet rs = circlesToRingSet(numEdges);
 
     rs.generateExactCHIncremental();
     TriangleMesh convexHullMesh = rs.generateConvexTriMesh();
 
-    initGaps(rs.borders);
+    initGaps(rs.borders, numEdges);
     TriangleMesh gapMesh = generateGapMesh();
 
-    TriangleMesh beamMesh = generateBeamMesh(m);
+    TriangleMesh beamMesh = generateBeamMesh(numEdges);
 
     /* Merge the 3 meshes into 1 mesh. */
     TriangleMesh triMesh = new TriangleMesh(convexHullMesh);  // copy
-
     triMesh.augmentWithShift(beamMesh);
 
     HashMap<pt, Integer> vIDs = new HashMap<pt, Integer>();
-
     {  // store the global vertex ID for each vertex of the gap mesh
       for (int i = 0; i < gapMesh.nv; ++i) {
         pt p = gapMesh.positions.get(i);
@@ -666,7 +673,6 @@ class Hub {
       }
       assert vIDs != null && vIDs.size() > 0;
     }
-
     {  // merge the current triangle mesh with the gap mesh
       ArrayList<pt> ps = gapMesh.positions;
       for (int i = 0; i < gapMesh.nt; ++i) {
@@ -698,7 +704,7 @@ class Hub {
 
   void showLiftedCones(color c, int a) {
     fill(c, a);
-    int n = numPointsPerRing;
+    int n = gNumPointsPerRing;
     for (int i = 0; i < nNeighbors; ++i) {
       if (liftedCones[i] != null) {
         liftedCones[i].show(n, true);

@@ -2,39 +2,6 @@
  * Graphical user interface.
  ******************************************************************************/
 
-void displayDebugText() {
-  if (test >= 10 && test <= 20) {
-    scribeHeader("valid ring set? " + (validRS ? "yes" : "no"), 3);
-  }
-
-  if (subdivisionTimes >= 0) {
-    if (test == 3) {
-      scribeHeader("time for subdivision = " + timeSD + "ms", 6);
-    }
-    if (test == 15 || test == 16) {
-      scribeHeader("subdivision times = " + subdivisionTimes, 6);
-    }
-  }
-
-  if (test == 16) {
-    switch (projectMethod) {
-      case 1:
-        scribeHeader("Project method: shooting lines", 7);
-        break;
-      case 2:
-        scribeHeader("Project method: sphere tracing to blended hub", 7);
-        break;
-      default:
-        scribeHeader("Project method: shooting rays", 7);
-    }
-  }
-
-  if (gRingSet.exTriPoints != null) {
-    if (test == 11) {
-      scribeHeader("#triangles =" + int(gRingSet.exTriPoints.size() / 3) + " #vertices =" + gRingSet.nRings, 10);
-    }
-  }
-}
 
 void keyPressed() {
   if (key == '`') picking = true;
@@ -61,11 +28,13 @@ void keyPressed() {
     if (gHub != null) gHub.save("data/hub_unnamed");
     if (gEdgeCircle != null) gEdgeCircle.save("data/ec_unnamed");
     if (gTriangleMesh != null) gTriangleMesh.save("data/tm_unnamed");
+    if (gCamera != null) gCamera.save("data/cam_unnamed");
   }
-  // if (key == 'a') animating = !animating; // toggle animation
+  if (key == 'l') {
+    if (gCamera != null) gCamera.load("data/cam_unnamed");
+  }
   if (key == ',') viewpoint = true;
   if (key == '>') showFrame = !showFrame;
-  // if (key == '#') exit();
 
   /* Following are Yaohong's keys. */
   /* Keys: numbers. */
@@ -102,17 +71,12 @@ void keyPressed() {
   if (key == '6') {
     showPolygons = !showPolygons;
   }
-  if (key == '7') {
-    // if (test == 12 || test == 13) {
-    //   approxMethodCorridor++;
-    //   if (approxMethodCorridor > 2) approxMethodCorridor = 0;
-    // }
-  }
+
   if (key == '8') {
     if (test >= 12 && test <= 20) showArcSet = !showArcSet;
   }
   if (key == '9') {
-    if ((test >=12 && test <= 15) || test == 18) showAuxPlane = !showAuxPlane;
+    if ((test >= 12 && test <= 15) || test == 18) showAuxPlane = !showAuxPlane;
   }
 
   /* Keys: increase/decrease operators. */
@@ -121,11 +85,11 @@ void keyPressed() {
       // debugIncCHIter = min(debugIncCHIter + 1, int(gPoints.nv / 2) - 1);
     }
     if (test == 13 || test == 15 || test == 16 || test == 21) {
-      numPointsPerRing++;
+      gNumPointsPerRing++;
     }
-    if (numTriangles >= 0) {
-      numFaces = numTriangles + 1;
-      numFaces3RT = numTriangles + 1;
+    if (gNumTriangles >= 0) {
+      numFaces = gNumTriangles + 1;
+      numFaces3RT = gNumTriangles + 1;
     }
     // gRingSet.debug2RTInfo.numGlobalStep = min(gRingSet.debug2RTInfo.numGlobalStep + 1, gRingSet.nRings);
     // gRingSet.debug2RTInfo.numLocalStep = 1;
@@ -135,7 +99,7 @@ void keyPressed() {
       // debugIncCHIter = max(debugIncCHIter - 1, 3);
     }
     if (test == 13 || test == 15 || test == 16 || test == 21) {
-      numPointsPerRing = max(numPointsPerRing - 1, 3);
+      gNumPointsPerRing = max(gNumPointsPerRing - 1, 3);
     }
     if (numFaces > 0) {
       numFaces--;
@@ -157,12 +121,12 @@ void keyPressed() {
     // gRingSet.debug2RTInfo.numLocalStep = min(gRingSet.debug2RTInfo.numLocalStep + 1, gRingSet.nPointsPerRing);
   }
   if (key == '[') {
-    if (test == 1 || test == 2) attenuation = min(1.0, attenuation + attenuationDelta);
+    if (test == 1 || test == 2) gAttenuation = min(1.0, gAttenuation + gAttenuationDelta);
     if (test == 13) idxIncTri++;
     if (test == 3 || test == 15 || test == 16) subdivisionTimes++;
   }
   if (key == ']') {
-    if (test == 1 || test == 2) attenuation = max(attenuationMin, attenuation - attenuationDelta);
+    if (test == 1 || test == 2) gAttenuation = max(gAttenuationMin, gAttenuation - gAttenuationDelta);
     if (test == 13) idxIncTri = max(0, idxIncTri - 1);
     if (test == 3 || test == 15 || test == 16) subdivisionTimes = max(0, subdivisionTimes - 1);
   }
@@ -178,7 +142,7 @@ void keyPressed() {
     if (test == 13) debugIncCHCor = !debugIncCHCor;
     regenerateCH = !regenerateCH;
     if (regenerateCH == false) {
-      gRingSet.generatePoints(attenuationMin);  // shrink all rings
+      gRingSet.generatePoints(gAttenuationMin);  // shrink all rings
       if (test == 1) {
         debugCH = false;
         gRingSet.generateTriangleMesh(0);  // generate a triangle mesh and store it
@@ -258,7 +222,7 @@ void keyPressed() {
 }
 
 void mouseWheel(MouseEvent event) {
-  dz -= event.getAmount();
+  gCamera.dz -= event.getAmount();
   change = true;
 }
 
@@ -272,10 +236,10 @@ void mousePressed() {
 
 void mouseMoved() {
   if (keyPressed && key == ' ') {
-    rx -= PI * (mouseY - pmouseY) / height;
-    ry += PI * (mouseX - pmouseX) / width;
+    gCamera.rx -= PI * (mouseY - pmouseY) / height;
+    gCamera.ry += PI * (mouseX - pmouseX) / width;
   }
-  if (keyPressed && key == 's') dz += (float)(mouseY-pmouseY); // approach view (same as wheel)
+  if (keyPressed && key == 's') gCamera.dz += (float)(mouseY-pmouseY); // approach view (same as wheel)
 }
 
 void mouseDragged() {
@@ -297,6 +261,40 @@ void mouseDragged() {
   if (keyPressed && key == 'F') { // move focus point vertically
     if (center) F.sub(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
     else F.add(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
+  }
+}
+
+void displayDebugText() {
+  if (test >= 10 && test <= 20) {
+    scribeHeader("valid ring set? " + (validRS ? "yes" : "no"), 3);
+  }
+
+  if (subdivisionTimes >= 0) {
+    if (test == 3) {
+      scribeHeader("time for subdivision = " + timeSD + "ms", 6);
+    }
+    if (test == 15 || test == 16) {
+      scribeHeader("subdivision times = " + subdivisionTimes, 6);
+    }
+  }
+
+  if (test == 16) {
+    switch (projectMethod) {
+      case 1:
+        scribeHeader("Project method: shooting lines", 7);
+        break;
+      case 2:
+        scribeHeader("Project method: sphere tracing to blended hub", 7);
+        break;
+      default:
+        scribeHeader("Project method: shooting rays", 7);
+    }
+  }
+
+  if (gRingSet.exTriPoints != null) {
+    if (test == 11) {
+      scribeHeader("#triangles =" + int(gRingSet.exTriPoints.size() / 3) + " #vertices =" + gRingSet.nRings, 10);
+    }
   }
 }
 

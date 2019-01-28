@@ -9,6 +9,35 @@ void snapPicture() {
   saveFrame("pictures/P"+nf(pictureCounter++,3)+".png");
 }
 
+class Camera {
+  float dz = 500;  // distance to camera, manipulated with mouse wheel
+  float rx = -0.06 * TWO_PI;  // view angle, manipulated when space pressed
+  float ry = -0.04 * TWO_PI;  // view angle, manipulated when space pressed
+
+  Camera(float dz, float rx, float ry) {
+    this.dz = dz;
+    this.rx = rx;
+    this.ry = ry;
+  }
+
+  void save(String file) {
+    println("saving camera:", file);
+    String[] lines = new String[3];
+    lines[0] = str(dz);
+    lines[1] = str(rx);
+    lines[2] = str(ry);
+    saveStrings(file, lines);
+  }
+
+  void load(String file) {
+    println("loading camera:", file);
+    String[] lines = loadStrings(file);
+    dz = float(lines[0]);
+    rx = float(lines[1]);
+    ry = float(lines[2]);
+  }
+}
+
 // ************************************ COLORS
 // For more color and color names, see https://htmlcolorcodes.com/color-names/
 color red = #FF0000, darkRed = #8B0000, firebrick = #B22222;
