@@ -741,8 +741,8 @@ void meshFromExactCHTest() {
 }
 
 void interactiveHubTest() {
-  if (gPoints.nv < 2) {
-    println("Should use at least 2 points.");
+  if (gPoints.nv < 4) {
+    println("Should use at least 4 points.");
     return;
   }
 
@@ -754,18 +754,19 @@ void interactiveHubTest() {
   }
 
   gHub.generateIntersectionCircles();
-  gHub.liftCones(10.0);
+  gHub.liftCones(gGapWidth);
   if (showIntersectionCircles) {
     gHub.showIntersectionCircles();
   }
 
-  gBeamMesh = gHub.generateBeamMesh(gNumPointsPerRing);
+  gRingSet = gHub.circlesToRingSet(gNumPointsPerRing);
+  gHub.generateBeamSamples(gNumPointsPerRing, gRingSet.xAxes);
+
+  gBeamMesh = gHub.generateBeamMesh();
   if (showLiftedCones) {
     gBeamMesh.show(cyan, showTriangleStrokes);
     // gHub.showLiftedCones(cyan, 255);
   }
-
-  gRingSet = gHub.circlesToRingSet(gNumPointsPerRing);
 
   if (showDiskSet) {
     gRingSet.showDisks();
@@ -786,7 +787,7 @@ void interactiveHubTest() {
   gTriangleMesh = gRingSet.generateConvexTriMesh();
 
   /* Generate gap mesh. */
-  gHub.initGaps(gRingSet.borders, gNumPointsPerRing);
+  gHub.initGaps(gRingSet.borders);
   gGapMesh = gHub.generateGapMesh();
   if (showGapMesh) {
     gGapMesh.show(navy, showTriangleStrokes);
@@ -1014,7 +1015,7 @@ void ellipticConeTest() {
 /*
  * Test about converting a hub into a triangle mesh.
  */
-void hubToMeshTest() {
+void interactiveHubToMeshTest() {
   if (gPoints.nv < 4) {
     println("Should use at least 4 points.");
     return;
@@ -1027,7 +1028,22 @@ void hubToMeshTest() {
     return;
   }
 
-  gTriangleMesh = gHub.generateTriMesh(gNumPointsPerRing, gGapWidth);
+  vec[] xAxes = new vec[gHub.nNeighbors];
+  for (int i = 0; i < xAxes.length; ++i) {
+    xAxes[i] = constructNormal(gHub.tCones[i].normal);
+    vec y = N(gHub.tCones[i].normal, xAxes[i]);
+    xAxes[i] = R(xAxes[i], PI, xAxes[i], y);
+  }
+
+  // gTriangleMesh = gHub.generateTriMesh(gNumPointsPerRing, gGapWidth, xAxes, true);
+
+  {
+    gHub.setNumEdgesRegularPolygon(gNumPointsPerRing);
+    gHub.setGapDistance(gGapWidth);
+    gHub.setXDirestions(xAxes);
+    gHub.setIsHalved(true);
+    gTriangleMesh = gHub.generateTriMesh();
+  }
 
   if (showTriMesh) {
     gTriangleMesh.show(cyan, true);
@@ -1036,6 +1052,22 @@ void hubToMeshTest() {
   if (showHub) {
     gHub.show(lightSalmon, 130);
   }
+}
+
+/*
+ * Read a hub from an augmented file and convert this hub to a mesh.
+ */
+void hubToMeshTest() {
+  gHub = new Hub();
+  gHub.loadAugFile("data/hub_aug_unnamed");
+
+  gHub.setGapDistance(gGapWidth);
+  gHub.setIsHalved(true);
+
+  gTriangleMesh = gHub.generateTriMesh();
+
+  if (showTriMesh) gTriangleMesh.show(cyan, true);
+  if (showHub) gHub.show(lightSalmon, 130);
 }
 
 

@@ -326,6 +326,10 @@ class vec2 {
   float norm() {
     return sqrt(x * x + y * y);
   }
+
+  String toString() {
+    return "(" + x + ", " + y + ")";
+  }
 }
 
 vec2 V(float a, float b) {

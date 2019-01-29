@@ -797,7 +797,7 @@ boolean coplanarFourPoints(pt pa, pt pb, pt pc, pt pd) {
 }
 
 /*
- * Compute the distance from a point p to a round cone, which is defined by the
+ * Compute the signed distance from a point p to a round cone, defined by the
  * union of two balls and the tangential cone connecting them. The distance is
  * negative if the point is inside the round cone.
  * https://www.iquilezles.org/www/articles/distfunctions/distfunctions.htm
@@ -812,8 +812,12 @@ float roundConeDist(pt p, pt s1, float r1, pt s2, float r2) {
   float a = sqrt(1.0 - b * b);
   float k = dot(q, V(-b, a));
 
-  if (k < 0.0) return q.norm() - r1;
-  if (k > a * h) return V(q.x, q.y-h).norm() - r2;
+  if (k < 0.0) {
+    return q.norm() - r1;
+  }
+  if (k > a * h) {
+    return V(q.x, q.y-h).norm() - r2;
+  }
 
-  return dot(q, V(a,b)) - r1;
+  return dot(q, V(a, b)) - r1;
 }

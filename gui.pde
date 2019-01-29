@@ -25,13 +25,15 @@ void keyPressed() {
   if (key == 'w') {  // save data
     if (gPoints != null) gPoints.savePts("data/pts_unnamed");
     if (gRingSet != null) gRingSet.save("data/rs_unnamed");
-    if (gHub != null) gHub.save("data/hub_unnamed");
+    // if (gHub != null) gHub.save("data/hub_unnamed");
+    if (gHub != null) gHub.saveAugFile("data/hub_aug_unnamed");
     if (gEdgeCircle != null) gEdgeCircle.save("data/ec_unnamed");
     if (gTriangleMesh != null) gTriangleMesh.save("data/tm_unnamed");
     if (gCamera != null) gCamera.save("data/cam_unnamed");
   }
   if (key == 'l') {
-    if (gCamera != null) gCamera.load("data/cam_unnamed");
+    // if (gCamera != null) gCamera.load("data/cam_unnamed");
+    if (gCamera != null) gCamera.load("data/point_set/cam_25");
   }
   if (key == ',') viewpoint = true;
   if (key == '>') showFrame = !showFrame;
@@ -265,7 +267,7 @@ void mouseDragged() {
 }
 
 void displayDebugText() {
-  if (test >= 10 && test <= 20) {
+  if (test == 13) {
     scribeHeader("valid ring set? " + (validRS ? "yes" : "no"), 3);
   }
 

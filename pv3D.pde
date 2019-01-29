@@ -14,7 +14,7 @@ class vec {
   vec div(float f) {x/=f; y/=f; z/=f; return this;};
   vec div(int f) {x/=f; y/=f; z/=f; return this;};
   vec rev() {x=-x; y=-y; z=-z; return this;};
-  float norm() {return(sqrt(sq(x)+sq(y)+sq(z)));};
+  float norm() {return sqrt(x * x + y * y + z * z);};
   vec normalize() {float n=norm(); if (n>0.000001) {div(n);}; return this;};
   vec rotate(float a, vec I, vec J) { // Rotate this by angle a parallel in plane (I,J) Assumes I and J are orthogonal
     float x=d(this,I), y=d(this,J); // dot products

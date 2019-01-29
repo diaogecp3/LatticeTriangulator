@@ -23,7 +23,8 @@ import processing.pdf.*;
  * 18: one geodesic-distance test
  * 19: one supporting-plane-of-three-circles test
  * 20: one elliptic-cone test
- * 21: one hub-to-mesh test
+ * 21: one interactive-hub-to-mesh test
+ * 22: one hub-to-mesh test
  * ...
  * 100: many convex-hull tests
  * 101: many ring-set-triangulation tests
@@ -35,7 +36,7 @@ import processing.pdf.*;
  * 202: one round-cone-distance test
  * 203: one intersection-between-two-planes test
  */
-int test = 21;
+int test = 16;
 
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
@@ -117,7 +118,7 @@ void setup() {
 
   switch (inputMethodPointSet) {
     case 0:  // read from file
-      gPoints.loadPts("data/point_set/ps_arcs_18");
+      gPoints.loadPts("data/point_set/ps_arcs_25");
       // gPoints.loadPts("data/point_set/out3.pts");
       break;
     case 1:  // generate randomly
@@ -292,6 +293,9 @@ void draw() {
       ellipticConeTest();
       break;
     case 21:
+      interactiveHubToMeshTest();
+      break;
+    case 22:
       hubToMeshTest();
       break;
 

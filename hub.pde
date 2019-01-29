@@ -50,8 +50,9 @@ class TruncatedCone {
 
   vec normal;  // unit vector from c0 to c1
   Cone cone = null;  // the original cone
-  float lowHeight = -1.0;
-  float highHeight = -1.0;
+
+  float h0 = 0.0;
+  float h1 = 0.0;
 
   pt[] samples = null;
 
@@ -72,11 +73,17 @@ class TruncatedCone {
     this.cone = cone;
   }
 
+  void halve() {
+    c1 = P(c0, c1);
+    r1 = (r0 + r1) / 2;
+    h1 = (h0 + h1) / 2;
+  }
+
   /*
    * Compute the original cone. This function is called when needed.
    */
   void initCone() {
-    if (cone != null) return;
+    assert cone == null;
     float d = d(c0, c1);
     float tan = abs(r1 - r0) / d;
     float alpha = atan(tan);  // [0, PI/2)
@@ -86,22 +93,20 @@ class TruncatedCone {
     pt apex = P(c0, -x, axis);
     cone = new Cone(apex, axis, alpha);
 
-    if (r0 < r1) {
-      lowHeight = x;
-      highHeight = x + d;
-    } else {
-      lowHeight = x - d;
-      highHeight = x;
-    }
+    h0 = x;
+    h1 = (r0 < r1) ? x + d : x - d;
+
+    assert h0 > 0.0 && h1 > 0.0;
   }
 
-  void generateSamples(int numSamples) {
+  void generateSamples(int numSamples, vec xAxis) {
     int n = numSamples;  // the number of samples on a base
     samples = new pt[2 * n];
-    vec vi = constructNormal(normal);
+    vec vi = xAxis == null ? constructNormal(normal) : xAxis;
     vec vj = N(normal, vi);
     float da = TWO_PI / n;
     float a = 0;
+
     for (int i = 0; i < n; ++i) {
       float cos = cos(a);
       float sin = sin(a);
@@ -126,6 +131,8 @@ class TruncatedCone {
 
     float d0 = dot(V(cone.apex, p0), cone.axis);
     float d1 = dot(V(cone.apex, p1), cone.axis);
+    float lowHeight = min(h0, h1);
+    float highHeight = max(h0, h1);
     boolean valid0 = (d0 >= lowHeight && d0 <= highHeight);
     boolean valid1 = (d1 >= lowHeight && d1 <= highHeight);
 
@@ -152,6 +159,8 @@ class TruncatedCone {
     pt p1 = ts[1] > 0 ? P(o, ts[1], d) : null;
 
     boolean valid0 = false;
+    float lowHeight = min(h0, h1);
+    float highHeight = max(h0, h1);
     if (p0 != null) {
       float d0 = dot(V(cone.apex, p0), cone.axis);
       valid0 = (d0 >= lowHeight && d0 <= highHeight);
@@ -173,7 +182,7 @@ class TruncatedCone {
   }
 
   void show(int numSamples, boolean showStroke) {
-    if (samples == null || samples.length == 0) generateSamples(numSamples);
+    generateSamples(numSamples, null);
     int n = samples.length / 2;
     if (showStroke) stroke(0);
     beginShape(QUAD_STRIP);
@@ -298,17 +307,23 @@ class ConicGap {
 class Hub {
   Ball ball = null;  // inner ball
   Ball[] neighbors = null;  // outer balls
-  int nNeighbors = 0;
+  int nNeighbors = 0;  // number of outer balls
 
   boolean valid = false;  // whether the hub is valid or not
+
+  /* Intermediate variables in hub triangulation. */
+  TruncatedCone[] tCones = null;  // each truncated cone connects the inner ball and an outer ball
   float maxIntersectDist = -1.0;  // the radius of the bounding sphere
+  Circle[] circles = null;  // intersection between tCones and the bounding sphere
+  TruncatedCone[] liftedCones = null;  // truncated tCones
+  ConicGap[] gaps = null;  // a gap is created between a lifted cone and its corresponding hole of the convex hull
 
-  TruncatedCone[] tCones = null;  // beams
-  Circle[] circles = null;  // intersection between cones and bounding sphere
-
-  TruncatedCone[] liftedCones = null;  // truncated-beams
-
-  ConicGap[] gaps = null;
+  /* Parameters for hub triangulation. */
+  boolean isHalved = false;  // whether each tCone is halved or not
+  float inflationRatio = 1.05;  // the ratio of the radius of the bounding sphere over the max intersection distance
+  int numEdgesRegularPolygon = -1;  // the number of edges of a beam cross section
+  vec[] xDirections = null;  // each beam has an I vector to generate samples
+  float gapDistance = 0.0;  // how much each tCone should be lifted/chopped
 
   Hub() {}
 
@@ -403,7 +418,38 @@ class Hub {
     generateTruncatedCones();
 
     maxIntersectDist = maximumIntersectionDistance();
-    maxIntersectDist += 10;  // slightly bigger such that circles are disjoint
+    // maxIntersectDist += 10;  // slightly bigger such that circles are disjoint
+    maxIntersectDist *= inflationRatio;
+  }
+
+  void setInflationRatio(float ratio) {
+    assert ratio > 1.0;
+    inflationRatio = ratio;
+  }
+
+  void setNumEdgesRegularPolygon(int numEdges) {
+    assert numEdges >= 3;
+    numEdgesRegularPolygon = numEdges;
+  }
+
+  void setXDirestions(vec[] xAxes) {
+    assert xAxes.length == nNeighbors;
+    xDirections = xAxes;
+  }
+
+  void setGapDistance(float dist) {
+    assert dist > 0.0;
+    gapDistance = dist;
+  }
+
+  void setIsHalved(boolean halve) {
+    isHalved = halve;
+  }
+
+  void halveBeams() {
+    for (int i = 0; i < nNeighbors; ++i) {
+      tCones[i].halve();
+    }
   }
 
   private Circle intersectionCircleWithBoundingSphere(int i) {
@@ -488,7 +534,6 @@ class Hub {
   float distanceFrom(pt p) {
     float d = Float.MAX_VALUE;
     for (int i = 0; i < nNeighbors; ++i) {
-      // println("i =", i, " round cone dist =", roundConeDist(p, ball.c, ball.r, neighbors[i].c, neighbors[i].r));
       d = min(d, roundConeDist(p, ball.c, ball.r, neighbors[i].c, neighbors[i].r));
     }
     return d;
@@ -500,14 +545,12 @@ class Hub {
    */
   float blendedDistanceFrom(pt p) {
     float d = 0;
-    float k = 8;  // shouldn't be too large
+    float k = 0.2;  // shouldn't be too large
     for (int i = 0; i < nNeighbors; ++i) {
-      println("round cone dist = ", roundConeDist(p, ball.c, ball.r, neighbors[i].c, neighbors[i].r));
       float t = exp(-k * roundConeDist(p, ball.c, ball.r, neighbors[i].c, neighbors[i].r));
-      // println("t = ", t);
-      d += exp(-k * roundConeDist(p, ball.c, ball.r, neighbors[i].c, neighbors[i].r));
+      assert t > 0.0;
+      d += t;
     }
-    // println("d = ", d);
     return -log(d) / k;
   }
 
@@ -550,17 +593,26 @@ class Hub {
   }
 
   /*
-   * Triangulate the i-th beam. m is the number of edges of a beam cross section.
-   * The ID of the first point of this beam is k. The triangle mesh tm will be
-   * augmented with new points and new triangles. Return the number of new points.
+   * Generate vertices on lifted cones (i.e. beams). m is the number of edges of
+   * a beam cross section. xAxis is the I direction of a beam.
    */
-  private int triangulateBeam(int b, int m, int k, TriangleMesh tm) {
+  void generateBeamSamples(int m, vec[] xAxes) {
+    for (int i = 0; i < nNeighbors; ++i) {
+      liftedCones[i].generateSamples(m, xAxes == null ? null : xAxes[i]);
+    }
+  }
+
+  /*
+   * Triangulate the i-th beam. k is the ID of the first point of this beam. The
+   * triangle mesh tm will be augmented with new points and new triangles.
+   * Return the number of new points.
+   */
+  private int triangulateBeam(int b, int k, TriangleMesh tm) {
     TruncatedCone beam = liftedCones[b];
-    if (beam == null) return 0;
     assert beam != null;
 
-    if (beam.samples == null) beam.generateSamples(m);
     pt[] samples = beam.samples;
+    assert samples != null && samples.length > 0 && samples.length % 2 == 0;
 
     ArrayList<pt> positions = new ArrayList<pt>();
     for (int i = 0; i < samples.length; ++i) {
@@ -592,28 +644,28 @@ class Hub {
   /*
    * Triangulate all the incident beams. Return a single mesh.
    */
-  TriangleMesh generateBeamMesh(int m) {
+  TriangleMesh generateBeamMesh() {
     TriangleMesh tm = new TriangleMesh();
     for (int i = 0, k = 0; i < nNeighbors; ++i) {
-      k += triangulateBeam(i, m, k, tm);
+      k += triangulateBeam(i, k, tm);
     }
     return tm;
   }
 
   /*
    * Initialize gaps, each formed by a hole of the convex hull and the base of
-   * its corresponding beam.
+   * its corresponding beam. innerLoops[i] is the i-th hole of the convex hull.
    */
-  void initGaps(ArrayList<pt>[] innerLoops, int numEdges) {
-    assert innerLoops.length == nNeighbors;
-    assert liftedCones != null;
+  void initGaps(ArrayList<pt>[] innerLoops) {
+    assert innerLoops != null && innerLoops.length == nNeighbors;
+    assert liftedCones != null && liftedCones.length == nNeighbors;
     gaps = new ConicGap[nNeighbors];
 
     for (int i = 0; i < nNeighbors; ++i) {
       ArrayList<pt> innerLoop = innerLoops[i];
-      if (liftedCones[i].samples == null) liftedCones[i].generateSamples(numEdges);
       ArrayList<pt> outerLoop = new ArrayList<pt>();
       pt[] samples = liftedCones[i].samples;
+      assert samples != null;
       int n = samples.length / 2;
       for (int j = 0; j < n; ++j) outerLoop.add(samples[j]);
       gaps[i] = new ConicGap(innerLoop, outerLoop);
@@ -639,10 +691,14 @@ class Hub {
    * convex hull mesh, gap mesh and beam mesh.
    *
    * Parameters:
-   * numEdges: integer, the number of edges on a beam cross section
-   * gapWidth: float, the width of each gap
+   * numEdges: an integer, the number of edges on a beam cross section
+   * gapWidth: a float, the width of each gap
+   * xAxes: an array of vectors with size nNeighbors, each x-axis is the I direction of a beam
+   * halve: whether or not to halve each beam
    */
-  TriangleMesh generateTriMesh(int numEdges, float gapWidth) {
+  TriangleMesh generateTriMesh(int numEdges, float gapWidth, vec[] xAxes, boolean halve) {
+    if (halve) halveBeams();
+
     generateIntersectionCircles();
     liftCones(gapWidth);
     RingSet rs = circlesToRingSet(numEdges);
@@ -650,10 +706,10 @@ class Hub {
     rs.generateExactCHIncremental();
     TriangleMesh convexHullMesh = rs.generateConvexTriMesh();
 
-    initGaps(rs.borders, numEdges);
+    generateBeamSamples(numEdges, xAxes);  // make sure to call this function before generating gap mesh and beam mesh
+    initGaps(rs.borders);
     TriangleMesh gapMesh = generateGapMesh();
-
-    TriangleMesh beamMesh = generateBeamMesh(numEdges);
+    TriangleMesh beamMesh = generateBeamMesh();
 
     /* Merge the 3 meshes into 1 mesh. */
     TriangleMesh triMesh = new TriangleMesh(convexHullMesh);  // copy
@@ -685,6 +741,11 @@ class Hub {
     }
 
     return triMesh;
+  }
+
+  TriangleMesh generateTriMesh() {
+    assert numEdgesRegularPolygon >= 3 && gapDistance > 0.0;
+    return generateTriMesh(numEdgesRegularPolygon, gapDistance, xDirections, isHalved);
   }
 
   void showIntersectionCircles() {
@@ -735,7 +796,6 @@ class Hub {
                    str(neighbors[j].c.z) + "," + str(neighbors[j].r);
     }
     saveStrings(file, lines);
-    return;
   }
 
   void load(String file) {
@@ -750,6 +810,67 @@ class Hub {
       tmp = float(split(lines[i++], ","));
       neighbors[j] = new Ball(tmp[0], tmp[1], tmp[2], tmp[3]);
     }
-    return;
+
+    valid = isValid();
+    if (valid) this.init();
+    else println("The hub is not valid! At lease two balls intersect.");
+  }
+
+  void saveAugFile(String file) {
+    println("saving augmented hub:", file);
+    String[] lines = new String[3 * nNeighbors + 3];
+    int i = 0;
+    lines[i++] = str(numEdgesRegularPolygon);
+    lines[i++] = str(ball.r);
+    lines[i++] = str(nNeighbors);
+    for (int j = 0; j < nNeighbors; ++j) {
+      lines[i++] = str(neighbors[j].c.x) + "," + str(neighbors[j].c.y) + "," +
+                   str(neighbors[j].c.z);
+      lines[i++] = str(neighbors[j].r);
+      lines[i++] = str(xDirections[j].x) + "," + str(xDirections[j].y) + "," +
+                   str(xDirections[j].z);
+    }
+    saveStrings(file, lines);
+  }
+
+  /*
+   * Construct a hub given an augmented file. This augmented file contains
+   * information that defines the hub, and information about triangulation (e.g.
+   * number of edges of a beam base).
+   */
+  void loadAugFile(String file) {
+    println("loading augmented hub:", file);
+    String[] lines = loadStrings(file);
+    int i = 0;
+    // number of edges on each regular polygon
+    numEdgesRegularPolygon = int(lines[i++]);
+    // the center ball centered at (0, 0, 0)
+    ball = new Ball(new pt(0.0, 0.0, 0.0), float(lines[i++]));
+    // the number of beam balls
+    nNeighbors = int(lines[i++]);
+    neighbors = new Ball[nNeighbors];
+    xDirections = new vec[nNeighbors];
+    for (int j = 0; j < nNeighbors; ++j) {
+      float[] tmp = float(split(lines[i++], ","));
+      float r = float(lines[i++]);
+      neighbors[j] = new Ball(tmp[0], tmp[1], tmp[2], r);
+      tmp = float(split(lines[i++], ","));
+      xDirections[j] = new vec(tmp[0], tmp[1], tmp[2]);
+    }
+
+    valid = isValid();
+    if (valid) this.init();
+    else println("The hub is not valid! At lease two balls intersect.");
   }
 }
+
+
+
+/*
+ * Instructions on converting a hub into a triangle mesh.
+ *
+ * gHub = new Hub();
+ * gHub.loadAugFile(file);  // the data file of a hub
+ * float gapWidth = 3.0;  // can put this into the data file later
+ * TriangleMesh tm = generateTriMesh(gHub.numEdgesRegularPolygon, gapWidth, gHub.xDirections, true);  // true means each beam will be halved
+ */
