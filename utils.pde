@@ -316,6 +316,23 @@ void showCircumcircleOfTriangle(pt pa, pt pb, pt pc, pt center, vec normal, Floa
 }
 
 /*
+ * Show the oblique cone with apex p, and a circular base (c, n, r).
+ */
+void showObliqueCone(pt p, pt c, vec n, float r) {
+  int nSamples = 120;
+  float a = 0;
+  float da = TWO_PI / nSamples;
+  vec vi = constructNormal(n);
+  vec vj = N(n, vi);
+  beginShape(TRIANGLE_FAN);
+  vertex(p);
+  for (int i = 0; i <= nSamples; ++i, a += da) {
+    vertex(P(c, r * cos(a), vi, r * sin(a), vj));
+  }
+  endShape();
+}
+
+/*
  * Spherical linear interpolation.
  */
 vec slerp(vec U, float t, vec W) {

@@ -29,11 +29,12 @@ boolean showPolygons = false;
 
 boolean debugIncCH = false;
 int debugIncCHIter = 3;
+int debugIncCHBoundarySize = 2;
 boolean debugIncCHNewView = false;
 boolean debugIncCHCor = false;
 boolean showCorridorFaces = false;
 boolean showTriangleFaces = false;
-boolean showCorridorStrokes = true;
+boolean showCorridorStrokes = false;
 boolean showTriangleStrokes = true;
 boolean showBeams = false;
 boolean showApolloniusDiagram = false;
@@ -361,12 +362,12 @@ class RingSet {
       edges[1].setEndPoints(v3, v0);  // DA
       setupNormalsAndAngles();
 
-      if (gNumPointsPerRing >= 3) delta = TWO_PI / (gNumPointsPerRing + 1);
-      else delta = TWO_PI / 20;
+      // if (gNumPointsPerRing >= 3) delta = TWO_PI / (gNumPointsPerRing + 1);
+      // else delta = TWO_PI / 20;
       // delta = TWO_PI / 40;
 
       // generateSamples();
-      if (showApolloniusDiagram) generatePointsAD();
+      // if (showApolloniusDiagram) generatePointsAD();
     }
 
     /*
@@ -510,9 +511,8 @@ class RingSet {
 
     void show(float delta) {
       generateSamples(delta);
-      if (showCorridorStrokes) {
-        stroke(0);
-      } else noStroke();
+      if (showCorridorStrokes) stroke(0);
+      else noStroke();
 
       // show correspondences
       beginShape(QUAD_STRIP);
@@ -523,9 +523,7 @@ class RingSet {
       vertex(vertices[1].position);  // B
       endShape();
 
-      if (showCorridorStrokes) {
-        noStroke();  // restore state
-      }
+      if (showCorridorStrokes) noStroke();  // restore state
     }
 
     void showCircumcircles() {
@@ -786,6 +784,7 @@ class RingSet {
     // things in old view
     ArrayList<IncFace> visibleFaces = new ArrayList<IncFace>();
     ArrayList<IncEdge> boundary = null;
+    ArrayList<IncEdge> tmpBoundary = null;
     ArrayList<IncCorridor> removedUnvisibleCorridors = new ArrayList<IncCorridor>();
     ArrayList<IncCorridor> oldCorridors = new ArrayList<IncCorridor>();
 
@@ -2036,12 +2035,17 @@ class RingSet {
     faces.add(cor1);
   }
 
-  private ArrayList<IncFace> generateInitFaces() {
+  private ArrayList<IncFace> generateInitFaces(boolean[] success) {
     ArrayList<IncFace> fs = new ArrayList<IncFace>();
     vec[] nors = new vec[2];
     float[] angs = new float[2];
     pt[] ps = twoSupPlanesThreeCircles(0, 1, 2, nors, angs, false);
-    assert ps != null && ps.length == 6;
+    // assert ps != null && ps.length == 6;
+    if (ps == null) {
+      if (success != null) success[0] = false;
+      return null;
+    }
+
     IncVertex v0 = new IncVertex(ps[0], 0);
     IncVertex v1 = new IncVertex(ps[1], 1);
     IncVertex v2 = new IncVertex(ps[2], 2);
@@ -2081,12 +2085,23 @@ class RingSet {
     return fs;
   }
 
-  private ArrayList<IncEdge> exploreVisibleRegion(IncEdge e, vec normal, float angle) {
+  private ArrayList<IncEdge> exploreVisibleRegion(IncEdge e, vec normal, float angle, boolean[] success) {
     IncFace face = e.getAdjFace();
+    if (face == null) {
+      if (success != null) success[0] = false;
+      return null;
+    }
     ArrayList<IncEdge> edges = new ArrayList<IncEdge>();
     if (face.visible != -1) {  // if face is visited
       // println("face is visited, face.visible is ", face.visible);
-      assert face.visible == 0;  // then it must be unvisible
+      // assert face.visible == 0;  // then it must be unvisible
+      if (face.visible != 0) {
+        if (success != null) {
+          success[0] = false;
+          return edges;
+        }
+      }
+
       edges.add(e);
       return edges;
     }
@@ -2102,16 +2117,21 @@ class RingSet {
     face.visible = 1;
     IncEdge[] compEdges = face.getComplementalEdges(e);
     assert compEdges.length == 1 || compEdges.length == 2;
+
     for (int i = 0; i < compEdges.length; ++i) {
-      edges.addAll(exploreVisibleRegion(compEdges[i], normal, angle));
+      edges.addAll(exploreVisibleRegion(compEdges[i], normal, angle, success));
     }
     return edges;
   }
 
-  private IncTriangle generateIncTri(int r0, int r1, int r2) {
+  private IncTriangle generateIncTri(int r0, int r1, int r2, boolean[] success) {
     vec[] nors = new vec[1];
     float[] angs = new float[1];
     pt[] ps = twoSupPlanesThreeCircles(r0, r1, r2, nors, angs, true);
+    if (ps == null) {
+      if (success != null) success[0] = false;
+      return null;
+    }
     IncVertex v0 = new IncVertex(ps[0], r0);
     IncVertex v1 = new IncVertex(ps[1], r1);
     IncVertex v2 = new IncVertex(ps[2], r2);
@@ -2120,11 +2140,17 @@ class RingSet {
     return tri;
   }
 
-  private IncCorridor generateIncCor(IncTriangle tri0, IncTriangle tri1, int rLeft, int rRight) {
+  private IncCorridor generateIncCor(IncTriangle tri0, IncTriangle tri1, int rLeft, int rRight, boolean[] success) {
     int idx0 = 0;
     for (; idx0 < 3; ++idx0) {
       if (tri0.vertices[idx0].rid == rRight) break;
     }
+
+    if (idx0 == 3) {
+      if (success != null) success[0] = false;
+      return null;
+    }
+
     IncVertex va = tri0.vertices[idx0];
     IncVertex vd = tri0.vertices[(idx0 + 1) % 3];
 
@@ -2132,6 +2158,11 @@ class RingSet {
     for(; idx1 < 3; ++idx1) {
       if (tri1.vertices[idx1].rid == rLeft) break;
     }
+    if (idx1 == 3) {
+      if (success != null) success[0] = false;
+      return null;
+    }
+
     IncVertex vc = tri1.vertices[idx1];
     IncVertex vb = tri1.vertices[(idx1 + 1) % 3];
 
@@ -2145,7 +2176,7 @@ class RingSet {
     return cor;
   }
 
-  private ArrayList<IncFace> generateNewFaces(ArrayList<IncEdge> boundary, int k) {
+  private ArrayList<IncFace> generateNewFaces(ArrayList<IncEdge> boundary, int k, boolean[] success) {
     assert boundary != null && boundary.size() >= 1 && k >= 0 && k < nRings;
 
     /*
@@ -2186,13 +2217,17 @@ class RingSet {
 
       int r0 = e.va.rid;
       int r1 = e.vb.rid;
-      IncTriangle tri = generateIncTri(r0, r1, k);
+      IncTriangle tri = generateIncTri(r0, r1, k, success);
+      if (tri == null) {
+        if (success != null) success[0] = false;
+        return null;
+      }
       newFaces.add(tri);
 
 
       if (oppoTri.visible < 1) {  // if the opposite triangle will remain
         assert oppoTri != null;
-        IncCorridor cor = generateIncCor(tri, oppoTri, r1, r0);  // create a corridor between tri and oppoTri
+        IncCorridor cor = generateIncCor(tri, oppoTri, r1, r0, success);  // create a corridor between tri and oppoTri
         newFaces.add(cor);
       } else {
         /*
@@ -2202,7 +2237,7 @@ class RingSet {
          */
         if (missOppoTriPrev) {
           assert prevTri != null;
-          IncCorridor cor = generateIncCor(tri, prevTri, r1, r0);  // create a corridor between tri and prevTri
+          IncCorridor cor = generateIncCor(tri, prevTri, r1, r0, success);  // create a corridor between tri and prevTri
           newFaces.add(cor);
           missOppoTriPrev = false;
         } else {
@@ -2211,7 +2246,7 @@ class RingSet {
       }
 
       if (prevTri != null) {
-        IncCorridor cor = generateIncCor(tri, prevTri, r0, k);
+        IncCorridor cor = generateIncCor(tri, prevTri, r0, k, success);
         newFaces.add(cor);
       }
       prevTri = tri;
@@ -2222,7 +2257,7 @@ class RingSet {
       assert newFaces.get(0) instanceof IncTriangle;
       IncTriangle firstTri = (IncTriangle)(newFaces.get(0));
       assert prevTri != null;
-      IncCorridor cor = generateIncCor(firstTri, prevTri, boundary.get(0).va.rid, k);
+      IncCorridor cor = generateIncCor(firstTri, prevTri, boundary.get(0).va.rid, k, success);
       newFaces.add(cor);
     }
 
@@ -2232,7 +2267,7 @@ class RingSet {
   /*
    * Generate exact convex hull of circles using an incremental algorithm.
    */
-  void generateExactCHIncremental() {
+  void generateExactCHIncremental(boolean[] success) {
     if (nRings < 2) {
       println("Less than 2 circles!");
       return;
@@ -2245,7 +2280,8 @@ class RingSet {
     }
 
     /* Generate the initial convex hull using the first 3 circles. */
-    faces = generateInitFaces();
+    faces = generateInitFaces(success);
+    if (success != null && success[0] == false) return;
 
     ArrayList<IncEdge> boundary = new ArrayList<IncEdge>();
     ArrayList<IncFace> newFaces = null;
@@ -2263,6 +2299,7 @@ class RingSet {
       float angle = asin(radii[i] / r);  // [0, PI / 2]
       assert angle >= 0 && angle <= HALF_PI;
       for (IncFace f : faces) {
+        if (f == null) return;
         if (f.isVisibleFromCircle(normal, angle)) {
           IncEdge[] edges = f.getEdges();
           assert edges.length == 2 || edges.length == 3;
@@ -2281,13 +2318,27 @@ class RingSet {
       if (bsize != 2 && bsize != 3) {
         System.out.format("Invalid boundary size %d, store this example.\n", bsize);
         gPoints.savePts("data/pts_unnamed");
+        if (success != null) success[0] = false;
+        return;
       }
       assert bsize == 2 || bsize == 3;
 
+      if (debugIncCH && debugIncCHIter == i) {
+        if (debugIncCHInfo.tmpBoundary == null) debugIncCHInfo.tmpBoundary = new ArrayList<IncEdge>();
+        else debugIncCHInfo.tmpBoundary.clear();
+      }
+
       ArrayList<IncEdge> tmpBoundary = new ArrayList<IncEdge>();
       for (IncEdge e : boundary) {
-        ArrayList<IncEdge> tmpEdges = exploreVisibleRegion(e, normal, angle);
-        tmpBoundary.addAll(tmpEdges);
+        ArrayList<IncEdge> tmpEdges = exploreVisibleRegion(e, normal, angle, success);
+        if (tmpEdges == null) {
+          if (success != null) success[0] = false;
+          return;
+        }
+        if (success != null && success[0] == false) {
+          return;
+        }
+        tmpBoundary.addAll(tmpEdges); //<>//
       }
       boundary = tmpBoundary;
       // System.out.format("boundary size = %d\n", boundary.size());
@@ -2315,7 +2366,7 @@ class RingSet {
        * shifted by 1 inside of generateNewFaces(), but it stays unchanged
        * outside of generateNewFaces().
        */
-      newFaces = generateNewFaces(boundary, i);
+      newFaces = generateNewFaces(boundary, i, success);
       // System.out.format("%d new faces generated\n", newFaces.size());
       // println("after generateNewFaces, boundary =", boundary);
       // System.out.format("after generateNewFaces, first edge = (%d, %d)\n",
@@ -2355,6 +2406,10 @@ class RingSet {
       /* Collect remaining faces and new faces. All faces are unvisited. */
       faces.clear();
       faces.addAll(remainingFaces);
+      if (newFaces == null) {
+        if (success != null) success[0] = false;
+        return;
+      }
       faces.addAll(newFaces);
 
       /* Store information related to debugging. */
@@ -2709,27 +2764,21 @@ class RingSet {
     return;
   }
 
-  void showCircles() {
+  void showCircles(Integer numCircles) {
+    if (numCircles == null) numCircles = nRings;
     stroke(0);
     strokeWeight(3);
-    noFill();
-    float da = TWO_PI / 36;
-    for (int i = 0; i < nRings; ++i) {
-      float a = 0;
-      beginShape();
-      for (int j = 0; j < 36; ++j, a += da) {
-        vertex(P(centers[i], radii[i] * cos(a), xAxes[i], radii[i] * sin(a), yAxes[i]));
-      }
-      endShape(CLOSE);
+    for (int i = 0; i < numCircles; ++i) {
+      showCircle(centers[i], normals[i], radii[i]);
     }
-    fill(black);  // restore state
+    strokeWeight(1);  // restore state
     noStroke();  // restore state
   }
 
-  void showDisks() {
-    noStroke();
-    fill(red, 200);
-    for (int i = 0; i < nRings; ++i) {
+  void showDisks(Integer numDisks) {
+    if (numDisks == null) numDisks = nRings;
+    fill(red, 255);
+    for (int i = 0; i < numDisks; ++i) {
       disk(centers[i], xAxes[i], yAxes[i], radii[i]);
     }
   }
@@ -2861,6 +2910,54 @@ class RingSet {
     }
   }
 
+  /*
+   * Show the elliptic cone defined by circle c0 and circle c1.
+   */
+  void showEllipticCone(int c0, int c1) {
+    pt pc0 = centers[c0];
+    pt pc1 = centers[c1];
+    float r0 = radii[c0];
+    float r1 = radii[c1];
+    vec n0 = normals[c0];
+    vec n1 = normals[c1];
+
+    vec n = U(N(n0, n1));  // normal to plane (c, pc0, pc1)
+    vec v0 = N(n, n0);  // unit vector
+
+    pt a1 = P(pc0, r0, v0);
+    pt b1 = P(pc0, -r0, v0);
+
+    vec v1 = N(n, n1);  // unit vector
+    pt a2 = P(pc1, r1, v1);
+    pt b2 = P(pc1, -r1, v1);
+
+    pt f = intersectionTwoLines(a1, b2, b1, a2);
+    vec v = U(A(U(a1, b2), U(b1, a2)));
+
+    {
+      stroke(red);
+      showLine(f, v);
+      noStroke();
+    }
+
+    {
+      fill(blue, 220);
+      showObliqueCone(f, pc0, n0, r0);
+      fill(green, 150);
+      showObliqueCone(f, pc1, n1, r1);
+    }
+
+    {
+      // fill(cyan);
+      // showBall(a1, 3);
+      // showBall(b1, 3);
+
+      // fill(magenta);
+      // showBall(a2, 3);
+      // showBall(b2, 3);
+    }
+  }
+
   void showApolloniusDiagram() {
     assert incCorridors != null && incCorridors.size() != 0;
 
@@ -2940,18 +3037,29 @@ class RingSet {
     }
     // println("# remaining faces =", debugIncCHInfo.remainingFaces.size());
 
-    {
+    {  // the new circle
       fill(gold);
       noStroke();
       disk(centers[debugIncCHIter], xAxes[debugIncCHIter], yAxes[debugIncCHIter],
            radii[debugIncCHIter]);
+      // stroke(0);
+      // strokeWeight(3);
+      // showCircle(centers[debugIncCHIter], normals[debugIncCHIter], radii[debugIncCHIter]);
+      // strokeWeight(1);
+      // noStroke();
     }
 
     if (debugIncCHNewView) {
       // show new faces
       for (IncFace f : debugIncCHInfo.newFaces) {
-        if (f instanceof IncTriangle) fill(navy);
-        else if (f instanceof IncCorridor) fill(springGreen);
+        if (f instanceof IncTriangle) fill(cyan);  // navy
+        else if (f instanceof IncCorridor) {
+          if (f.vertices[0].rid == debugIncCHIter || f.vertices[2].rid == debugIncCHIter) {
+            fill(lightGreen);  // spring green for corridor adjacent to new circle
+          } else {
+            fill(ivory);  // ivory for corridor not adjacent to new circle
+          }
+        }
         f.showFace();
       }
       // println("# new faces =", debugIncCHInfo.newFaces.size());
@@ -2959,17 +3067,27 @@ class RingSet {
       // show visible faces
       for (IncFace f : debugIncCHInfo.visibleFaces) {
         if (f instanceof IncTriangle) fill(gray);
-        else if (f instanceof IncCorridor) fill(silver);
+        else if (f instanceof IncCorridor) {
+          IncCorridor cor = (IncCorridor)f;
+          IncTriangle t0 = (IncTriangle)cor.edges[0].getAdjFace();
+          IncTriangle t1 = (IncTriangle)cor.edges[1].getAdjFace();
+          if (t0.visible == 1 && t1.visible == 1) {
+            fill(gray);  // fully visible
+          } else {
+            fill(ivory);  // partly visible
+          }
+        }
         f.showFace();
       }
+
       // println("# visible faces =", debugIncCHInfo.visibleFaces.size());
 
       // show boundary
-      fill(violet);
-      for (IncEdge e : debugIncCHInfo.boundary) e.showEdge();
+      // fill(violet);
+      // for (IncEdge e : debugIncCHInfo.boundary) e.showEdge();
       // println("boundary size =", debugIncCHInfo.boundary.size());
 
-      // show removed and unvisible corridors
+      // show marginally, but not centrally, visible corridors
       fill(ivory);
       for (IncCorridor cor : debugIncCHInfo.removedUnvisibleCorridors) {
         cor.showFace();
@@ -3013,6 +3131,7 @@ class RingSet {
     xAxes = new vec[nRings];
     normals = new vec[nRings];
     yAxes = new vec[nRings];
+    centers = new pt[nRings];
     for (int j = 0; j < nRings; ++j) {
       float[] contact = float(split(lines[i++], ","));
       contacts[j] = new pt(contact[0], contact[1], contact[2]);
@@ -3021,6 +3140,7 @@ class RingSet {
       float[] initDir = float(split(lines[i++], ","));
       xAxes[j] = new vec(initDir[0], initDir[1], initDir[2]);
       yAxes[j] = N(normals[j], xAxes[j]);
+      centers[j] = P(c, sqrt(r * r - radii[j] * radii[j]), normals[j]);  // assume each cone has half-angle <= PI/2
     }
     return;
   }
@@ -3035,5 +3155,21 @@ class RingSet {
       }
     }
     return true;
+  }
+
+  pts toPointSet() {
+    int nv = 2 * nRings;
+    pt[] ps = new pt[nv];
+    for (int i = 0; i < nRings; ++i) {
+      ps[2 * i] = contacts[i];
+      ps[2 * i + 1] = P(centers[i], radii[i], xAxes[i]);
+    }
+    pts pointSet = new pts();
+    pointSet.declare();
+    pointSet.nv = nv;
+    for (int i = 0; i < nv; ++i) {
+      pointSet.G[i].set(ps[i]);
+    }
+    return pointSet;
   }
 }

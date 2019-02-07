@@ -9,7 +9,7 @@ boolean showLiftedCones = false;
 boolean showGapMesh = false;
 
 
-float gGapWidth = 3.0;
+float gGapWidth = 10;
 
 class Cone {
   pt apex;  // apex
@@ -293,6 +293,18 @@ class ConicGap {
   TriangleMesh toTriMesh() {
     ArrayList<pt> posList = positionList();
     ArrayList<Triangle> triList = gapHull();
+
+    {  // check convexity
+      pt[] points = new pt[posList.size()];
+      for (int i = 0; i < points.length; ++i) points[i] = posList.get(i);
+      boolean isConvex = passConvexityTest(triList, points, points.length);
+      if (!isConvex) {
+        fill(red);
+        showBall(points0.get(0), 10);
+      }
+      // println("convex!");
+    }
+
     return new TriangleMesh(posList, triList);
   }
 }
@@ -703,7 +715,7 @@ class Hub {
     liftCones(gapWidth);
     RingSet rs = circlesToRingSet(numEdges);
 
-    rs.generateExactCHIncremental();
+    rs.generateExactCHIncremental(null);
     TriangleMesh convexHullMesh = rs.generateConvexTriMesh();
 
     generateBeamSamples(numEdges, xAxes);  // make sure to call this function before generating gap mesh and beam mesh
@@ -817,6 +829,7 @@ class Hub {
   }
 
   void saveAugFile(String file) {
+    if (xDirections == null) return;
     println("saving augmented hub:", file);
     String[] lines = new String[3 * nNeighbors + 3];
     int i = 0;

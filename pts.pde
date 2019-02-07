@@ -1,12 +1,12 @@
-int pp=1; // index of picked vertex
+int pp = 1;  // index of picked vertex
 
-class pts { // class for manipulaitng and sisplaying polyloops
-  Boolean loop=true;
-  int pv =0, // picked vertex index,
-      iv=0, //  insertion vertex index
-      nv = 0;  // number of vertices currently used in P
-  int maxnv = 16000;                 //  max number of vertices
-  pt[] G = new pt [maxnv];           // geometry table (vertices)
+class pts {  // class for manipulaitng and sisplaying polyloops
+  boolean loop = true;
+  int pv = 0;  // picked vertex index,
+  int iv = 0;  // insertion vertex index
+  int nv = 0;  // number of vertices currently used in P
+  int maxnv = 16000;  //  max number of vertices
+  pt[] G = new pt[maxnv];  // geometry table (vertices)
   pts() {}
   pts declare() {for (int i=0; i<maxnv; i++) G[i]=P(); return this;}     // init all point objects
   pts empty() {nv=0; pv=0; return this;} // resets P so that we can start adding points
@@ -88,22 +88,27 @@ class pts { // class for manipulaitng and sisplaying polyloops
   pts moveAll(vec V) {for (int i=0; i<nv; i++) G[i].add(V); return this;};
   pt Picked() {return G[pv];}
 
-void savePts(String fn) {
-  println("saving point set:", fn);
-  String [] inppts = new String [nv+1];
-  int s=0;
-  inppts[s++]=str(nv);
-  for (int i=0; i<nv; i++) {inppts[s++]=str(G[i].x)+","+str(G[i].y)+","+str(G[i].z);}
-  saveStrings(fn,inppts);
+  void savePts(String fn) {
+    println("saving point set:", fn);
+    String [] inppts = new String [nv+1];
+    int s=0;
+    inppts[s++]=str(nv);
+    for (int i=0; i<nv; i++) {inppts[s++]=str(G[i].x)+","+str(G[i].y)+","+str(G[i].z);}
+    saveStrings(fn,inppts);
   };
 
-void loadPts(String fn) {
-  print("loading: "+fn+" ");
-  String [] ss = loadStrings(fn);
-  int s=0;
-  nv = int(ss[s++]); println("nv =", nv);
-  for(int k=0; k<nv; k++) {int i=k+s; float [] xy = float(split(ss[i],",")); G[k].setTo(xy[0],xy[1],xy[2]);}
-  pv=0;
+  void loadPts(String fn) {
+    print("loading: " + fn + " ");
+    String [] ss = loadStrings(fn);
+    int s = 0;
+    nv = int(ss[s++]);
+    println("nv =", nv);
+    for (int k = 0; k < nv; k++) {
+      int i = k + s;
+      float[] xyz = float(split(ss[i], ","));
+      G[k].setTo(xyz[0],xyz[1],xyz[2]);
+    }
+    pv = 0;
   };
 
 } // end of pts class

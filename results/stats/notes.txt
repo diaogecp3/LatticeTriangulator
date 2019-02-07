@@ -1,0 +1,11 @@
+Test Incremental Convex Hull: n = 3, m = 120, k = 100, average time = 0.055999 ms.
+
+Test Incremental Convex Hull: n = 6, m = 120, k = 100, average time = 0.199184 ms.
+
+Test Incremental Convex Hull: n = 12, m = 120, k = 100, average time = 0.445144 ms.
+
+Test Incremental Convex Hull: n = 24, m = 120, k = 100, average time = 0.915265 ms.
+
+Test Incremental Convex Hull: n = 48, m = 120, k = 100, average time = 2.483472 ms.
+
+Test Incremental Convex Hull: n = 96, m = 120, k = 100, average time = 4.658438 ms.

@@ -33,7 +33,7 @@ void keyPressed() {
   }
   if (key == 'l') {
     // if (gCamera != null) gCamera.load("data/cam_unnamed");
-    if (gCamera != null) gCamera.load("data/point_set/cam_25");
+    if (gCamera != null) gCamera.load("data/point_set/cam_30");
   }
   if (key == ',') viewpoint = true;
   if (key == '>') showFrame = !showFrame;
@@ -75,52 +75,42 @@ void keyPressed() {
   }
 
   if (key == '8') {
-    if (test >= 12 && test <= 20) showArcSet = !showArcSet;
+    if (test >= 11 && test <= 20) showArcSet = !showArcSet;
   }
   if (key == '9') {
-    if ((test >= 12 && test <= 15) || test == 18) showAuxPlane = !showAuxPlane;
+    if ((test >= 11 && test <= 15) || test == 18) showAuxPlane = !showAuxPlane;
   }
 
   /* Keys: increase/decrease operators. */
   if (key == '+') {
     if (test == 13) {
-      // debugIncCHIter = min(debugIncCHIter + 1, int(gPoints.nv / 2) - 1);
+      debugIncCHIter = min(debugIncCHIter + 1, int(gPoints.nv / 2) - 1);
     }
     if (test == 13 || test == 15 || test == 16 || test == 21) {
-      gNumPointsPerRing++;
+      // gNumPointsPerRing++;
     }
     if (gNumTriangles >= 0) {
       numFaces = gNumTriangles + 1;
-      numFaces3RT = gNumTriangles + 1;
     }
-    // gRingSet.debug2RTInfo.numGlobalStep = min(gRingSet.debug2RTInfo.numGlobalStep + 1, gRingSet.nRings);
-    // gRingSet.debug2RTInfo.numLocalStep = 1;
   }
   if (key == '-') {
     if (test == 13) {
-      // debugIncCHIter = max(debugIncCHIter - 1, 3);
+      debugIncCHIter = max(debugIncCHIter - 1, 3);
     }
     if (test == 13 || test == 15 || test == 16 || test == 21) {
-      gNumPointsPerRing = max(gNumPointsPerRing - 1, 3);
+      // gNumPointsPerRing = max(gNumPointsPerRing - 1, 3);
     }
     if (numFaces > 0) {
       numFaces--;
-      numFaces3RT--;
     }
-    // gRingSet.debug2RTInfo.numGlobalStep = max(1, gRingSet.debug2RTInfo.numGlobalStep - 1);
-    // gRingSet.debug2RTInfo.numLocalStep = 1;
   }
   if (key == '/') {
     if (test == 13 || test == 14) idxIncCor++;
     if (test == 16) projectMethod = (projectMethod + 1) % numProjectMethod;
-    // numSteps3RT = max(1, numSteps3RT - 1);
-    // gRingSet.debug2RTInfo.numLocalStep = max(1, gRingSet.debug2RTInfo.numLocalStep - 1);
   }
   if (key == '*') {
     if (test == 13 || test == 14) idxIncCor = max(0, idxIncCor - 1);
     if (test == 16) projectMethod = (projectMethod + numProjectMethod - 1) % numProjectMethod;
-    // numSteps3RT++;
-    // gRingSet.debug2RTInfo.numLocalStep = min(gRingSet.debug2RTInfo.numLocalStep + 1, gRingSet.nPointsPerRing);
   }
   if (key == '[') {
     if (test == 1 || test == 2) gAttenuation = min(1.0, gAttenuation + gAttenuationDelta);
@@ -215,6 +205,7 @@ void keyPressed() {
   }
   if (key == 'S') {
     showTriangleStrokes = !showTriangleStrokes;
+    showCorridorStrokes = !showCorridorStrokes;
   }
   if (key == 'K') {
     if (test == 19) showCones = !showCones;

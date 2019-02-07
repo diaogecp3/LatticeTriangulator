@@ -45,7 +45,7 @@ color pink = #FFC0CB, deepPink = #FF1493, hotPink = #FF69B4;
 color orange = #FFA500, tomato = #FF6347, lightSalmon = #FFA07A;
 color yellow = #FFFF00, gold = #FFD700, khaki = #F0E68C;
 color violet = #EE82EE, magenta = #FF00FF, purple = #800080;
-color green = #008000, lime = #00FF00, springGreen = #00FF7F;
+color green = #008000, lime = #00FF00, springGreen = #00FF7F, lightGreen = #90EE90, darkGreen = #006400;
 color blue = #0000FF, cyan = #00FFFF, navy = #000080;
 color brown = #A52A2A, chocolate = #D2691E, sandyBrown = #F4A460;
 color white = #FFFFFF, snow = #FFFAFA, ivory = #FFFFF0;

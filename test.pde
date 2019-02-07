@@ -245,6 +245,60 @@ void exactCHAllCirclesTests(int n, int nRings) {
 }
 
 
+
+/*
+ * n = number of circles
+ * m = m tests
+ */
+void incrementalConvexHullTests(int n, int m) {
+  String[] lines = new String[m + 1];
+  String file = "results/stats/IncCH_" + str(n);
+  lines[0] = str(m);
+  float[] times = new float[m];
+  float avg = 0.0;
+  int k = 0;
+  for (int i = 0; i < m; ++i) {
+    if (i % 10 == 0) println("i = ", i);
+    RingSet ringSet = new RingSet(centerOfSphere, radiusOfSphere * 10, n, 3);
+    ringSet.init();
+    ringSet.generatePoints(1.0);
+    boolean[] success = new boolean[1];
+    success[0] = true;
+    long st = System.nanoTime();
+    ringSet.generateExactCHIncremental(success);
+    long ed = System.nanoTime();
+    if (success[0]) {
+      times[i] = (ed - st) / 1000000.0;
+      avg += times[i];
+      k += 1;
+      if (k == 100) break;
+    } else {
+      println("fail!");
+      times[i] = -1.0;
+      ringSet.save("data/tmp/rs_Inc_CH_wrong_" + str(n) + "_" + str(i));
+    }
+    lines[i + 1] = str(times[i]);
+  }
+
+  avg /= k;
+  lines[0] = str(k);
+  System.out.format("Test Incremental Convex Hull: n = %d, m = %d, k = %d, average time = %f ms.\n",
+                     n, m, k, avg);
+  saveStrings(file, lines);
+}
+
+
+void incrementalConvexHullTests() {
+  int m = 120;
+  for (int n = 3; n < 100; n *= 2) {
+    println("n = ", n);
+    incrementalConvexHullTests(n, m);
+  }
+}
+
+
+
+
 /* Single-test functions below. */
 
 
@@ -548,11 +602,11 @@ void exactCHNaiveTest() {
   }
 
   if (showCircleSet) {
-    gRingSet.showCircles();
+    gRingSet.showCircles(null);
   }
 
   if (showDiskSet) {
-    gRingSet.showDisks();
+    gRingSet.showDisks(null);
   }
 
   gRingSet.generateExTrisNaive();
@@ -609,14 +663,16 @@ void exactCHIncrementalTest() {
   }
 
   if (showCircleSet) {
-    gRingSet.showCircles();
+    if (debugIncCH && nv > 4) gRingSet.showCircles(debugIncCHIter);
+    else gRingSet.showCircles(null);
   }
 
   if (showDiskSet) {
-    gRingSet.showDisks();
+    if (debugIncCH && nv > 4) gRingSet.showDisks(debugIncCHIter);
+    else gRingSet.showDisks(null);
   }
 
-  gRingSet.generateExactCHIncremental();
+  gRingSet.generateExactCHIncremental(null);
 
   if (showTriangleFaces) {
     fill(blue);
@@ -664,14 +720,14 @@ void corridorTest() {
   }
 
   if (showCircleSet) {
-    rs.showCircles();
+    rs.showCircles(null);
   }
 
   if (showDiskSet) {
-    rs.showDisks();
+    rs.showDisks(null);
   }
 
-  rs.generateExactCHIncremental();
+  rs.generateExactCHIncremental(null);
 
   if (showTriangleFaces) {
     fill(blue);
@@ -680,6 +736,7 @@ void corridorTest() {
 
   if (showCorridorFaces) {
     fill(green);
+    // fill(darkGreen);
     rs.showIncCorridors();
   }
 
@@ -709,10 +766,10 @@ void meshFromExactCHTest() {
   }
 
   if (showDiskSet) {
-    gRingSet.showDisks();
+    gRingSet.showDisks(null);
   }
 
-  gRingSet.generateExactCHIncremental();
+  gRingSet.generateExactCHIncremental(null);
   gTriangleMesh = gRingSet.generateMeshFromExactCH(0);
 
   if (subdivisionTimes > 0) {
@@ -769,10 +826,10 @@ void interactiveHubTest() {
   }
 
   if (showDiskSet) {
-    gRingSet.showDisks();
+    gRingSet.showDisks(null);
   }
 
-  gRingSet.generateExactCHIncremental();
+  gRingSet.generateExactCHIncremental(null);
 
   if (showTriangleFaces) {
     fill(blue);
@@ -839,9 +896,9 @@ void supPlaneThreeCirclesSpecialTest() {
     validRS = true;
   }
 
-  if (showDiskSet) gRingSet.showDisks();
+  if (showDiskSet) gRingSet.showDisks(null);
 
-  gRingSet.generateExactCHIncremental();
+  gRingSet.generateExactCHIncremental(null);
 
   if (showTriangleFaces) {
     fill(blue);
@@ -872,9 +929,9 @@ void supPlaneThreeCirclesTest() {
 
   if (showDiskSet) {
     fill(red);
-    gRingSet.showDisks();
+    gRingSet.showDisks(null);
   }
-  gRingSet.generateExactCHIncremental();
+  gRingSet.generateExactCHIncremental(null);
 
   if (showTriangleFaces) {
     fill(blue);
@@ -918,7 +975,7 @@ void supPlaneThreeCirclesTest() {
   if (showCircleSet) {
     hint(DISABLE_DEPTH_TEST);
     stroke(black);
-    gRingSet.showCircles();
+    gRingSet.showCircles(null);
     noStroke();
     hint(ENABLE_DEPTH_TEST);
   }
@@ -955,7 +1012,7 @@ void geodesicDistanceTest() {
   }
 
   hint(DISABLE_DEPTH_TEST);
-  pen(cyan, 10);
+  pen(cyan, 3);
   show(centerOfSphere, points[0]);
   show(centerOfSphere, points[2]);
   strokeWeight(3);
@@ -965,7 +1022,7 @@ void geodesicDistanceTest() {
   hint(ENABLE_DEPTH_TEST);
 
   if (showCircleSet) {
-    gRingSet.showCircles();
+    gRingSet.showCircles(null);
   }
 }
 
@@ -983,14 +1040,14 @@ void ellipticConeTest() {
   }
 
   if (showCircleSet) {
-    gRingSet.showCircles();
+    gRingSet.showCircles(null);
   }
 
   if (showDiskSet) {
-    gRingSet.showDisks();
+    gRingSet.showDisks(null);
   }
 
-  gRingSet.generateExactCHIncremental();
+  gRingSet.generateExactCHIncremental(null);
 
   if (showCorridorFaces) {
     fill(green);
@@ -1054,16 +1111,35 @@ void interactiveHubToMeshTest() {
   }
 }
 
+void constructEllipticConeTest() {
+  if (gPoints.nv < 4) {
+    println("Should use at least 4 points.");
+    return;
+  }
+
+  gRingSet = new RingSet(centerOfSphere, radiusOfSphere, gPoints.G, 4);
+
+  gRingSet.showEllipticCone(0, 1);
+
+  if (showCircleSet) gRingSet.showCircles(2);
+  if (showDiskSet) gRingSet.showDisks(2);
+  if (showAuxPlane) {
+    fill(orange, 180);
+    showPlane(centerOfSphere, gPoints.G[0], gPoints.G[2], radiusOfSphere);
+  }
+
+}
+
+
 /*
  * Read a hub from an augmented file and convert this hub to a mesh.
  */
 void hubToMeshTest() {
   gHub = new Hub();
-  gHub.loadAugFile("data/hub_aug_unnamed");
-
+  // gHub.loadAugFile("data/hub_aug_unnamed");
+  gHub.loadAugFile("data/outrings.cir");
   gHub.setGapDistance(gGapWidth);
   gHub.setIsHalved(true);
-
   gTriangleMesh = gHub.generateTriMesh();
 
   if (showTriMesh) gTriangleMesh.show(cyan, true);

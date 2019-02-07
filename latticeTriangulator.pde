@@ -13,7 +13,7 @@ import processing.pdf.*;
  * 8: one supporting-plane-of-three-circles-iter test (iterative method with 3 different initializations)
  * 9: one exact-convex-hull-of-three-circles test
  * 10: one three-ring-triangle test
- * 11:
+ * 11: one construct-elliptic-cone test
  * 12: one interactive-naive-exact-convex-hull test
  * 13: one interactive-incremental-exact-convex-hull test
  * 14: one corridor test
@@ -30,15 +30,17 @@ import processing.pdf.*;
  * 101: many ring-set-triangulation tests
  * 102: many three-ring-triangle tests
  * 103: many supporting-plane-of-three-circles tests
+ * 104: many exact-convex-hull-all-circles tests
+ * 105: many incremental-convex-hull tests
  * ...
  * 200: one circle-plane-intersection test
  * 201: one hub-line-intersection test
  * 202: one round-cone-distance test
  * 203: one intersection-between-two-planes test
  */
-int test = 16;
+int test = 13;
 
-int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
+int inputMethodPointSet = 2;  // 0: read from file, 1: generate randomly, 2: from ring set
 int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 1;  // 0: read from file, 1: generate randomly
 int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
@@ -66,7 +68,7 @@ pt Of = P(100, 100, 0), Ob = P(110, 110, 0);  // red point controlled by the use
 pt Vf = P(0, 0, 0), Vb = P(0, 0, 0);
 pt Pick = P();
 
-float radiusOfSphere = 100;
+float radiusOfSphere = 1000;  // default: 100
 pt centerOfSphere = new pt(0.0, 0.0, 0.0);
 
 /* Global variables related to gPoints. */
@@ -77,7 +79,7 @@ float gAttenuationMin = 0.05;
 float gAttenuationDelta = 0.05;
 float gAttenuation = 1.0;
 int gNumRings = 5;
-int gNumPointsPerRing = 6;
+int gNumPointsPerRing = 40;
 RingSet gRingSet;  // the global ring set
 
 /* Global variables related to gHub. */
@@ -116,23 +118,12 @@ void setup() {
     debug2RT = false;
   }
 
-  switch (inputMethodPointSet) {
-    case 0:  // read from file
-      gPoints.loadPts("data/point_set/ps_arcs_25");
-      // gPoints.loadPts("data/point_set/out3.pts");
-      break;
-    case 1:  // generate randomly
-      generatePointsOnSphere(gPoints, centerOfSphere, radiusOfSphere, 10);
-      break;
-    default:
-      println("Please use a valid input method for point set");
-      exit();
-  }
-
   switch (inputMethodRingSet) {
     case 0:  // read from file
       gRingSet = new RingSet(centerOfSphere, radiusOfSphere);
-      gRingSet.load("data/ring_set/rs_easy_1");
+      // gRingSet.load("data/ring_set/rs_easy_1");
+      // gRingSet.load("data/tmp/rs_Inc_CH_wrong_27");
+      gRingSet.load("data/tmp/rs_Inc_CH_wrong_96");
       break;
     case 1:  // generate randomly
       gRingSet = new RingSet(centerOfSphere, radiusOfSphere,
@@ -141,6 +132,22 @@ void setup() {
       break;
     default:
       println("Please use a valid input method for ring set");
+      exit();
+  }
+
+  switch (inputMethodPointSet) {
+    case 0:  // read from file
+      gPoints.loadPts("data/point_set/ps_arcs_34");
+      // gPoints.loadPts("data/pts_unnamed");
+      break;
+    case 1:  // generate randomly
+      generatePointsOnSphere(gPoints, centerOfSphere, radiusOfSphere, 10);
+      break;
+    case 2:  // from ring set
+      gPoints = gRingSet.toPointSet();
+      break;
+    default:
+      println("Please use a valid input method for point set");
       exit();
   }
 
@@ -264,6 +271,7 @@ void draw() {
       threeRingTriangleTest();
       break;
     case 11:
+      constructEllipticConeTest();
       break;
     case 12:
       exactCHNaiveTest();
@@ -314,6 +322,9 @@ void draw() {
     case 104:
       exactCHAllCirclesTests(numTests, gNumRings);
       break;
+    case 105:
+      incrementalConvexHullTests();
+      break;
 
     case 200:
       circlePlaneIntersectionTest();
@@ -343,12 +354,6 @@ void draw() {
   if (picking) {
     gPoints.setPickToIndexOfVertexClosestTo(Pick); // id of vertex of P with closest screen projection to mouse (us in keyPressed 'x'...
     picking = false;
-  }
-
-  /* Tests that should be done after picking. */
-  switch (test) {
-    case 16:
-      break;
   }
 
   if (showSphere && showArcSet) {

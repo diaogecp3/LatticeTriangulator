@@ -98,7 +98,7 @@ pt[] generatePointsForOneCircle(pt p,                                // in
   vec normal = U(C, p);
   vec v = I = initDir;
   vec J = N(normal, I);  // the order matters! make sure cross(I, J) same as normal
-  center.set(P(C, sqrt(R * R - r * r), normal));
+  center.set(P(C, sqrt(R * R - r * r), normal));  // correct?
   float da = TWO_PI / np;
   float a = 0;
   for (int i = 0; i < np; ++i) {
@@ -157,7 +157,7 @@ pt[] generateContactsAndRadii(pt center,                             // in
     while (true) {
       pt p = generateOnePointOnSphere(center, radius);
       vec normal = U(center, p);
-      float r = random(5, radius * 0.8);
+      float r = random(1, radius * 0.9);
       float alpha = asin(clamp(r/radius, -1.0, 1.0));  // [0, PI/2]
       boolean isValid = true;
       for (int j = 0; j < i; ++j) {
