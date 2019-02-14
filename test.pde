@@ -736,7 +736,6 @@ void corridorTest() {
 
   if (showCorridorFaces) {
     fill(green);
-    // fill(darkGreen);
     rs.showIncCorridors();
   }
 
@@ -821,8 +820,8 @@ void interactiveHubTest() {
 
   gBeamMesh = gHub.generateBeamMesh();
   if (showLiftedCones) {
-    gBeamMesh.show(cyan, showTriangleStrokes);
-    // gHub.showLiftedCones(cyan, 255);
+    // gBeamMesh.show(cyan, showTriangleStrokes);
+    gHub.showLiftedCones(cyan, 255);
   }
 
   if (showDiskSet) {
@@ -833,11 +832,13 @@ void interactiveHubTest() {
 
   if (showTriangleFaces) {
     fill(blue);
+    // fill(purple);
     gRingSet.showIncTriangles();
   }
 
   if (showCorridorFaces) {
     fill(green);
+    // fill(purple);
     gRingSet.showIncCorridors();
   }
 
@@ -849,6 +850,8 @@ void interactiveHubTest() {
   if (showGapMesh) {
     gGapMesh.show(navy, showTriangleStrokes);
   }
+
+  gTriangleMesh.augment(gGapMesh);  // merge convex hull mesh and gap mesh
 
   gTriangleMesh.subdivide(subdivisionTimes);
   if (projectOnHub) {

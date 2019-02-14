@@ -38,9 +38,9 @@ import processing.pdf.*;
  * 202: one round-cone-distance test
  * 203: one intersection-between-two-planes test
  */
-int test = 13;
+int test = 16;
 
-int inputMethodPointSet = 2;  // 0: read from file, 1: generate randomly, 2: from ring set
+int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly, 2: from ring set
 int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 1;  // 0: read from file, 1: generate randomly
 int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
@@ -68,7 +68,7 @@ pt Of = P(100, 100, 0), Ob = P(110, 110, 0);  // red point controlled by the use
 pt Vf = P(0, 0, 0), Vb = P(0, 0, 0);
 pt Pick = P();
 
-float radiusOfSphere = 1000;  // default: 100
+float radiusOfSphere = 100;  // default: 100
 pt centerOfSphere = new pt(0.0, 0.0, 0.0);
 
 /* Global variables related to gPoints. */
@@ -79,7 +79,7 @@ float gAttenuationMin = 0.05;
 float gAttenuationDelta = 0.05;
 float gAttenuation = 1.0;
 int gNumRings = 5;
-int gNumPointsPerRing = 40;
+int gNumPointsPerRing = 8;
 RingSet gRingSet;  // the global ring set
 
 /* Global variables related to gHub. */
@@ -121,9 +121,9 @@ void setup() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       gRingSet = new RingSet(centerOfSphere, radiusOfSphere);
-      // gRingSet.load("data/ring_set/rs_easy_1");
+       gRingSet.load("data/ring_set/rs_easy_1");
       // gRingSet.load("data/tmp/rs_Inc_CH_wrong_27");
-      gRingSet.load("data/tmp/rs_Inc_CH_wrong_96");
+      //gRingSet.load("data/tmp/rs_Inc_CH_wrong_96");
       break;
     case 1:  // generate randomly
       gRingSet = new RingSet(centerOfSphere, radiusOfSphere,
@@ -137,7 +137,7 @@ void setup() {
 
   switch (inputMethodPointSet) {
     case 0:  // read from file
-      gPoints.loadPts("data/point_set/ps_arcs_34");
+      gPoints.loadPts("data/point_set/ps_arcs_18");
       // gPoints.loadPts("data/pts_unnamed");
       break;
     case 1:  // generate randomly

@@ -24,11 +24,9 @@ two big circles on left and right, one small in the middle.
 ps_arcs_9:
 cann't find valid boundary after inserting the 5-th circle
 source of figures in paper, for illustration of type 3 new corridor
-figure 8
 
 ps_arcs_10:
 source of figures in paper, for illustration of incremental convex hull
-figure 9
 
 ps_arcs_11:
 source of figure in paper (application section)
@@ -107,3 +105,12 @@ Source of picture. About degenerate case.
 
 ps_arcs_34:
 Fail incremental convex hull.
+
+ps_arcs_35:
+Source of picture. About corridor tessellation and gap filling.
+
+ps_arcs_36:
+Source of picture. About partly visible corridor.
+
+ps_arcs_37:
+Source of picture. About fully visible corridor.

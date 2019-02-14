@@ -33,7 +33,7 @@ void keyPressed() {
   }
   if (key == 'l') {
     // if (gCamera != null) gCamera.load("data/cam_unnamed");
-    if (gCamera != null) gCamera.load("data/point_set/cam_30");
+    if (gCamera != null) gCamera.load("data/point_set/cam_37");
   }
   if (key == ',') viewpoint = true;
   if (key == '>') showFrame = !showFrame;
@@ -74,6 +74,10 @@ void keyPressed() {
     showPolygons = !showPolygons;
   }
 
+  if (key == '7') {
+    simpleCorridor = !simpleCorridor;
+  }
+
   if (key == '8') {
     if (test >= 11 && test <= 20) showArcSet = !showArcSet;
   }
@@ -86,8 +90,8 @@ void keyPressed() {
     if (test == 13) {
       debugIncCHIter = min(debugIncCHIter + 1, int(gPoints.nv / 2) - 1);
     }
-    if (test == 13 || test == 15 || test == 16 || test == 21) {
-      // gNumPointsPerRing++;
+    if (test == 15 || test == 16 || test == 21) {
+      gNumPointsPerRing++;
     }
     if (gNumTriangles >= 0) {
       numFaces = gNumTriangles + 1;
@@ -97,8 +101,8 @@ void keyPressed() {
     if (test == 13) {
       debugIncCHIter = max(debugIncCHIter - 1, 3);
     }
-    if (test == 13 || test == 15 || test == 16 || test == 21) {
-      // gNumPointsPerRing = max(gNumPointsPerRing - 1, 3);
+    if (test == 15 || test == 16 || test == 21) {
+      gNumPointsPerRing = max(gNumPointsPerRing - 1, 3);
     }
     if (numFaces > 0) {
       numFaces--;

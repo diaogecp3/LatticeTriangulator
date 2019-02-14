@@ -41,6 +41,8 @@ boolean showApolloniusDiagram = false;
 boolean debugApolloniusDiagram = false;
 boolean showTriMesh = false;  // the mesh generated from exact convex hull
 
+boolean simpleCorridor = false;
+
 boolean validRS = false;
 
 /*
@@ -362,9 +364,16 @@ class RingSet {
       edges[1].setEndPoints(v3, v0);  // DA
       setupNormalsAndAngles();
 
-      // if (gNumPointsPerRing >= 3) delta = TWO_PI / (gNumPointsPerRing + 1);
-      // else delta = TWO_PI / 20;
-      // delta = TWO_PI / 40;
+      if (gNumPointsPerRing >= 3) {
+         delta = TWO_PI / (gNumPointsPerRing + 1);
+        //delta = 2 * (TWO_PI / gNumPointsPerRing);
+      }
+      else delta = TWO_PI / 20;
+      // if (simpleCorridor) {
+      //   delta = TWO_PI / 3;
+      // } else {
+      //   delta = TWO_PI / gNumPointsPerRing;
+      // }
 
       // generateSamples();
       // if (showApolloniusDiagram) generatePointsAD();
@@ -577,28 +586,24 @@ class RingSet {
     /* Show things related to debug, e.g. circumcircles of two adjacent triangles. */
     void showDebugInfo() {
       /* Show the circumcircles of the two adjacent triangles. */
-      // stroke(magenta);
-      // strokeWeight(3);
-      // for (int i = 0; i < 2; ++i) {
-      //   IncFace f = edges[i].getAdjFace();
-      //   if (f != null) {
-      //     assert f instanceof IncTriangle;
-      //     IncTriangle t = (IncTriangle)f;
-      //     t.showCircumcircle();
-      //   }
-      // }
+      stroke(magenta);
+      strokeWeight(6);
+      for (int i = 0; i < 2; ++i) {
+        IncFace f = edges[i].getAdjFace();
+        if (f != null) {
+          assert f instanceof IncTriangle;
+          IncTriangle t = (IncTriangle)f;
+          t.showCircumcircle();
+        }
+      }
 
       /* Show the circumcircles of triangle ABC and CDA. These two circles are actually the same. */
-      // stroke(cyan);
-      // showCircumcircles();
-      // strokeWeight(1);
+      stroke(cyan);
+      strokeWeight(6);
+      showCircumcircles();
+      strokeWeight(1);
 
-      // fill(purple);
-      // stroke(0);
-      // showTriangle(vertices[0].position, vertices[1].position, vertices[2].position);
-      // showTriangle(vertices[2].position, vertices[3].position, vertices[0].position);
-
-      checkCoplanarity(null, null);
+      // checkCoplanarity(null, null);
     }
 
     private void generateExtendedPoints(pt pa, pt pb, float d, ArrayList<pt> extPoints) {
@@ -2335,7 +2340,7 @@ class RingSet {
           if (success != null) success[0] = false;
           return;
         }
-        if (success != null && success[0] == false) {
+        if (success != null && success[0] == false) { //<>//
           return;
         }
         tmpBoundary.addAll(tmpEdges); //<>//
@@ -3042,11 +3047,11 @@ class RingSet {
       noStroke();
       disk(centers[debugIncCHIter], xAxes[debugIncCHIter], yAxes[debugIncCHIter],
            radii[debugIncCHIter]);
-      // stroke(0);
-      // strokeWeight(3);
-      // showCircle(centers[debugIncCHIter], normals[debugIncCHIter], radii[debugIncCHIter]);
-      // strokeWeight(1);
-      // noStroke();
+      stroke(0);
+      strokeWeight(3);
+      showCircle(centers[debugIncCHIter], normals[debugIncCHIter], radii[debugIncCHIter]);
+      strokeWeight(1);
+      noStroke();
     }
 
     if (debugIncCHNewView) {

@@ -106,6 +106,45 @@ class TriangleMesh {
     augmentWithShift(triMesh.positions, triMesh.triangles);
   }
 
+  /*
+   * Merge two triangle meshes, which may have vertices in common.
+   */
+  void augment(TriangleMesh triMesh) {
+    int k = nv;  // ID for new vertex
+    HashMap<pt, Integer> vids = new HashMap<pt, Integer>();
+    ArrayList<pt> otherVertices = triMesh.positions;
+    ArrayList<Triangle> otherTriangles = triMesh.triangles;
+
+    for (pt p : otherVertices) {
+      boolean isShared = false;
+      int j = 0;
+      for (; j < nv; ++j) {
+        pt q = positions.get(j);
+        if (isZero(d(p, q))) {
+          isShared = true;
+          break;
+        }
+      }
+      if (isShared) { // p is in current mesh
+        vids.put(p, j);
+      } else {
+        vids.put(p, k++);
+        positions.add(p);  // add a new vertex
+      }
+    }
+
+    /* Add new triangles. */
+    for (Triangle tri : otherTriangles) {
+      int a = vids.get(otherVertices.get(tri.a));
+      int b = vids.get(otherVertices.get(tri.b));
+      int c = vids.get(otherVertices.get(tri.c));
+      triangles.add(new Triangle(a, b, c));
+    }
+
+    nv = positions.size();
+    nt = triangles.size();
+  }
+
   void addTriangle(Triangle tri) {
     assert tri.a < nv && tri.b < nv && tri.c < nv;
     assert tri.a >= 0 && tri.b >= 0 && tri.c >= 0;
