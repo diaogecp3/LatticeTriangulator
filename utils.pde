@@ -5,7 +5,11 @@
  ******************************************************************************/
 
 
+float gEpsilon = 0.000001;
+float gEpsilonBig = 0.00001;
+
 boolean exitDraw = false;
+
 
 /* Statistics functions below. */
 
@@ -53,28 +57,70 @@ float accuracy(boolean[] a, int n, int start, int end, boolean[] valids) {
  * Return true iff |x| is not close to 0.
  */
 boolean notZero(float x) {
-  return x <= -0.00001 || x >= 0.00001;
+  return x <= -gEpsilon || x >= gEpsilon;
+}
+
+/*
+ * Return true iff |x| is not close to e.
+ */
+boolean notCloseTo(float x, float e) {
+  return x <= -e || x >= e;
 }
 
 /*
  * Return true iff |x| is close to 0.
  */
 boolean isZero(float x) {
-  return x > -0.00001 && x < 0.00001;
+  return x > -gEpsilon && x < gEpsilon;
 }
 
 /*
  * Return true iff x is non-positive.
  */
 boolean isNonPositive(float x) {
-  return x < 0.00001;
+  return x < gEpsilon;
 }
 
 /*
- * Return clamped value of x w.r.t. [a, b].
+ * Return acos of clamped value of x.
  */
-float clamp(float x, float a, float b) {
-  return min(max(x, a), b);
+float acosClamp(float x) {
+  return acos(constrain(x, -1.0, 1.0));
+}
+
+/*
+ * Return asin of clamped value of x.
+ */
+float asinClamp(float x) {
+  return asin(constrain(x, -1.0, 1.0));
+}
+
+/*
+ * Return the normalized vector of v.
+ */
+vec normalizeSafely(vec v) {
+  float n = v.norm();
+  if (n > 0.000001) {
+    return new vec(v.x / n, v.y / n, v.z / n);
+  } else {
+    return new vec(v.x * 1000 / (n * 1000), v.y * 1000 / (n * 1000), v.z * 1000 / (n * 1000));
+  }
+}
+
+boolean isNaNVec(vec v) {
+  return Float.isNaN(v.x) || Float.isNaN(v.y) || Float.isNaN(v.z);
+}
+
+boolean isNaNPt(pt p) {
+  return Float.isNaN(p.x) || Float.isNaN(p.y) || Float.isNaN(p.z);
+}
+
+boolean isZeroVec(vec v) {
+  return isZero(v.x) && isZero(v.y) && isZero(v.z);
+}
+
+boolean isZeroPt(pt p) {
+  return isZero(p.x) && isZero(p.y) && isZero(p.z);
 }
 
 /*
@@ -139,7 +185,7 @@ float[] solveLinearEquationInCosSin(float a, float b, float c) {
   if (notZero(a) && notZero(b)) {  // a != 0 and b != 0
     // println("a = ", a, "b = ", b);
     /* How to decide (the sign of) tmp0 here? According to the sign of b. */
-    float tmp0 = asin(c / (sqrt(a * a + b * b)));  // [-pi/2, pi/2]
+    float tmp0 = asinClamp(c / (sqrt(a * a + b * b)));  // [-pi/2, pi/2]
     if (b < 0) tmp0 = -tmp0;  // [-pi/2, pi/2]
     float tmp1 = atan(a / b);  // (-pi/2, pi/2)
     thetas[0] = tmp0 - tmp1;  // (-pi, pi)
@@ -147,15 +193,32 @@ float[] solveLinearEquationInCosSin(float a, float b, float c) {
     thetas[0] = thetas[0] < 0 ? thetas[0] + TWO_PI : thetas[0];  // [0, pi), (pi, 2pi)
   } else if (isZero(a)) {  // a == 0 and b != 0
     println("In solving a*cos(theta) + b*sin(theta) = c: a == 0");
-    thetas[0] = asin(c/b);  // [-pi/2, pi/2]
+    thetas[0] = asinClamp(c/b);  // [-pi/2, pi/2]
     thetas[1] = PI - thetas[0];  // [pi/2, 3pi/2]
     if (thetas[0] < 0) thetas[0] += TWO_PI;  // [3pi/2, 0), [0, pi/2]
   } else {  // a != 0 and b == 0
     println("In solving a*cos(theta) + b*sin(theta) = c: b == 0");
-    thetas[0] = acos(c/a);  // [0, pi]
+    thetas[0] = acosClamp(c/a);  // [0, pi]
     thetas[1] = TWO_PI - thetas[0];  // [pi, 2pi]
   }
   return thetas;
+}
+
+/*
+ * Solve a*cos(theta) + b*sin(theta) = 0, return two thetas. The two thetas will
+ * be in [0, 2pi].
+ */
+float[] solveLinearEquationInCosSin(float a, float b) {
+  if (isZero(a)) return new float[] {0.0, PI};
+  if (isZero(b)) return new float[] {HALF_PI, HALF_PI + PI};
+  float t = - a / b;
+  if (Float.isNaN(t)) {
+    println("t is NaN!");
+    return null;
+  }
+  float theta = atan(t);
+  if (theta >= 0) return new float[] {theta, theta + PI};
+  else return new float[] {theta + PI, theta + TWO_PI};
 }
 
 
@@ -256,6 +319,39 @@ void showLine(pt o, vec d) {
   vertex(p0);
   vertex(p1);
   endShape();
+}
+
+void showLineSegment(pt a, pt b) {
+  line(a.x, a.y, a.z, b.x, b.y, b.z);
+}
+
+/*
+ * Show the poly-loop defined by a list of points.
+ */
+void showLoop(ArrayList<pt> ps) {
+  noFill();
+  beginShape();
+  for (pt p : ps) vertex(p);
+  endShape(CLOSE);
+  fill(black);
+}
+
+/*
+ * Show the oriented poly-loop defined by a list of points.
+ */
+void showOrientedLoop(ArrayList<pt> ps) {
+  pt prev = ps.get(ps.size()-1);  // last point
+  pt center = new pt();
+  for (int i = 0; i < ps.size(); ++i) {
+    pt cur = ps.get(i);
+    arrow(prev, V(prev, cur), 1);
+    prev = cur;
+    center.add(cur);
+  }
+
+  center.div(ps.size());
+  vec normal = U(N(ps.get(0), ps.get(1), ps.get(2)));
+  arrow(center, V(8, normal), 1);
 }
 
 /*
@@ -392,7 +488,7 @@ void showArcs(pt[] ps, int nv, pt c, float r, float w0, float w1, float w2) {
  */
 void showPolyArc(pt a, pt b, pt c, float r) {
   vec u = V(c, a), w = V(c, b);
-  float angle = acos(dot(u, w) / (r * r));
+  float angle = acosClamp(dot(u, w) / (r * r));
   float s = sin(angle);
 
   ArrayList<pt> points = new ArrayList<pt>();

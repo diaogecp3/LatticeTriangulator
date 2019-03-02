@@ -6,7 +6,7 @@ import processing.pdf.*;
  * 1: one convex-hull-with-holes test
  * 2: one ring-set-triangulation test (2 methods)
  * 3: one subdivision test
- * 4:
+ * 4: one exact-convex-hull-of-circles test (non-interactive)
  * 5: one pivot-plane-around-line-until-hit-circle test
  * 6: one exact-convex-hull-of-edge-circle test
  * 7: one exact-convex-hull-of-two-circles test
@@ -25,6 +25,9 @@ import processing.pdf.*;
  * 20: one elliptic-cone test
  * 21: one interactive-hub-to-mesh test
  * 22: one hub-to-mesh test
+ * 23: one lattice-to-mesh test
+ * 24: one convex-gap test
+ * 25: one hub test (non-interactive)
  * ...
  * 100: many convex-hull tests
  * 101: many ring-set-triangulation tests
@@ -37,14 +40,27 @@ import processing.pdf.*;
  * 201: one hub-line-intersection test
  * 202: one round-cone-distance test
  * 203: one intersection-between-two-planes test
+ * 204: one intersection-between-two-spheres test
  */
-int test = 16;
+int test = 23;
 
+/* Input methods for differnt objects. */
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly, 2: from ring set
 int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
-int inputMethodHub = 1;  // 0: read from file, 1: generate randomly
+int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
 int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
 int inputMethodTriangleMesh = 1;  // 0: read from file, 1: nothing happens
+int inputMethodLattice = 0;  // 0: read from file
+int inputMethodGap = 0;  // 0: read from file
+
+/* File paths for different objects. */
+String gPointSetPath = "data/point_set/ps_arcs_16";
+String gRingSetPath = "data/ring_set/rs_1";
+String gHubPath = "data/hub/hub_0";
+String gEdgeCirclePath = "data/edge_circle/ec_0";
+String gTriangleMeshPath = "data/triangle_mesh/tm_0";
+String gLatticePath = "data/lattice/lattice_1";
+String gGapPath = "data/gap/gap_3";
 
 boolean showSphere = true;
 boolean showCenterOfSphere = true;
@@ -62,14 +78,12 @@ boolean showFrame = false;
 boolean snappingPDF = false;
 boolean viewpoint = false;
 
-pt Viewer = P();
-pt F = P(0, 0, 0);  // focus point: the camera is looking at it (moved when 'f or 'F' are pressed)
-pt Of = P(100, 100, 0), Ob = P(110, 110, 0);  // red point controlled by the user via mouseDrag: used for inserting vertices ...
-pt Vf = P(0, 0, 0), Vb = P(0, 0, 0);
-pt Pick = P();
+pt Viewer = new pt(0.0, 0.0, 0.0);
+pt F = new pt(0.0, 0.0, 0.0);  // focus point: the camera is looking at it (moved when 'f or 'F' are pressed)
+pt Pick = new pt(0.0, 0.0, 0.0);
 
-float radiusOfSphere = 100;  // default: 100
-pt centerOfSphere = new pt(0.0, 0.0, 0.0);
+float gSphereRadius = 100;  // default: 100
+pt gSphereCenter = new pt(0.0, 0.0, 0.0);
 
 /* Global variables related to gPoints. */
 pts gPoints;  // the global points
@@ -79,7 +93,7 @@ float gAttenuationMin = 0.05;
 float gAttenuationDelta = 0.05;
 float gAttenuation = 1.0;
 int gNumRings = 5;
-int gNumPointsPerRing = 8;
+int gNumPointsPerRing = 4;
 RingSet gRingSet;  // the global ring set
 
 /* Global variables related to gHub. */
@@ -95,6 +109,11 @@ TriangleMesh gGapMesh;  // the global triangle mesh for gaps
 /* Global variables related to gEdgeCircle. */
 EdgeCircle gEdgeCircle;  // the global edge circle
 
+/* Global variables related to gLattice. */
+Lattice gLattice;
+
+ConvexGap gGap;
+
 Camera gCamera = new Camera(500, -0.06 * TWO_PI, -0.04 * TWO_PI);
 
 int gNumTriangles = -1;
@@ -108,9 +127,6 @@ void setup() {
   size(900, 900, P3D); // P3D means that we will do 3D graphics
   noSmooth();  // LEAVE HERE FOR 3D PICK TO WORK!!!
 
-  gPoints = new pts();
-  gPoints.declare();  // some points on a sphere
-
   if (test >= 100 && test < 200) {
     noLoop();
     debugCH = false;
@@ -118,30 +134,14 @@ void setup() {
     debug2RT = false;
   }
 
-  switch (inputMethodRingSet) {
-    case 0:  // read from file
-      gRingSet = new RingSet(centerOfSphere, radiusOfSphere);
-       gRingSet.load("data/ring_set/rs_easy_1");
-      // gRingSet.load("data/tmp/rs_Inc_CH_wrong_27");
-      //gRingSet.load("data/tmp/rs_Inc_CH_wrong_96");
-      break;
-    case 1:  // generate randomly
-      gRingSet = new RingSet(centerOfSphere, radiusOfSphere,
-                       gNumRings, gNumPointsPerRing);
-      gRingSet.init();
-      break;
-    default:
-      println("Please use a valid input method for ring set");
-      exit();
-  }
-
+  gPoints = new pts();
+  gPoints.declare();  // some points on a sphere
   switch (inputMethodPointSet) {
     case 0:  // read from file
-      gPoints.loadPts("data/point_set/ps_arcs_18");
-      // gPoints.loadPts("data/pts_unnamed");
+      gPoints.loadPts(gPointSetPath);
       break;
     case 1:  // generate randomly
-      generatePointsOnSphere(gPoints, centerOfSphere, radiusOfSphere, 10);
+      generatePointsOnSphere(gPoints, gSphereCenter, gSphereRadius, 10);
       break;
     case 2:  // from ring set
       gPoints = gRingSet.toPointSet();
@@ -151,46 +151,85 @@ void setup() {
       exit();
   }
 
+  switch (inputMethodRingSet) {
+    case 0:  // read from file
+      gRingSet = new RingSet(gSphereCenter, gSphereRadius);
+      gRingSet.load(gRingSetPath);
+      break;
+    case 1:  // generate randomly
+      gRingSet = new RingSet(gSphereCenter, gSphereRadius, gNumRings, gNumPointsPerRing);
+      gRingSet.init();
+      break;
+    default:
+      println("Please use a valid input method for ring set");
+      exit();
+  }
+  if (!gRingSet.isValid()) {  // check validity of ring set
+    println("ring set not valid!");
+    exit();
+  }
+
   switch (inputMethodHub) {
     case 0:  // read from file
       gHub = new Hub();
-      gHub.load("data/hub/hub_easy_3");
+      gHub.load(gHubPath);
       break;
     case 1:  // generate randomly
-      gHub = generateHub(centerOfSphere, gRadiusInnerBall, radiusOfSphere, gNumNeighbors);
+      gHub = generateHub(gSphereCenter, gRadiusInnerBall, gSphereRadius, gNumNeighbors);
       break;
     default:
       println("Please use a valid input method for hub");
       exit();
   }
 
+  gEdgeCircle = new EdgeCircle();
   switch (inputMethodEdgeCircle) {
     case 0:
-      gEdgeCircle = new EdgeCircle();
-      gEdgeCircle.load("data/edge_circle/ec_0");
+      gEdgeCircle.load(gEdgeCirclePath);
       break;
     case 1:
-      gEdgeCircle = new EdgeCircle();
       gEdgeCircle.init();
       break;
     default:
-      println("Please use a valid input method for hub");
+      println("Please use a valid input method for edge-circle");
       exit();
   }
 
+  gTriangleMesh = new TriangleMesh();
   switch (inputMethodTriangleMesh) {
     case 0:
-      gTriangleMesh = new TriangleMesh();
-      gTriangleMesh.load("data/triangle_mesh/tm_0");
+      gTriangleMesh.load(gTriangleMeshPath);
+      break;
+    case 1:
       break;
     default:
-      gTriangleMesh = null;
+      println("Please use a valid input method for triangle mesh");
+      exit();
   }
 
-  // check validity of ring set
-  if (!gRingSet.isValid()) {
-    println("ring set not valid!");
-    exit();
+  gLattice = new Lattice();
+  switch (inputMethodLattice) {
+    case 0:
+      gLattice.load(gLatticePath);
+      break;
+    default:
+      println("Please use a valid input method for lattice");
+      exit();
+  }
+
+  gGap = new ConvexGap();
+  switch (inputMethodGap) {
+    case 0:
+      gGap.load(gGapPath);
+      {
+        // pt c = gGap.center();
+        // gGap.translate(V(c).rev());
+        // gGap.scale(10.0);
+      }
+      break;
+    default:
+      // println("Please use a valid input method for gap");
+      // exit();
   }
 
   if (regenerateCH == false) {
@@ -214,27 +253,30 @@ void draw() {
   pushMatrix();  // to ensure that we can restore the standard view before writing on the canvas
   if (snappingPDF) beginRecord(PDF, "PDFimages/P" + nf(pictureCounter++, 3) + ".pdf");
 
-  // SET PERSPECTIVE
+  /* Set perspective. */
   float fov = PI / 3.0;
   float cameraZ = (height / 2.0) / tan(fov / 2.0);
   camera(0, 0, cameraZ, 0, 0, 0, 0, 1, 0);  // sets a standard perspective
   perspective(fov, 1.0, 1.0, 10000);
 
-  // SET VIEW
-  translate(0, 0, gCamera.dz);  // puts origin of model at screen center and moves forward/away by dz
+  /* Set view. */
+  translate(gCamera.dx, gCamera.dy, gCamera.dz);  // puts origin of model at screen center and moves forward/away by dz
   lights();  // turns on view-dependent lighting
   rotateX(gCamera.rx);
   rotateY(gCamera.ry);  // rotates the model around the new origin (center of screen)
   rotateX(HALF_PI);  // rotates frame around X to make X and Y basis vectors parallel to the floor
   if (center) translate(-F.x, -F.y, -F.z);
-  if (viewpoint) {Viewer = viewPoint(); viewpoint = false;} // sets Viewer to the current viewpoint when ',' is pressed
+  if (viewpoint) {  // sets Viewer to the current viewpoint when ',' is pressed
+    Viewer = viewPoint();
+    viewpoint = false;
+  }
   computeProjectedVectors(); // computes screen projections I, J, K of basis vectors (see bottom of pv3D): used for dragging in viewer's frame
   if (showFrame) showFrame(150); // X-red, Y-green, Z-blue arrows
 
   if (showCenterOfSphere) {
     noStroke();
     fill(black);
-    show(centerOfSphere, 3); // show center of the sphere
+    show(gSphereCenter, 3); // show center of the sphere
   }
 
   switch (test) {
@@ -251,6 +293,7 @@ void draw() {
       subdivisionTest();
       break;
     case 4:
+      incCHTest();
       break;
     case 5:
       pivotPlaneAroundLineHitCircleTest();
@@ -274,10 +317,10 @@ void draw() {
       constructEllipticConeTest();
       break;
     case 12:
-      exactCHNaiveTest();
+      interactiveNaiveCHTest();
       break;
     case 13:
-      exactCHIncrementalTest();
+      interactiveIncCHTest();
       break;
     case 14:
       corridorTest();
@@ -305,6 +348,15 @@ void draw() {
       break;
     case 22:
       hubToMeshTest();
+      break;
+    case 23:
+      latticeTest();
+      break;
+    case 24:
+      convexGapTest();
+      break;
+    case 25:
+      hubTest();
       break;
 
     case 100:  // many convex-hull tests
@@ -338,6 +390,9 @@ void draw() {
     case 203:
       intersectionTwoPlanesTest();
       break;
+    case 204:
+      intersectionTwoSpheresTest();
+      break;
     default:
       println("Please enter a correct test number");
       exit();
@@ -347,7 +402,7 @@ void draw() {
   if (showSphere) {
     fill(yellow, 100);
     noStroke();
-    show(centerOfSphere, radiusOfSphere);  // this should be before pick
+    show(gSphereCenter, gSphereRadius);  // this should be before pick
     Pick = pick(mouseX, mouseY);
   }
 
@@ -358,7 +413,7 @@ void draw() {
 
   if (showSphere && showArcSet) {
     int nv = gPoints.nv - gPoints.nv % 2;
-    showArcs(gPoints.G, nv, centerOfSphere, radiusOfSphere, 4, 3, 4);
+    showArcs(gPoints.G, nv, gSphereCenter, gSphereRadius, 4, 3, 4);
     fill(red, 100);
     gPoints.showPicked(6); // show currently picked vertex of P
     fill(orange, 100);

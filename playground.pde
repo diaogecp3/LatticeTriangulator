@@ -22,7 +22,7 @@ void testSwingLists(boolean randomInput, boolean saveInput) {
   pts points = new pts();
   points.declare();
   if (randomInput) {
-    generatePointsOnSphere(points, centerOfSphere, radiusOfSphere, 4);
+    generatePointsOnSphere(points, gSphereCenter, gSphereRadius, 4);
   } else {
     points.loadPts("data/point_set/ps_test");
   }

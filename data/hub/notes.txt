@@ -6,3 +6,6 @@ wrong bounding sphere, only 2 neighbors
 
 hub_easy_3:
 wrong bounding sphere
+
+hub_0:
+null intersection circle with bounding sphere

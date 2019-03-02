@@ -158,10 +158,10 @@ pt[] generateContactsAndRadii(pt center,                             // in
       pt p = generateOnePointOnSphere(center, radius);
       vec normal = U(center, p);
       float r = random(1, radius * 0.9);
-      float alpha = asin(clamp(r/radius, -1.0, 1.0));  // [0, PI/2]
+      float alpha = asinClamp(r/radius);  // [0, PI/2]
       boolean isValid = true;
       for (int j = 0; j < i; ++j) {
-        float theta = acos(clamp(dot(normal, normals[j]), -1.0, 1.0));  // [0, PI]
+        float theta = acosClamp(dot(normal, normals[j]));  // [0, PI]
         if (theta <= alpha + alphas[j]) {
           isValid = false;
           break;
@@ -187,14 +187,14 @@ pt[] generateContacts(pt center,                                     // in
                       vec[] normals) {                               // out
   assert rMax > 0 && rMax < radius;
   pt[] contacts = new pt[n];
-  float alpha = 2 * asin(clamp(rMax/radius, -1.0, 1.0));
+  float alpha = 2 * asinClamp(rMax/radius);
   for (int i = 0; i < n; ++i) {
     while (true) {
       pt p = generateOnePointOnSphere(center, radius);
       vec normal = U(center, p);
       boolean isValid = true;
       for (int j = 0; j < i; ++j) {
-        float theta = acos(clamp(dot(normal, normals[j]), -1.0, 1.0));  // [0, PI]
+        float theta = acosClamp(dot(normal, normals[j]));  // [0, PI]
         if (theta <= alpha) {
           isValid = false;
           break;

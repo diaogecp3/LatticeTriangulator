@@ -62,3 +62,9 @@ naive 3RT method fails.
 
 In rs_exact_CH_edge_circle_0, 1:
 the generated CH is wrong
+
+rs_0:
+there is a corridor where A=B and C=D
+
+rs_1:
+determinant < 0 when computing the 2 supporting planes of 3 given circles

@@ -52,6 +52,7 @@ class pt {
 
 // =====  vector functions
 vec V() {return new vec(); };                                                                          // make vector (x,y,z)
+vec V(pt p) {return new vec(p.x, p.y, p.z); };
 vec V(float x, float y, float z) {return new vec(x,y,z); };                                            // make vector (x,y,z)
 vec V(vec V) {return new vec(V.x,V.y,V.z); };                                                          // make copy of vector V
 vec A(vec A, vec B) {return new vec(A.x+B.x,A.y+B.y,A.z+B.z); };                                       // A+B
@@ -109,6 +110,7 @@ vec MouseDrag() {return V(mouseX-pmouseX,mouseY-pmouseY,0);};                   
 pt ScreenCenter() {return P(width/2,height/2);}                                                        //  point in center of  canvas
 
 // ===== measures
+float dot(pt p, pt q) {return p.x * q.x + p.y * q.y + p.z * q.z;}
 float dot(pt p, vec v) {return p.x * v.x + p.y * v.y + p.z * v.z;}
 float dot(vec v, pt p) {return p.x * v.x + p.y * v.y + p.z * v.z;}
 float d(vec U, vec V) {return U.x*V.x+U.y*V.y+U.z*V.z; };                                            //U*V dot product
@@ -123,7 +125,7 @@ float d(pt P, pt Q) {return sqrt(sq(Q.x-P.x)+sq(Q.y-P.y)+sq(Q.z-P.z)); };       
 float area(pt A, pt B, pt C) {return n(N(A,B,C))/2; };                                               // area of triangle
 float volume(pt A, pt B, pt C, pt D) {return m(V(A,B),V(A,C),V(A,D))/6; };                           // volume of tet
 boolean parallel (vec U, vec V) {return n(N(U,V))<n(U)*n(V)*0.00001; }                              // true if U and V are almost parallel
-float angle(vec U, vec V) {return acos(d(U,V)/n(V)/n(U)); };                                       // angle(U,V)
+float angle(vec U, vec V) {return acosClamp(d(U,V)/n(V)/n(U)); };                                       // angle(U,V)
 boolean cw(vec U, vec V, vec W) {return m(U,V,W)>0; };                                               // (UxV)*W>0  U,V,W are clockwise
 boolean cw(pt A, pt B, pt C, pt D) {return volume(A,B,C,D)>0; };                                     // tet is oriented so that A sees B, C, D clockwise
 boolean projectsBetween(pt P, pt A, pt B) {return dot(V(A,P),V(A,B))>0 && dot(V(B,P),V(B,A))>0 ; };

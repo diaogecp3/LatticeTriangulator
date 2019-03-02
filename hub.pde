@@ -8,7 +8,6 @@ boolean showIntersectionCircles = false;  // the intersection circles between th
 boolean showLiftedCones = false;
 boolean showGapMesh = false;
 
-
 float gGapWidth = 10;
 
 class Cone {
@@ -204,23 +203,58 @@ class TruncatedCone {
   }
 }
 
-class ConicGap {
-  ArrayList<pt> points0;  // points on inner irregular loop
-  ArrayList<pt> points1;  // points on outer regular loop
+class ConvexGap {
+  ArrayList<pt> points0;  // points on the inner loop
+  ArrayList<pt> points1;  // points on the outer loop, orientation same as inner loop
 
-  ConicGap(ArrayList<pt> points0, ArrayList<pt> points1) {
+  boolean normalized = false;  // true if this object is a normalized version of another one
+
+  ConvexGap() {}
+
+  ConvexGap(ArrayList<pt> points0, ArrayList<pt> points1) {
     this.points0 = points0;
     this.points1 = points1;
   }
 
-  ArrayList<pt> positionList() {
+  private ArrayList<pt> positionList() {
     ArrayList<pt> posList = new ArrayList<pt>();
     posList.addAll(points0);
     posList.addAll(points1);
     return posList;
   }
 
-  ArrayList<Triangle> gapHull() {
+  /*
+   * Make the convex gap center at (0, 0, 0) and have appropriate scale.
+   * c is the center of this object, s is the "target" scale.
+   * If rawS is true, then the object is scaled by s.
+   * If rawS is false, then the object is scaled to s.
+   */
+  ConvexGap normalize(pt c, float s, boolean rawS) {
+    if (c == null) c = this.center();
+    vec t = V(c).rev();
+    ArrayList<pt> ps0 = new ArrayList<pt>();
+    ArrayList<pt> ps1 = new ArrayList<pt>();
+    for (pt p : points0) ps0.add(P(p, t));
+    for (pt p : points1) ps1.add(P(p, t));
+
+    if (rawS == false) {
+      float r = 0.0;
+      for (pt p : ps0) r += sqrt(dot(p, p));
+      for (pt p : ps1) r += sqrt(dot(p, p));
+      r /= (ps0.size() + ps1.size());
+      s /= r;
+    }
+
+    for (pt p : ps0) p.mul(s);
+    for (pt p : ps1) p.mul(s);
+    return new ConvexGap(ps0, ps1);
+  }
+
+  void setNormalized(boolean n) {
+    normalized = n;
+  }
+
+  private ArrayList<Triangle> gapHull() {
     int nv0 = points0.size();
     int nv1 = points1.size();
     assert nv0 >= 3 && nv1 >= 3;
@@ -234,11 +268,29 @@ class ConicGap {
     int jLeft = nv1 - 1, jRight;
     for (; j < nv1; ++j) {
       jRight = (j + 1) % nv1;
-      vec vLeft = V(pa, points1.get(jLeft));
-      vec vRight = V(pa, points1.get(jRight));
-      vec n = N(pa, pb, points1.get(j));  // no need to normalize
-      if (dot(n, vLeft) < 0 && dot(n, vRight) < 0) break;
+      vec vLeft = U(pa, points1.get(jLeft));
+      vec vRight = U(pa, points1.get(jRight));
+      vec n = U(N(pa, pb, points1.get(j)));
+      {
+        // println("n = ", n, "vLeft = ", vLeft, "vRight = ", vRight, "dot(n, vLeft) = ", dot(n, vLeft), "dot(n, vRight) = ", dot(n, vRight));
+      }
+      if (dot(n, vLeft) <= 0 && dot(n, vRight) <= 0) break;
       jLeft = j;
+    }
+    if (j == nv1) {
+      if (normalized) return null;
+
+      // println("Cannot find first triangle! Let's normalize the gap!");
+      pt c = this.center();
+      for (float k = 10.0; k < 10001.0; k *= 10.0) {
+        ConvexGap gap = this.normalize(c, k, true);
+        gap.setNormalized(true);
+        ArrayList<Triangle> tris = gap.gapHull();
+        if (tris != null) return tris;
+      }
+
+      println("Still can't find first triangle after normalization!");
+      return null;
     }
     assert j < nv1;
     triangles.add(new Triangle(0, 1, j + nv0));
@@ -261,7 +313,7 @@ class ConicGap {
         vec n = N(pa, pb, pc);
         vec vLeft = V(pa, points1.get((j + nv1 - 1) % nv1));
         vec vRight = V(pa, points1.get(jNext));
-        if (dot(n, vLeft) < 0 && dot(n, vRight) < 0) valid = true;
+        if (dot(n, vLeft) <= 0 && dot(n, vRight) <= 0) valid = true;
       }
 
       if (valid) {
@@ -290,22 +342,85 @@ class ConicGap {
     return triangles;
   }
 
-  TriangleMesh toTriMesh() {
-    ArrayList<pt> posList = positionList();
-    ArrayList<Triangle> triList = gapHull();
+  private int toGlobalPID(int i, ArrayList<Integer> pIDs0, ArrayList<Integer> pIDs1) {
+    if (i < pIDs0.size()) return pIDs0.get(i);
+    else return pIDs1.get(i - pIDs0.size());
+  }
 
-    {  // check convexity
-      pt[] points = new pt[posList.size()];
-      for (int i = 0; i < points.length; ++i) points[i] = posList.get(i);
-      boolean isConvex = passConvexityTest(triList, points, points.length);
-      if (!isConvex) {
-        fill(red);
-        showBall(points0.get(0), 10);
-      }
-      // println("convex!");
+  /* Map each local vertex ID to its global vertex ID. */
+  ArrayList<Triangle> gapHullGlobal(ArrayList<Integer> pIDs0, ArrayList<Integer> pIDs1) {
+    ArrayList<Triangle> tris = gapHull();
+    if (tris == null) return null;
+    for (Triangle t : tris) {
+      t.set(toGlobalPID(t.a, pIDs0, pIDs1), toGlobalPID(t.b, pIDs0, pIDs1), toGlobalPID(t.c, pIDs0, pIDs1));
     }
+    return tris;
+  }
 
+  TriangleMesh toTriMesh() {
+    ArrayList<Triangle> triList = gapHull();
+    if (triList == null) return null;
+    ArrayList<pt> posList = positionList();
     return new TriangleMesh(posList, triList);
+  }
+
+  void show() {
+    showOrientedLoop(points0);
+    showOrientedLoop(points1);
+  }
+
+  pt center() {
+    pt c = new pt();
+    for (pt p : points0) c.add(p);
+    for (pt p : points1) c.add(p);
+    c.div(points0.size() + points1.size());
+    return c;
+  }
+
+  float averageDistanceTo(pt c) {
+    float r = 0;
+    for (pt p : points0) r += d(p, c);
+    for (pt p : points1) r += d(p, c);
+    return r / (points0.size() + points1.size());
+  }
+
+  void translate(vec v) {
+    for (pt p : points0) p.set(P(p, v));
+    for (pt p : points1) p.set(P(p, v));
+  }
+
+  void scale(float s) {
+    for (pt p : points0) p.set(P(s, p));
+    for (pt p : points1) p.set(P(s, p));
+  }
+
+  void save(String file) {
+    println("saving convex gap:", file);
+    String[] lines = new String[points0.size() + points1.size() + 2];
+    int i = 0;
+    lines[i++] = str(points0.size());
+    for (pt p : points0) lines[i++] = str(p.x) + "," + str(p.y) + "," + str(p.z);
+    lines[i++] = str(points1.size());
+    for (pt p : points1) lines[i++] = str(p.x) + "," + str(p.y) + "," + str(p.z);
+    saveStrings(file, lines);
+  }
+
+  void load(String file) {
+    println("loading convex gap:", file);
+    points0 = new ArrayList<pt>();
+    points1 = new ArrayList<pt>();
+    String[] lines = loadStrings(file);
+    int i = 0;
+    int nv0 = int(lines[i++]);
+    for (int j = 0; j < nv0; ++j) {
+      float[] tmp = float(split(lines[i++], ","));
+      points0.add(new pt(tmp[0], tmp[1], tmp[2]));
+    }
+    int nv1 = int(lines[i++]);
+    for (int j = 0; j < nv1; ++j) {
+      float[] tmp = float(split(lines[i++], ","));
+      points1.add(new pt(tmp[0], tmp[1], tmp[2]));
+    }
   }
 }
 
@@ -328,11 +443,11 @@ class Hub {
   float maxIntersectDist = -1.0;  // the radius of the bounding sphere
   Circle[] circles = null;  // intersection between tCones and the bounding sphere
   TruncatedCone[] liftedCones = null;  // truncated tCones
-  ConicGap[] gaps = null;  // a gap is created between a lifted cone and its corresponding hole of the convex hull
+  ConvexGap[] gaps = null;  // a gap is created between a lifted cone and its corresponding hole of the convex hull
 
   /* Parameters for hub triangulation. */
   boolean isHalved = false;  // whether each tCone is halved or not
-  float inflationRatio = 1.05;  // the ratio of the radius of the bounding sphere over the max intersection distance
+  float inflationRatio = 1.03;  // the ratio of the radius of the bounding sphere over the max intersection distance, default: 1.05
   int numEdgesRegularPolygon = -1;  // the number of edges of a beam cross section
   vec[] xDirections = null;  // each beam has an I vector to generate samples
   float gapDistance = 0.0;  // how much each tCone should be lifted/chopped
@@ -377,7 +492,7 @@ class Hub {
       float d = v.norm();
       v.div(d);  // normalize
       float cos = (ball.r - neighbors[i].r) / d;
-      float sin = sin(acos(cos));
+      float sin = sin(acosClamp(cos));
       pt c0 = P(ball.c, ball.r * cos, v);  // the center corresponding to the inner ball
       pt c1 = P(neighbors[i].c, neighbors[i].r * cos, v);  // the center corrsponding to the i-th outer ball
       float r0 = ball.r * sin;
@@ -388,7 +503,7 @@ class Hub {
     }
   }
 
-  private float intersectionDistance(int i, int j) {
+  float intersectionDistance(int i, int j) {
     assert tCones[i] != null && tCones[j] != null;
     pt pa = ball.c;
     pt pb = neighbors[i].c;
@@ -406,10 +521,27 @@ class Hub {
     pt pca01 = P(tCones[j].c0, tCones[j].r0, vcaRotated);
 
     pt px = intersectionTwoLines(pba10, pba11, pca00, pca01);
+    if (px == null) {  // parallel lines
+      // println("difference =", V(pba11, pca01));
+      // assert isZeroVec(V(pba11, pca01));
+      px = P(pba11, pca01);
+    }
 
     {
+      // println("intersection point =", px);
       // fill(green);
-      // show(px, 4);
+      // showBall(px, 10);
+      // if (i == 1 && j == 2) {
+        // println("pba10 =", pba10, "pba11 =", pba11);
+        // println("pca00 =", pca00, "pca01 =", pca01);
+        // strokeWeight(5);
+        // stroke(green);
+        // showLineSegment(pba10, pba11);
+        // stroke(blue);
+        // showLineSegment(pca00, pca01);
+        // strokeWeight(1);
+        // noStroke();
+      // }
     }
 
     return d(pa, px);
@@ -420,17 +552,17 @@ class Hub {
     for (int i = 0; i < nNeighbors - 1; ++i) {
       for (int j = i + 1; j < nNeighbors; ++j) {
         float d = intersectionDistance(i, j);
+        // println("i =", i, "j =", j, "d =", d);
         t = max(t, d);
       }
     }
+    // println("t =", t);
     return t;
   }
 
   private void init() {
-    generateTruncatedCones();
-
+    generateTruncatedCones();  // a truncated cone is a beam
     maxIntersectDist = maximumIntersectionDistance();
-    // maxIntersectDist += 10;  // slightly bigger such that circles are disjoint
     maxIntersectDist *= inflationRatio;
   }
 
@@ -498,6 +630,13 @@ class Hub {
     circles = new Circle[nNeighbors];
     for (int i = 0; i < nNeighbors; ++i) {
       circles[i] = intersectionCircleWithBoundingSphere(i);
+    }
+
+    for (Circle cir : circles) {
+      if (cir == null) {
+        save("data/hub_unnamed");
+        break;
+      }
     }
     return;
   }
@@ -671,7 +810,7 @@ class Hub {
   void initGaps(ArrayList<pt>[] innerLoops) {
     assert innerLoops != null && innerLoops.length == nNeighbors;
     assert liftedCones != null && liftedCones.length == nNeighbors;
-    gaps = new ConicGap[nNeighbors];
+    gaps = new ConvexGap[nNeighbors];
 
     for (int i = 0; i < nNeighbors; ++i) {
       ArrayList<pt> innerLoop = innerLoops[i];
@@ -680,7 +819,7 @@ class Hub {
       assert samples != null;
       int n = samples.length / 2;
       for (int j = 0; j < n; ++j) outerLoop.add(samples[j]);
-      gaps[i] = new ConicGap(innerLoop, outerLoop);
+      gaps[i] = new ConvexGap(innerLoop, outerLoop);
     }
   }
 
@@ -696,6 +835,15 @@ class Hub {
       gapMesh.augmentWithShift(tm.positions, tm.triangles);
     }
     return gapMesh;
+  }
+
+  BorderedTriangleMesh generateConvexHullMesh(int numEdges) {
+    generateIntersectionCircles();
+    RingSet rs = circlesToRingSet(numEdges);
+    rs.generateExactCHIncremental(null);
+    TriangleMesh tm = rs.generateConvexTriMesh();
+    ArrayList<Integer>[] borders = rs.getSwingLists();  // each border is a loop of vertex IDs
+    return new BorderedTriangleMesh(tm, borders);
   }
 
   /*
@@ -792,12 +940,13 @@ class Hub {
     ball.show();
     for (int i = 0; i < nNeighbors; ++i) {
       tCones[i].show(40, false);
-      // neighbors[i].showBall();
+      showBall(neighbors[i].c, neighbors[i].r);
     }
     return;
   }
 
   void save(String file) {
+    println("saving hub:", file);
     String[] lines = new String[2 + nNeighbors];
     int i = 0;
     lines[i++] = str(nNeighbors + 1);
@@ -811,10 +960,10 @@ class Hub {
   }
 
   void load(String file) {
+    println("loading hub:", file);
     String[] lines = loadStrings(file);
     int i = 0;
     nNeighbors = int(lines[i++]) - 1;
-    println("loading:", file, "number of neighbors =", nNeighbors);
     float[] tmp = float(split(lines[i++], ","));
     ball = new Ball(tmp[0], tmp[1], tmp[2], tmp[3]);
     neighbors = new Ball[nNeighbors];

@@ -14,6 +14,12 @@ class Camera {
   float rx = -0.06 * TWO_PI;  // view angle, manipulated when space pressed
   float ry = -0.04 * TWO_PI;  // view angle, manipulated when space pressed
 
+  float dx = 0;
+  float dy = 0;
+
+  final float sxPan = 0.2;  // scaling factor for panning in x direction
+  final float syPan = 0.2;  // scaling factor for panning in y direction
+
   Camera(float dz, float rx, float ry) {
     this.dz = dz;
     this.rx = rx;

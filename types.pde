@@ -346,13 +346,13 @@ class EdgeCircle {
   vec n, vi, vj;
   EdgeCircle() {}
   void init() {
-    c = generateOnePointOnSphere(centerOfSphere, 0.5 * radiusOfSphere);
-    n = U(centerOfSphere, c);
+    c = generateOnePointOnSphere(gSphereCenter, 0.5 * gSphereRadius);
+    n = U(gSphereCenter, c);
     r = random(30, 50);
-    a = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
-    while (isZero(dot(V(c, a), n))) a = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
-    b = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
-    while (isZero(dot(V(c, b), n))) b = generateOnePointInsideSphere(centerOfSphere, radiusOfSphere);
+    a = generateOnePointInsideSphere(gSphereCenter, gSphereRadius);
+    while (isZero(dot(V(c, a), n))) a = generateOnePointInsideSphere(gSphereCenter, gSphereRadius);
+    b = generateOnePointInsideSphere(gSphereCenter, gSphereRadius);
+    while (isZero(dot(V(c, b), n))) b = generateOnePointInsideSphere(gSphereCenter, gSphereRadius);
     vi = constructNormal(n);
     vj = N(n, vi);
   }

@@ -4,6 +4,7 @@
 
 
 import java.util.Queue;
+import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
 import java.util.Collections;
 
@@ -32,9 +33,9 @@ int debugIncCHIter = 3;
 int debugIncCHBoundarySize = 2;
 boolean debugIncCHNewView = false;
 boolean debugIncCHCor = false;
-boolean showCorridorFaces = false;
-boolean showTriangleFaces = false;
-boolean showCorridorStrokes = false;
+boolean showCorridorFaces = true;
+boolean showTriangleFaces = true;
+boolean showCorridorStrokes = true;
 boolean showTriangleStrokes = true;
 boolean showBeams = false;
 boolean showApolloniusDiagram = false;
@@ -54,7 +55,7 @@ boolean validRS = false;
  * 3: Breadth first search with heuristics. Time and space should be less than 2.
  * 4: Approximated supporting plane. Time: roughly O(1), Space: roughly O(1).
  */
-int method3RT = 3;
+int method3RT = 2;
 
 /*
  * Method for triangle mesh generation for ring set.
@@ -265,12 +266,12 @@ class RingSet {
       angle = a;
 
       // Compute pAD
-      pAD = P(c, r, normal);
+      pAD = P(sphereCenter, sphereRadius, normal);
     }
 
     @Override
     boolean isVisibleFromCircle(vec v, float f) {
-      if (acos(dot(v, normal)) < angle + f) return true;
+      if (acosClamp(dot(v, normal)) < angle + f) return true;
       return false;
     }
 
@@ -343,8 +344,9 @@ class RingSet {
    */
   class IncCorridor extends IncFace {
     IncEdge[] edges;
-    vec[] coneNormals;  // 2 normals, one for cone ABC, one for cone CDA
-    float[] coneAngles;  // 2 half-angles, one for cone ABC, one for cone CDA
+    vec[] coneNormals = null;  // 2 normals, one for cone ABC, one for cone CDA
+    float[] coneAngles = null;  // 2 half-angles, one for cone ABC, one for cone CDA
+    boolean isCollapsed = false;  // true iff. A == B and C == D
 
     float delta = TWO_PI / 20;  // the sampling density on an arc, default = TWO_PI / 20
     ArrayList<pt> samples;  // samples.size = 2 * (numSegments - 1), where numSegments = int(angle of bigger arc / dAngle)
@@ -353,22 +355,17 @@ class RingSet {
 
     IncCorridor() {}
     IncCorridor(IncVertex v0, IncVertex v1, IncVertex v2, IncVertex v3) {
-      vertices = new IncVertex[4];
-      edges = new IncEdge[2];
-      for (int i = 0; i < 2; ++i) edges[i] = new IncEdge();
-      vertices[0] = v0;
-      vertices[1] = v1;
-      vertices[2] = v2;
-      vertices[3] = v3;
+      vertices = new IncVertex[] {v0, v1, v2, v3};
+      edges = new IncEdge[] {new IncEdge(), new IncEdge()};
       edges[0].setEndPoints(v1, v2);  // BC
       edges[1].setEndPoints(v3, v0);  // DA
-      setupNormalsAndAngles();
+      isCollapsed = isZeroVec(V(v0.position, v1.position)) && isZeroVec(V(v2.position, v3.position));
 
-      if (gNumPointsPerRing >= 3) {
-         delta = TWO_PI / (gNumPointsPerRing + 1);
-        //delta = 2 * (TWO_PI / gNumPointsPerRing);
-      }
+      setupCone();
+
+      if (gNumPointsPerRing >= 3) delta = TWO_PI / (gNumPointsPerRing + 1);
       else delta = TWO_PI / 20;
+
       // if (simpleCorridor) {
       //   delta = TWO_PI / 3;
       // } else {
@@ -380,9 +377,10 @@ class RingSet {
     }
 
     /*
-     * Compute the normal and circumradius of triangle ABC/CDA.
+     * Compute the normal and circumradius of the cone defined by triangle ABC/CDA.
      */
-    private void setupNormalsAndAngles() {
+    private void setupCone() {
+      if (isCollapsed) return;
       coneNormals = new vec[2];
       coneAngles = new float[2];
       coneNormals[0] = normalOfTriangle(vertices[0].position, vertices[1].position,
@@ -391,18 +389,31 @@ class RingSet {
                                        vertices[0].position);
       float r0 = circumradiusOfTriangle(vertices[0].position, vertices[1].position,
                                         vertices[2].position);
-      vec v = V(vertices[0].position, c);  // the vector from A to the center of the sphere
-      coneAngles[0] = asin(r0 / r);  // r, i.e. the radius of the sphere, can be accessed!
+      vec v = V(vertices[0].position, sphereCenter);  // the vector from A to the center of the sphere
+      coneAngles[0] = asinClamp(r0 / sphereRadius);  // r, i.e. the radius of the sphere, can be accessed!
       if (dot(v, coneNormals[0]) > 0) {  // if the center is on the positive side
         coneAngles[0] = PI - coneAngles[0];  // the angle should be > PI/2
       }
       float r1 = circumradiusOfTriangle(vertices[2].position, vertices[3].position,
                                         vertices[0].position);
-      coneAngles[1] = asin(r1 / r);
+      coneAngles[1] = asinClamp(r1 / sphereRadius);
       if (dot(v, coneNormals[1]) > 0) {  // if the center is on the positive side
         coneAngles[1] = PI - coneAngles[1];  // the angle should be > PI/2
       }
+
+      // println("A =", vertices[0].position, "B =", vertices[1].position,
+      //         "C =", vertices[2].position, "D =", vertices[3].position,
+      //         "normal 1 =", coneNormals[0], "normal 2 =", coneNormals[1]);
+
+      // if (!isZero(coneNormals[0].norm() - 1) || !isZero(coneNormals[1].norm() - 1)) {
+      //   save("data/rs_unnamed");
+      //   exit();
+      // }
+
       assert isZero(coneNormals[0].norm() - 1) && isZero(coneNormals[1].norm() - 1);
+      // if (isNaNVec(coneNormals[0]) || isNaNVec(coneNormals[1])) {
+        // println("NaN normals");
+      // }
     }
 
     void setDelta(float delta) {
@@ -415,6 +426,7 @@ class RingSet {
     }
 
     private void generateSamples(float delta) {
+      if (isCollapsed) return;
       int left = vertices[3].rid;  // left ring
       int right = vertices[0].rid;  // right ring
       pt c0 = centers[left], c1 = centers[right];
@@ -427,36 +439,19 @@ class RingSet {
       vec vb = V(c1, vertices[1].position);
       vec va = V(c1, vertices[0].position);
 
-      float a0 = acos(clamp(dot(vd, vc) / (r0 * r0), -1.0, 1.0));  // [0, PI]
+      float a0 = acosClamp(dot(vd, vc) / (r0 * r0));  // [0, PI]
       if (dot(n0, N(vd, vc)) < 0) a0 = TWO_PI - a0;
-      {
-        // fill(yellow);
-        // show(vertices[3].position, 5);
-        // fill(cyan);
-        // show(vertices[2].position, 5);
-        // println("dot(vd, vc) = ", dot(vd, vc));
-        // println("r0 * r0 = ", r0 * r0);
-        // println("a0 = ", a0);
-      }
-      float a1 = acos(clamp(dot(vb, va) / (r1 * r1), -1.0, 1.0));
+
+      float a1 = acosClamp(dot(vb, va) / (r1 * r1));
       if (dot(n1, N(vb, va)) < 0) a1 = TWO_PI - a1;
-      {
-        // fill(springGreen);
-        // show(vertices[1].position, 5);
-        // fill(firebrick);
-        // show(vertices[0].position, 5);
-        // println("dot(vb, va) = ", dot(vb, va));
-        // println("r1 * r1 = ", r1 * r1);
-        // println("a1 = ", a1);
-      }
 
       if (a0 > a1) {
-        float stAng = acos(clamp(dot(vd, xAxes[left]) / r0, -1.0, 1.0));  // starting theta for D w.r.t. the left ring
+        float stAng = acosClamp(dot(vd, xAxes[left]) / r0);  // starting theta for D w.r.t. the left ring
         if (dot(vd, yAxes[left]) < 0) stAng = TWO_PI - stAng;
         int n = int(a0 / delta);
         samples = fillExEdgeWithPoints(stAng, delta, n, left, right);
       } else {
-        float stAng = acos(clamp(dot(vb, xAxes[right]) / r1, -1.0, 1.0));
+        float stAng = acosClamp(dot(vb, xAxes[right]) / r1);
         if (dot(vb, yAxes[right]) < 0) stAng = TWO_PI - stAng;
         int n = int(a1 / delta);
         samples = fillExEdgeWithPoints(stAng, delta, n, right, left);
@@ -483,11 +478,15 @@ class RingSet {
      */
     @Override
     boolean isVisibleFromCircle(vec v, float f) {
-      if ((acos(dot(v, coneNormals[0])) < coneAngles[0] + f) || (acos(dot(v, coneNormals[1])) < coneAngles[1] + f)) {
-        // println("corridor is centrally visible");
-        return true;
+      if (!isCollapsed) {
+        assert coneNormals != null && coneAngles != null;
+        return (acosClamp(dot(v, coneNormals[0])) < coneAngles[0] + f) || (acosClamp(dot(v, coneNormals[1])) < coneAngles[1] + f);
+      } else {
+        IncTriangle t1 = (IncTriangle)edges[0].getAdjFace();
+        IncTriangle t0 = (IncTriangle)edges[1].getAdjFace();
+        assert t0 != null && t1 != null;
+        return (acosClamp(dot(v, t0.normal)) < t0.angle + f) || (acosClamp(dot(v, t1.normal)) < t1.angle + f);
       }
-      return false;
     }
 
     @Override
@@ -515,11 +514,10 @@ class RingSet {
     @Override
     void showFace() {
       show(delta);
-      // show(TWO_PI / 40);
     }
 
-    void show(float delta) {
-      generateSamples(delta);
+    void show(float density) {
+      generateSamples(density);
       if (showCorridorStrokes) stroke(0);
       else noStroke();
 
@@ -527,7 +525,9 @@ class RingSet {
       beginShape(QUAD_STRIP);
       vertex(vertices[3].position);  // D
       vertex(vertices[0].position);  // A
-      for (pt p : samples) vertex(p);  // samples
+      if (samples != null) {
+        for (pt p : samples) vertex(p);  // samples
+      }
       vertex(vertices[2].position);  // C
       vertex(vertices[1].position);  // B
       endShape();
@@ -542,6 +542,7 @@ class RingSet {
                                  vertices[0].position, null, coneNormals[1], null);
     }
 
+    /* Show the circumcircle corresponding to the middle generator. */
     void showADCircle() {
       int k = samples.size() / 2;
       if (k % 2 == 0) k -= 2;
@@ -562,16 +563,16 @@ class RingSet {
       vec xLeft = xAxes[ridLeft];
       vec yLeft = yAxes[ridLeft];
       vec ca = V(cLeft, pa);
-      float theta = acos(dot(ca, xLeft) / rLeft);
+      float theta = acosClamp(dot(ca, xLeft) / rLeft);
       if (dot(ca, yLeft) < 0) theta = TWO_PI - theta;
       vec t = V(-sin(theta), xLeft, cos(theta), yLeft);
       vec ab = U(pa, pb);
       vec nor = U(N(ab, t));
 
       /* Compute the center and radius of the circle defined by the supporting plane of AB. */
-      float d = dot(V(c, pa), nor);  // d can be negative
-      pt center = P(c, d, nor);
-      float radius = sin(acos(d / r)) * r;
+      float d = dot(V(sphereCenter, pa), nor);  // d can be negative
+      pt center = P(sphereCenter, d, nor);
+      float radius = sin(acosClamp(d / sphereRadius)) * sphereRadius;
 
       showCircle(center, nor, radius);
 
@@ -655,10 +656,108 @@ class RingSet {
       }
     }
 
+    boolean isUniformlySampled() {
+      if (samples == null || samples.size() == 0) return true;
+      ArrayList<pt> pointsLeft = new ArrayList<pt>();
+      ArrayList<pt> pointsRight = new ArrayList<pt>();
+      pointsLeft.add(vertices[3].position);
+      pointsRight.add(vertices[0].position);
+      for (int i = 0; i < samples.size(); i += 2) {
+        pointsLeft.add(samples.get(i));
+        pointsRight.add(samples.get(i+1));
+      }
+
+      pt cLeft = centers[vertices[3].rid];
+      pt cRight = centers[vertices[0].rid];
+      float rLeft = radii[vertices[3].rid];
+      float rRight = radii[vertices[0].rid];
+      float rLeft2 = rLeft * rLeft;
+      float rRight2 = rRight * rRight;
+      float baseLeft = dot(V(cLeft, pointsLeft.get(0)), V(cLeft, pointsLeft.get(1))) / rLeft2;
+      float baseRight = dot(V(cRight, pointsRight.get(0)), V(cRight, pointsRight.get(1))) / rRight2;
+
+      {
+        fill(yellow);
+        showBall(pointsLeft.get(0), 2);
+        showBall(pointsLeft.get(1), 2);
+        showBall(pointsRight.get(0), 2);
+        showBall(pointsRight.get(1), 2);
+
+        fill(black);
+        showBall(vertices[1].position, 5);
+        showBall(vertices[2].position, 5);
+      }
+
+      for (int i = 1; i < pointsLeft.size() - 1; ++i) {
+        float diffLeft = dot(V(cLeft, pointsLeft.get(i)), V(cLeft, pointsLeft.get(i+1))) / rLeft2;
+        float diffRight = dot(V(cRight, pointsRight.get(i)), V(cRight, pointsRight.get(i+1))) / rRight2;
+        if (abs(diffLeft - baseLeft) > 0.1) {
+          println("diffLeft =", diffLeft, " baseLeft =", baseLeft);
+          fill(magenta);
+          showBall(pointsLeft.get(i), 2);
+          showBall(pointsLeft.get(i+1), 2);
+          // return false;
+        }
+        if (abs(diffRight - baseRight) > 0.1) {
+          println("diffRight =", diffRight, " baseRight =", baseRight);
+          fill(cyan);
+          showBall(pointsRight.get(i), 2);
+          showBall(pointsRight.get(i+1), 2);
+          // return false;
+        }
+      }
+      return true;
+    }
+
+    /* Test other possible ways of computing correspondence. */
+    void testCorrespondence() {
+      pt pd = vertices[3].position;
+      pt pa = vertices[0].position;
+
+      pt cLeft = centers[vertices[3].rid];
+
+      pt cRight = centers[vertices[0].rid];
+      float rRight = radii[vertices[0].rid];
+      vec nRight = normals[vertices[0].rid];
+
+      {  // show correct correspondence using method 0 (convex hull method)
+        fill(red);
+        showBall(pd, 5);
+        fill(blue);
+        showBall(pa, 5);
+      }
+
+      {  // show correspondence using method 1 (not the same as method 0)
+        pt ppd = projectedPointOnPlane(pd, cRight, nRight);
+        vec d = U(cRight, ppd);
+        pt[] ps = new pt[] {P(cRight, rRight, d), P(cRight, -rRight, d)};
+        fill(green);
+        showBall(ps[0], 3);
+        fill(lime);;
+        showBall(ps[1], 3);
+
+        fill(springGreen, 150);
+        showPlane(pd, ppd, cRight, 200);
+      }
+
+      {  // show correspondence using method 2 (not the same as method 0 or 1)
+        vec nPlane = U(N(cLeft, pd, cRight));
+        pt[] ps = intersectionCirclePlane(cRight, rRight, nRight, pd, nPlane);
+        assert ps != null && ps.length == 2;
+        fill(yellow);
+        showBall(ps[0], 3);
+        fill(gold);
+        showBall(ps[1], 3);
+
+        fill(khaki, 100);
+        showPlane(pd, nPlane, 200);
+      }
+    }
+
     private pt generateADPoint(pt pa, pt pb, pt cLeft, float rLeft, vec xLeft, vec yLeft) {
       /* Compute the tangent at pa w.r.t. the left circle. */
       vec ca = V(cLeft, pa);
-      float theta = acos(dot(ca, xLeft) / rLeft);
+      float theta = acosClamp(dot(ca, xLeft) / rLeft);
       if (dot(ca, yLeft) < 0) theta = TWO_PI - theta;
       vec t = V(-sin(theta), xLeft, cos(theta), yLeft);
       /* Compute the normal of the supporting plane touching pa and pb. */
@@ -671,7 +770,7 @@ class RingSet {
         // arrow(mid, V(20, nor), 1);
       }
 
-      return P(c, r, nor);
+      return P(sphereCenter, sphereRadius, nor);
     }
 
     void generatePointsAD() {
@@ -719,7 +818,7 @@ class RingSet {
       }
       for (pt p : psAD) {
         if (p0 != null) {
-          showPolyArc(p0, p, c, r);
+          showPolyArc(p0, p, sphereCenter, sphereRadius);
         }
         fill(lime);
         showBall(p, 2);
@@ -727,7 +826,7 @@ class RingSet {
       }
       if (t1 != null) {
         p1 = t1.pAD;
-        showPolyArc(p0, p1, c, r);
+        showPolyArc(p0, p1, sphereCenter, sphereRadius);
         fill(cyan);
         showBall(p1, 3);
       }
@@ -799,8 +898,8 @@ class RingSet {
   }
 
   /* Basic data members. */
-  pt c;  // the center of the sphere where the ring set lies
-  float r;  // the radius of the sphere where the ring set lies
+  pt sphereCenter;  // the center of the sphere where the ring set lies
+  float sphereRadius;  // the radius of the sphere where the ring set lies
   int nRings;  // number of rings/circles
   int nPointsPerRing;  // number of points on each ring
   boolean sameRadius;  // whether all rings have the same radius
@@ -844,22 +943,22 @@ class RingSet {
   DebugIncCHInfo debugIncCHInfo = new DebugIncCHInfo();
 
   RingSet(pt c, float r) {
-    this.c = c;
-    this.r = r;
+    this.sphereCenter = c;
+    this.sphereRadius = r;
     sameRadius = false;
   }
 
   RingSet(pt c, float r, int nc, int np) {
-    this.c = c;
-    this.r = r;
+    this.sphereCenter = c;
+    this.sphereRadius = r;
     this.nRings = nc;
     this.nPointsPerRing = np;
     sameRadius = false;
   }
 
   RingSet(pt c, float r, int nc, int np, float rMax) {
-    this.c = c;
-    this.r = r;
+    this.sphereCenter = c;
+    this.sphereRadius = r;
     this.nRings = nc;
     this.nPointsPerRing = np;
     sameRadius = true;
@@ -868,8 +967,8 @@ class RingSet {
   }
 
   RingSet(pt c, float r, pt[] ps, int nv) {  // the ring set may not be valid
-    this.c = c;
-    this.r = r;
+    this.sphereCenter = c;
+    this.sphereRadius = r;
     this.nRings = int(nv / 2);
     this.nPointsPerRing = 3;  // default
     sameRadius = false;  // default
@@ -898,8 +997,8 @@ class RingSet {
   }
 
   RingSet(pt c, float r, Circle[] circles, int nc, int np) {
-    this.c = c;
-    this.r = r;
+    this.sphereCenter = c;
+    this.sphereRadius = r;
     this.nRings = nc;
     this.nPointsPerRing = np;
     sameRadius = false;  // default
@@ -913,7 +1012,7 @@ class RingSet {
       centers[i] = circles[i].c;
       normals[i] = circles[i].n;
       radii[i] = circles[i].r;
-      contacts[i] = P(this.c, this.r, normals[i]);
+      contacts[i] = P(this.sphereCenter, this.sphereRadius, normals[i]);
       xAxes[i] = constructNormal(normals[i]);
       yAxes[i] = N(normals[i], xAxes[i]);
     }
@@ -921,6 +1020,10 @@ class RingSet {
 
   void setNumPointsPerRing(int np) {
     nPointsPerRing = np;
+  }
+
+  ArrayList<Integer>[] getSwingLists() {
+    return swingLists;
   }
 
   private void generateXYAxes() {
@@ -936,9 +1039,9 @@ class RingSet {
     normals = new vec[nRings];
     if (!sameRadius) {
       radii = new float[nRings];
-      contacts = generateContactsAndRadii(c, r, nRings, radii, normals);
+      contacts = generateContactsAndRadii(sphereCenter, sphereRadius, nRings, radii, normals);
     } else {
-      contacts = generateContacts(c, r, nRings, radii[0], normals);
+      contacts = generateContacts(sphereCenter, sphereRadius, nRings, radii[0], normals);
     }
     generateXYAxes();
   }
@@ -987,11 +1090,11 @@ class RingSet {
     if (!sameRadius) {
       float[] curRadii = new float[nRings];
       for (int i = 0; i < nRings; ++i) curRadii[i] = radii[i] * attenuation;
-      points = generatePointsForCircles(contacts, curRadii, c, r, xAxes, nRings,
+      points = generatePointsForCircles(contacts, curRadii, sphereCenter, sphereRadius, xAxes, nRings,
                                         nPointsPerRing, centers);
     } else {
       float curRadius = radii[0] * attenuation;
-      points = generatePointsForCircles(contacts, curRadius, c, r, xAxes, nRings,
+      points = generatePointsForCircles(contacts, curRadius, sphereCenter, sphereRadius, xAxes, nRings,
                                         nPointsPerRing, centers);
     }
   }
@@ -1144,7 +1247,7 @@ class RingSet {
     rings[1] = points1;
     rings[2] = points2;
     TriangleNode triNode = new TriangleNode(tri);
-    Queue<TriangleNode> queue = new LinkedList<TriangleNode>();
+    Queue<TriangleNode> queue = new ArrayDeque<TriangleNode>();
     queue.add(triNode);
     HashSet<Triangle> set = new HashSet<Triangle>();
     set.add(tri);
@@ -1221,7 +1324,7 @@ class RingSet {
     int[][] candidates = new int[3][2];
     for (int i = 0; i < 3; ++i) {
       vec cp = V(cs[i], ps[i]);
-      float angle = acos(dot(cp, vis[i]) / rs[i]);
+      float angle = acosClamp(dot(cp, vis[i]) / rs[i]);
       if (dot(cp, vjs[i]) < 0) angle = TWO_PI - angle;
       float tmp = angle / da;
       int prev = int(tmp);
@@ -1630,7 +1733,16 @@ class RingSet {
     }
   }
 
-
+  /*
+   * Using an iterative method to generate the oriented supporting plane of the
+   * 3 given circles.
+   */
+  pt[] supPlaneThreeCirclesIterative(int i, int j, int k) {
+    return supPlaneThreeCirclesIter(centers[i], radii[i], normals[i], xAxes[i], yAxes[i],
+                                    centers[j], radii[j], normals[j], xAxes[j], yAxes[j],
+                                    centers[k], radii[k], normals[k], xAxes[k], yAxes[k],
+                                    null);
+  }
 
   /*
    * Generate two supporting planes, with each touching three rings (i, j, k).
@@ -1643,8 +1755,8 @@ class RingSet {
    */
   pt[] twoSupPlanesThreeCircles(int i, int j, int k, vec[] normalsEx,
                                 float[] halfAnglesEx, boolean oneSolution) {
-    float s1 = radii[i] / r, s2 = radii[j] / r, s3 = radii[k] / r;
-    float a1 = asin(s1), a2 = asin(s2), a3 = asin(s3);  // TODO: may store these half-angles?
+    float s1 = radii[i] / sphereRadius, s2 = radii[j] / sphereRadius, s3 = radii[k] / sphereRadius;
+    float a1 = asinClamp(s1), a2 = asinClamp(s2), a3 = asinClamp(s3);  // TODO: may store these half-angles?
     float c1 = cos(a1), c2 = cos(a2), c3 = cos(a3);
 
     vec n23 = N(normals[j], normals[k]);
@@ -1655,7 +1767,8 @@ class RingSet {
     float[] ts = new float[2];  // the 2 values of tan(alpha)
     vec[] ns = new vec[2];  // the 2 normals
     pt[] ps = new pt[2];  // the 2 centers
-    if (notZero(mix)) {
+    if (notCloseTo(mix, gEpsilonBig)) {
+      // println("mix =", mix);
       float invMix = 1.0 / mix;
       n23 = V(invMix, n23);
       n31 = V(invMix, n31);
@@ -1671,10 +1784,13 @@ class RingSet {
       aa = dot(va, va);
       ab = dot(va, vb);
       det = ab * ab - (aa - 1) * bb1;
-      if (det < 0) {
-        println("determinant < 0");
+      if (det < 0.0) {
+        println("i =", i, "j =", j, "k =", k, "determinant =", det);
+        // save("data/rs_unnamed");
+        // det = 0.0;  // not correct?
         return null;
       }
+
       float sqrtDet = sqrt(det);
       ts[0] = (ab + sqrtDet) / bb1;
       ts[1] = (ab - sqrtDet) / bb1;
@@ -1682,10 +1798,10 @@ class RingSet {
       for (int ii = 0; ii < 2; ++ii) {
         float cosa = 1.0 / sqrt(1 + ts[ii] * ts[ii]);  // cosa > 0
         ns[ii] = V(cosa, A(va, -ts[ii], vb));
-        ps[ii] = P(c, r * cosa, ns[ii]);
+        ps[ii] = P(sphereCenter, sphereRadius * cosa, ns[ii]);
       }
     } else {
-      println("mix product is 0. But I fixed it.");
+      // println("The mix product of the 3 circle normals is 0.");
       vec va = V(c1, n23, c2, n31, c3, n12);
       vec vb = V(s1, n23, s2, n31, s3, n12);
 
@@ -1699,26 +1815,22 @@ class RingSet {
       float cosa = cos(alpha);
       float sina = sin(alpha);
 
-      pt p1 = new pt();
-      pt p2 = new pt();
-
       float d1 = cosa * c1 - sina * s1;
       float d2 = cosa * c2 - sina * s2;
       float d3 = cosa * c3 - sina * s3;
-      if (intersectionTwoPlanes(normals[i].x, normals[i].y, normals[i].z, d1,
-                                normals[j].x, normals[j].y, normals[j].z, d2,
-                                p1, p2)) {
-      } else if (intersectionTwoPlanes(normals[j].x, normals[j].y, normals[j].z, d2,
-                                       normals[k].x, normals[k].y, normals[k].z, d3,
-                                       p1, p2)) {
-      } else if (intersectionTwoPlanes(normals[k].x, normals[k].y, normals[k].z, d3,
-                                       normals[i].x, normals[i].y, normals[i].z, d1,
-                                       p1, p2)) {
+      pt[] p1p2;
+      if ((p1p2 = intersectionTwoPlanes(normals[i].x, normals[i].y, normals[i].z, d1,
+                                        normals[j].x, normals[j].y, normals[j].z, d2)) != null) {
+      } else if ((p1p2 = intersectionTwoPlanes(normals[j].x, normals[j].y, normals[j].z, d2,
+                                               normals[k].x, normals[k].y, normals[k].z, d3)) != null) {
+      } else if ((p1p2 = intersectionTwoPlanes(normals[k].x, normals[k].y, normals[k].z, d3,
+                                               normals[i].x, normals[i].y, normals[i].z, d1)) != null) {
       } else {
         println("No intersection between any 2 planes of the 3 planes!");
         return null;
       }
-
+      pt p1 = p1p2[0];
+      pt p2 = p1p2[1];
       pt[] tmp = intersectionLineSphere(p1, V(p1, p2), P(), 1);
       if (tmp == null) {
         println("No intersection between line and unit sphere!");
@@ -1726,8 +1838,8 @@ class RingSet {
       }
       ns[0] = V(tmp[0].x, tmp[0].y, tmp[0].z);
       ns[1] = V(tmp[1].x, tmp[1].y, tmp[1].z);
-      ps[0] = P(c, r * cosa, ns[0]);
-      ps[1] = P(c, r * cosa, ns[1]);
+      ps[0] = P(sphereCenter, sphereRadius * cosa, ns[0]);
+      ps[1] = P(sphereCenter, sphereRadius * cosa, ns[1]);
     }
 
     /*
@@ -1812,8 +1924,8 @@ class RingSet {
    * TODO: this function is deprecated.
    */
   pt[] oneSupPlaneThreeCircles(int i, int j, int k) {
-    float s1 = radii[i] / r, s2 = radii[j] / r, s3 = radii[k] / r;
-    float a1 = asin(s1), a2 = asin(s2), a3 = asin(s3);  // TODO: may store these half-angles?
+    float s1 = radii[i] / sphereRadius, s2 = radii[j] / sphereRadius, s3 = radii[k] / sphereRadius;
+    float a1 = asinClamp(s1), a2 = asinClamp(s2), a3 = asinClamp(s3);  // TODO: may store these half-angles?
     float c1 = cos(a1), c2 = cos(a2), c3 = cos(a3);
     float x1 = normals[i].x, y1 = normals[i].y, z1 = normals[i].z;
     float x2 = normals[j].x, y2 = normals[j].y, z2 = normals[j].z;
@@ -1846,7 +1958,7 @@ class RingSet {
     float t2 = t * t;
     float cosa = 1 / sqrt(1 + t2), sina = t / sqrt(1 + t2);
     vec n = V(cosa * A1 + sina * B1, cosa * A2 + sina * B2, cosa * A3 + sina * B3);
-    pt p = P(c, r * cosa, n);  // center of the tangent circle
+    pt p = P(sphereCenter, sphereRadius * cosa, n);  // center of the tangent circle
     vec nijk = N(centers[i], centers[j], centers[k]);
     if (dot(nijk, V(centers[i], p)) < 0) {
       t = sols[1];
@@ -1854,7 +1966,7 @@ class RingSet {
       cosa = 1 / sqrt(1 + t2);
       sina = t / sqrt(1 + t2);
       n.set(cosa * A1 + sina * B1, cosa * A2 + sina * B2, cosa * A3 + sina * B3);
-      p = P(c, r * cosa, n);
+      p = P(sphereCenter, sphereRadius * cosa, n);
     }
     // println("t = ", t);
     if (dot(nijk, n) < 0) n.rev();
@@ -1888,18 +2000,18 @@ class RingSet {
     vec va = V(pc, pa);
     vec vb = V(pc, pb);
     float radius = sqrt(n2(va) * n2(vb) * n2(M(va, vb)) / n2(normal)) / 2;  // radius of circumcircle
-    float alpha = asin(radius / r);  // half angle in [0, PI/2] since x >= 0 and asin(x) in [-PI/2, PI/2]
+    float alpha = asinClamp(radius / sphereRadius);  // half angle in [0, PI/2] since x >= 0 and asinClamp(x) in [-PI/2, PI/2]
     vec unitNormal = U(normal);
 
     /*
      * If the center of the sphere is on the positive side of the triangle,
      * then the half angle of the cone is in [PI/2, PI].
      */
-    if (dot(V(pa, c), unitNormal) > 0) alpha = PI - alpha;
+    if (dot(V(pa, sphereCenter), unitNormal) > 0) alpha = PI - alpha;
 
     for (int i = 0; i < nRings; ++i) {
       if (i == ia || i == ib || i == ic) continue;
-      float beta = asin(radii[i] / r);
+      float beta = asinClamp(radii[i] / sphereRadius);
       if (cos(alpha + beta) < dot(unitNormal, normals[i])) return false;
     }
 
@@ -1910,7 +2022,8 @@ class RingSet {
     assert swingLists[i] != null && angleLists[i] != null;
 
     vec vp = V(centers[i], p);
-    float angle = acos(dot(vp, xAxes[i]) / radii[i]);
+    // println("what is inside acos(): ", dot(vp, xAxes[i]) / radii[i]);
+    float angle = acosClamp(dot(vp, xAxes[i]) / radii[i]);
     if (dot(vp, yAxes[i]) < 0) angle = TWO_PI - angle;
 
     int n = angleLists[i].size();
@@ -2301,7 +2414,7 @@ class RingSet {
       /* Initialize boundary using the first visible face. */
       boundary.clear();
       vec normal = normals[i];
-      float angle = asin(radii[i] / r);  // [0, PI / 2]
+      float angle = asinClamp(radii[i] / sphereRadius);  // [0, PI / 2]
       assert angle >= 0 && angle <= HALF_PI;
       for (IncFace f : faces) {
         if (f == null) return;
@@ -2340,10 +2453,10 @@ class RingSet {
           if (success != null) success[0] = false;
           return;
         }
-        if (success != null && success[0] == false) { //<>//
+        if (success != null && success[0] == false) {
           return;
         }
-        tmpBoundary.addAll(tmpEdges); //<>//
+        tmpBoundary.addAll(tmpEdges);
       }
       boundary = tmpBoundary;
       // System.out.format("boundary size = %d\n", boundary.size());
@@ -2433,28 +2546,6 @@ class RingSet {
         else if (f instanceof IncCorridor) incCorridors.add((IncCorridor)f);
       }
     }
-
-    {  // print something
-      // for (IncFace f : faces) {
-      //   if (f instanceof IncCorridor) {
-      //     IncCorridor cor = (IncCorridor)f;
-      //     if (notZero(cor.coneNormals[0].x - cor.coneNormals[1].x) ||
-      //         notZero(cor.coneNormals[0].y - cor.coneNormals[1].y) ||
-      //         notZero(cor.coneNormals[0].z - cor.coneNormals[1].z)) {
-      //         println("The two normals of a corridor are different.");
-      //         System.out.format("normal 1 = (%f, %f, %f), normal 2 = (%f, %f, %f)\n",
-      //                           cor.coneNormals[0].x, cor.coneNormals[0].y, cor.coneNormals[0].z,
-      //                           cor.coneNormals[1].x, cor.coneNormals[1].y, cor.coneNormals[1].z);
-      //         noStroke();
-      //         fill(ivory);
-      //         show(cor.vertices[0].position, 3);
-      //         show(cor.vertices[1].position, 3);
-      //         show(cor.vertices[2].position, 3);
-      //         show(cor.vertices[3].position, 3);
-      //     }
-      //   }
-      // }
-    }
   }
 
   private ArrayList<pt> fillExEdgeWithPoints(float angle, float da, int n, int u, int v) {
@@ -2493,20 +2584,20 @@ class RingSet {
     // compute angle for arc DA and arc BC, w.r.t. corresponding ring orientations
     vec va = V(cu, pa), vd = V(cu, pd);
     vec vb = V(cv, pb), vc = V(cv, pc);
-    float au = acos(dot(va, vd) / (ru * ru));  // [0, PI]
+    float au = acosClamp(dot(va, vd) / (ru * ru));  // [0, PI]
     if (dot(nu, N(vd, va)) < 0) au = TWO_PI - au;
-    float av = acos(dot(vb, vc) / (rv * rv));
+    float av = acosClamp(dot(vb, vc) / (rv * rv));
     if (dot(nv, N(vb, vc)) < 0) av = TWO_PI - av;
 
     // Sample points from the bigger arc
     if (au > av) {
-      float angle = acos(dot(vd, xAxes[u]) / ru);  // starting angle for D w.r.t. ring u
+      float angle = acosClamp(dot(vd, xAxes[u]) / ru);  // starting angle for D w.r.t. ring u
       if (dot(vd, yAxes[u]) < 0) angle = TWO_PI - angle;
       int n = int(au / delta);  // split arc into n pieces by inserting n-1 points
       ArrayList<pt> edgePoints = fillExEdgeWithPoints(angle, delta, n, u, v);
       exEdges.put(new NaiveCorridor(id, ic, ia, ib), edgePoints);
     } else {
-      float angle = acos(dot(vb, xAxes[v]) / rv);
+      float angle = acosClamp(dot(vb, xAxes[v]) / rv);
       if (dot(vb, yAxes[v]) < 0) angle = TWO_PI - angle;
       int n = int(av / delta);
       ArrayList<pt> edgePoints = fillExEdgeWithPoints(angle, delta, n, v, u);
@@ -2539,7 +2630,7 @@ class RingSet {
   private int findNearestSample(pt p, int rid) {
     pt center = centers[rid];
     vec v = V(center, p);
-    float angle = acos(dot(v, xAxes[rid]) / radii[rid]);  // [0, PI]
+    float angle = acosClamp(dot(v, xAxes[rid]) / radii[rid]);  // [0, PI]
     if (dot(v, yAxes[rid]) < 0) angle = TWO_PI - angle;
     float delta = TWO_PI / nPointsPerRing;
     int i = int(angle / delta);
@@ -2623,6 +2714,7 @@ class RingSet {
   }
 
   private void updateSwingListGivenCorridor(IncCorridor cor, HashMap<pt, Integer> pids) {
+    if (cor.samples == null) return;
     int ridLeft = cor.vertices[2].rid;
     int ridRight = cor.vertices[0].rid;
     int pidC = pids.get(cor.vertices[2].position);
@@ -2630,10 +2722,12 @@ class RingSet {
 
     ArrayList<pt> pointsDC = new ArrayList<pt>();
     ArrayList<pt> pointsBA = new ArrayList<pt>();
+
     for (int i = 0; i < cor.samples.size(); i += 2) {
       pointsDC.add(cor.samples.get(i));
       pointsBA.add(cor.samples.get(i+1));
     }
+
     Collections.reverse(pointsBA);
 
     ArrayList<Integer> pidsDC = new ArrayList<Integer>();
@@ -2689,14 +2783,17 @@ class RingSet {
     }
 
     {  // verify the swing lists
-      // fill(cyan, 100);
+      // fill(orange, 100);
       // for (int i = 0; i < nRings; ++i) {
-      //   ArrayList<Integer> sl = swingLists[i];
-      //   for (int j = 0; j < sl.size() - 1; ++j) {
-      //     pt a = posList.get(sl.get(j));
-      //     pt b = posList.get(sl.get(j + 1));
-      //     arrow(a, V(a, b), 3);
-      //   }
+        // int i = 1;
+        // ArrayList<Integer> sl = swingLists[i];
+        // for (int j = 0; j < sl.size() - 1; ++j) {
+        //   pt a = posList.get(sl.get(j));
+        //   pt b = posList.get(sl.get(j + 1));
+        //   arrow(a, V(a, b), 1);
+        // }
+        // ArrayList<Float> al = angleLists[i];
+        // for (int j = 0; j < al.size(); ++j) println("j = ", j, "angle =", al.get(j));
       // }
     }
 
@@ -2769,6 +2866,10 @@ class RingSet {
     return;
   }
 
+  void showSphere() {
+    showBall(sphereCenter, sphereRadius);
+  }
+
   void showCircles(Integer numCircles) {
     if (numCircles == null) numCircles = nRings;
     stroke(0);
@@ -2782,10 +2883,13 @@ class RingSet {
 
   void showDisks(Integer numDisks) {
     if (numDisks == null) numDisks = nRings;
-    fill(red, 255);
     for (int i = 0; i < numDisks; ++i) {
       disk(centers[i], xAxes[i], yAxes[i], radii[i]);
     }
+  }
+
+  void showDisk(int i) {
+    disk(centers[i], xAxes[i], yAxes[i], radii[i]);
   }
 
   /*
@@ -2905,12 +3009,12 @@ class RingSet {
     for (int i = 0; i < nRings; ++i) {
       pt p = P(centers[i], extendDist, normals[i]);
       float r_tmp = -1.0;
-      if (dot(V(c, centers[i]), V(c, contacts[i])) > 0) {
-        r_tmp = radii[i] + extendDist * tan(asin(radii[i] / r));
+      if (dot(V(sphereCenter, centers[i]), V(sphereCenter, contacts[i])) > 0) {
+        r_tmp = radii[i] + extendDist * tan(asinClamp(radii[i] / sphereRadius));
       } else {
-        r_tmp = abs(radii[i] - extendDist * tan(asin(radii[i] / r)));
+        r_tmp = abs(radii[i] - extendDist * tan(asinClamp(radii[i] / sphereRadius)));
       }
-      vec v = V(p, c);
+      vec v = V(p, sphereCenter);
       fan(p, v, r_tmp);
     }
   }
@@ -2937,6 +3041,7 @@ class RingSet {
     pt b2 = P(pc1, -r1, v1);
 
     pt f = intersectionTwoLines(a1, b2, b1, a2);
+    assert f != null;
     vec v = U(A(U(a1, b2), U(b1, a2)));
 
     {
@@ -3110,8 +3215,9 @@ class RingSet {
 
   void save(String file) {
     println("saving ring set:", file);
-    String[] lines = new String[2 + 3 * nRings];
+    String[] lines = new String[3 + 3 * nRings];
     int i = 0;
+    lines[i++] = str(sphereCenter.x) + "," + str(sphereCenter.y) + "," + str(sphereCenter.z) + "," + str(sphereRadius);
     lines[i++] = str(nRings);
     lines[i++] = str(nPointsPerRing);
     for (int j = 0; j < nRings; ++j) {
@@ -3126,11 +3232,18 @@ class RingSet {
   }
 
   void load(String file) {
+    println("loading ring set:", file);
     String[] lines = loadStrings(file);
     int i = 0;
+
+    {
+      float[] tmp = float(split(lines[i++], ","));
+      sphereCenter = new pt(tmp[0], tmp[1], tmp[2]);
+      sphereRadius = tmp[3];
+    }
+
     nRings = int(lines[i++]);
     nPointsPerRing = int(lines[i++]);
-    println("loading:", file, "nc =", nRings, "np =", nPointsPerRing);
     contacts = new pt[nRings];
     radii = new float[nRings];
     xAxes = new vec[nRings];
@@ -3140,22 +3253,22 @@ class RingSet {
     for (int j = 0; j < nRings; ++j) {
       float[] contact = float(split(lines[i++], ","));
       contacts[j] = new pt(contact[0], contact[1], contact[2]);
-      normals[j] = U(c, contacts[j]);
+      normals[j] = U(sphereCenter, contacts[j]);
       radii[j] = float(lines[i++]);
       float[] initDir = float(split(lines[i++], ","));
       xAxes[j] = new vec(initDir[0], initDir[1], initDir[2]);
       yAxes[j] = N(normals[j], xAxes[j]);
-      centers[j] = P(c, sqrt(r * r - radii[j] * radii[j]), normals[j]);  // assume each cone has half-angle <= PI/2
+      centers[j] = P(sphereCenter, sqrt(sphereRadius * sphereRadius - radii[j] * radii[j]), normals[j]);  // assume each cone has half-angle <= PI/2
     }
     return;
   }
 
   boolean isValid() {
     for (int i = 0; i < nRings; ++i) {
-      float alpha0 = asin(clamp(radii[i]/r, -1.0, 1.0));
+      float alpha0 = asinClamp(radii[i]/sphereRadius);
       for (int j = i + 1; j < nRings; ++j) {
-        float alpha1 = asin(clamp(radii[j]/r, -1.0, 1.0));
-        float theta = acos(clamp(dot(normals[i], normals[j]), -1.0, 1.0));
+        float alpha1 = asinClamp(radii[j]/sphereRadius);
+        float theta = acosClamp(dot(normals[i], normals[j]));
         if (theta <= alpha0 + alpha1) return false;
       }
     }

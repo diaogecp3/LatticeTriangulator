@@ -30,9 +30,9 @@ void keyPressed() {
     if (gEdgeCircle != null) gEdgeCircle.save("data/ec_unnamed");
     if (gTriangleMesh != null) gTriangleMesh.save("data/tm_unnamed");
     if (gCamera != null) gCamera.save("data/cam_unnamed");
+    if (gGap != null) gGap.save("data/gap_unnamed");
   }
   if (key == 'l') {
-    // if (gCamera != null) gCamera.load("data/cam_unnamed");
     if (gCamera != null) gCamera.load("data/point_set/cam_37");
   }
   if (key == ',') viewpoint = true;
@@ -65,10 +65,10 @@ void keyPressed() {
     if (test == 19) showSecondCone = !showSecondCone;
   }
   if (key == '4') {
-    if (test >= 12 && test <= 20) showCorridorFaces = !showCorridorFaces;
+    showCorridorFaces = !showCorridorFaces;
   }
   if (key == '5') {
-    if (test >= 12 && test <= 20) showTriangleFaces = !showTriangleFaces;
+    showTriangleFaces = !showTriangleFaces;
   }
   if (key == '6') {
     showPolygons = !showPolygons;
@@ -90,7 +90,7 @@ void keyPressed() {
     if (test == 13) {
       debugIncCHIter = min(debugIncCHIter + 1, int(gPoints.nv / 2) - 1);
     }
-    if (test == 15 || test == 16 || test == 21) {
+    if (test == 15 || test == 16 || test == 21 || test == 23)  {
       gNumPointsPerRing++;
     }
     if (gNumTriangles >= 0) {
@@ -101,7 +101,7 @@ void keyPressed() {
     if (test == 13) {
       debugIncCHIter = max(debugIncCHIter - 1, 3);
     }
-    if (test == 15 || test == 16 || test == 21) {
+    if (test == 15 || test == 16 || test == 21 || test == 23) {
       gNumPointsPerRing = max(gNumPointsPerRing - 1, 3);
     }
     if (numFaces > 0) {
@@ -160,6 +160,7 @@ void keyPressed() {
     showRingSet = !showRingSet;
     showPointSet = !showPointSet;
     showCircleSet = !showCircleSet;
+    if (test == 23) showLattice = !showLattice;
   }
   if (key == 'b') {
     showBeams = !showBeams;
@@ -210,6 +211,7 @@ void keyPressed() {
   if (key == 'S') {
     showTriangleStrokes = !showTriangleStrokes;
     showCorridorStrokes = !showCorridorStrokes;
+    if (test == 204) showSpheres = !showSpheres;
   }
   if (key == 'K') {
     if (test == 19) showCones = !showCones;
@@ -241,11 +243,10 @@ void mouseMoved() {
 
 void mouseDragged() {
   if (!keyPressed) {
-    Of.add(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
+    gCamera.dx += gCamera.sxPan * (float)(mouseX - pmouseX);
+    gCamera.dy += gCamera.syPan * (float)(mouseY - pmouseY);
   }
-  if (keyPressed && key == CODED && keyCode == SHIFT) {
-    Of.add(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
-  }
+
   if (keyPressed && key == 'i') gPoints.setPickedTo(Pick);
   if (keyPressed && key == 'x') gPoints.movePickedTo(Pick);
   if (keyPressed && key == 'z') gPoints.movePicked(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
@@ -262,17 +263,16 @@ void mouseDragged() {
 }
 
 void displayDebugText() {
-  if (test == 13) {
+  if (test == 3) {
+    scribeHeader("time for subdivision = " + timeSD + "ms", 6);
+  }
+
+  if (test == 13 || test == 17) {
     scribeHeader("valid ring set? " + (validRS ? "yes" : "no"), 3);
   }
 
-  if (subdivisionTimes >= 0) {
-    if (test == 3) {
-      scribeHeader("time for subdivision = " + timeSD + "ms", 6);
-    }
-    if (test == 15 || test == 16) {
-      scribeHeader("subdivision times = " + subdivisionTimes, 6);
-    }
+  if (test == 15 || test == 16) {
+    scribeHeader("subdivision times = " + subdivisionTimes, 6);
   }
 
   if (test == 16) {
@@ -288,10 +288,11 @@ void displayDebugText() {
     }
   }
 
-  if (gRingSet.exTriPoints != null) {
-    if (test == 11) {
-      scribeHeader("#triangles =" + int(gRingSet.exTriPoints.size() / 3) + " #vertices =" + gRingSet.nRings, 10);
-    }
+  if (test == 23) {
+    scribeHeader("number of balls = " + gLattice.nBalls, 2);
+    scribeHeader("number of beams = " + gLattice.nBeams, 3);
+    scribeHeader("corridor resolution = " + gNumPointsPerRing, 4);
+    scribeHeader("time for triangulation = " + timeTM + "ms", 5);
   }
 }
 

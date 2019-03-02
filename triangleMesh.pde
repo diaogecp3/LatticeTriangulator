@@ -74,11 +74,21 @@ class TriangleMesh {
     for (int i = 0; i < nt; ++i) triangles.add(ts.get(i));
   }
 
+  void augmentWithoutShift(ArrayList<Triangle> newTriangles) {
+    if (newTriangles == null) return;
+    triangles.addAll(newTriangles);
+    nt = triangles.size();
+  }
+
   void augmentWithoutShift(ArrayList<pt> newPositions, ArrayList<Triangle> newTriangles) {
     positions.addAll(newPositions);
     triangles.addAll(newTriangles);
     nv = positions.size();
     nt = triangles.size();
+  }
+
+  void augmentWithoutShift(TriangleMesh triMesh) {
+    augmentWithoutShift(triMesh.positions, triMesh.triangles);
   }
 
   /*
@@ -143,6 +153,12 @@ class TriangleMesh {
 
     nv = positions.size();
     nt = triangles.size();
+  }
+
+  void shiftVertexIDs(int offset) {
+    for (Triangle t : triangles) {
+      t.set(t.a + offset, t.b + offset, t.c + offset);
+    }
   }
 
   void addTriangle(Triangle tri) {
@@ -370,13 +386,11 @@ class TriangleMesh {
     }
   }
 
-  void showVertices(color c, float r) {
-    fill(c, 255);
-    noStroke();
-    for (int i = 0; i < nv; ++i) {
-      showBall(positions.get(i), r);
-    }
-    return;
+  /* Test if the triangle mesh is convex. */
+  boolean isConvex() {
+    pt[] points = new pt[nv];
+    for (int i = 0; i < nv; ++i) points[i] = positions.get(i);
+    return passConvexityTest(triangles, points, nv);
   }
 
   void show(color c, boolean useStroke) {
@@ -393,6 +407,15 @@ class TriangleMesh {
     }
     endShape();
     if (useStroke) noStroke();
+  }
+
+  void showVertices(color c, float r) {
+    fill(c, 255);
+    noStroke();
+    for (int i = 0; i < nv; ++i) {
+      showBall(positions.get(i), r);
+    }
+    return;
   }
 
   void showCornerPairs(color c, float w) {
@@ -456,5 +479,46 @@ class TriangleMesh {
 
     setupOppositeTable();
     return;
+  }
+}
+
+/*
+ * Triangle mesh with borders.
+ */
+class BorderedTriangleMesh {
+  TriangleMesh triangleMesh;
+  ArrayList<Integer>[] borders;
+
+  BorderedTriangleMesh(TriangleMesh triangleMesh, ArrayList<Integer>[] borders) {
+    this.triangleMesh = triangleMesh;
+    this.borders = borders;
+  }
+
+  BorderedTriangleMesh(ArrayList<pt> positions, ArrayList<Triangle> triangles,
+                       ArrayList<Integer>[] borders) {
+    this.triangleMesh = new TriangleMesh(positions, triangles);
+    this.borders = borders;
+  }
+
+  void shiftVertexIDs(int offset) {
+    this.triangleMesh.shiftVertexIDs(offset);
+    for (ArrayList<Integer> border : borders) {
+      for (int i = 0; i < border.size(); ++i) {
+        border.set(i, border.get(i) + offset);
+      }
+    }
+  }
+
+  void show(color cMesh, color cBorder, boolean useStroke) {
+    triangleMesh.show(cMesh, useStroke);
+    ArrayList<pt> positions = triangleMesh.positions;
+    fill(cBorder);
+    for (ArrayList<Integer> border : borders) {
+      ArrayList<pt> loop = new ArrayList<pt>();
+      for (int i = 0; i < border.size(); ++i) {
+        loop.add(positions.get(border.get(i)));
+      }
+      showOrientedLoop(loop);
+    }
   }
 }

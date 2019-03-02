@@ -7,7 +7,7 @@
  ******************************************************************************/
 
 
-int methodIterSP = 0;  // 0: basic, 1: heuristic normal, 2: heuristic plane
+int methodIterSP = 2;  // 0: basic, 1: heuristic normal, 2: heuristic plane
 
 class DebugIterSPInfo {  // debug info about iterative supporting plane of 3 circles
   int iter = 0;
@@ -60,55 +60,54 @@ vec constructNormal(vec v) {
  * a0x + b0y + c0z = d0
  * a1x + b1y + c1z = d1
  */
-boolean intersectionTwoPlanes(float a0, float b0, float c0, float d0,
-                              float a1, float b1, float c1, float d1,
-                              pt p0, pt p1) {
+pt[] intersectionTwoPlanes(float a0, float b0, float c0, float d0,
+                           float a1, float b1, float c1, float d1) {
   if (notZero(b0 * c1 - c0 * b1)) {
     vec2 t0 = solveLinearEquationsInTwoVars(b0, c0, b1, c1, d0, d1);
     vec2 t1 = solveLinearEquationsInTwoVars(b0, c0, b1, c1, d0 - a0, d1 - a1);
-    p0.set(0.0, t0.x, t0.y);
-    p1.set(1.0, t1.x, t1.y);
+    return new pt[] {P(0.0, t0.x, t0.y), P(1.0, t1.x, t1.y)};
   } else if (notZero(a0 * c1 - c0 * a1)) {
     vec2 t0 = solveLinearEquationsInTwoVars(a0, c0, a1, c1, d0, d1);
     vec2 t1 = solveLinearEquationsInTwoVars(a0, c0, a1, c1, d0 - b0, d1 - b1);
-    p0.set(t0.x, 0.0, t0.y);
-    p1.set(t1.x, 1.0, t1.y);
+    return new pt[] {P(t0.x, 0.0, t0.y), P(t1.x, 1.0, t1.y)};
   } else if (notZero(a0 * b1 - b0 * a1)) {
     vec2 t0 = solveLinearEquationsInTwoVars(a0, b0, a1, b1, d0, d1);
     vec2 t1 = solveLinearEquationsInTwoVars(a0, b0, a1, b1, d0 - c0, d1 - c1);
-    p0.set(t0.x, t0.y, 0.0);
-    p1.set(t1.x, t1.y, 1.0);
+    return new pt[] {P(t0.x, t0.y, 0.0), P(t1.x, t1.y, 1.0)};
   } else {
-    println("No intersection between these two planes!");
-    return false;
+    // println("No intersection between these two planes!");
+    return null;
   }
-  return true;
 }
 
 /*
  * Compute the intersection line of two planes.
  */
-boolean intersectionTwoPlanes(pt pa,                                     // in
-                              vec va,                                    // in
-                              pt pb,                                     // in
-                              vec vb,                                    // in
-                              pt p0,                                    // out
-                              pt p1) {                                  // out
+pt[] intersectionTwoPlanes(pt pa, vec va, pt pb, vec vb) {
   float a0 = va.x, b0 = va.y, c0 = va.z, d0 = dot(pa, va);
   float a1 = vb.x, b1 = vb.y, c1 = vb.z, d1 = dot(pb, vb);
-  return intersectionTwoPlanes(a0, b0, c0, d0, a1, b1, c1, d1, p0, p1);
+  return intersectionTwoPlanes(a0, b0, c0, d0, a1, b1, c1, d1);
 }
 
 /*
- * Compute the distance from point P to line AB.
+ * Compute the distance from point p to line (pa, pb).
  */
-float distanceToLine(pt P, pt A, pt B) {
-  vec AP = V(A, P), AB = V(A, B);
+float distanceToLine(pt p, pt pa, pt pb) {
+  vec AP = V(pa, p), AB = V(pa, pb);
   if (parallel(AP, AB)) return 0;
   vec UAB = U(AB);
   float d = n(A(AP, -dot(AP, UAB), UAB));
   return d;
 }
+
+/*
+ * Compute the projected point of q on plane (p, n).
+ */
+pt projectedPointOnPlane(pt q, pt p, vec n) {
+  vec pq = V(p, q);
+  return P(p, A(pq, -dot(pq, n), n));
+}
+
 
 /*
  * Return true if disk (ca, va, ra) and disk (cb, vb, rb) don't intersect. The
@@ -125,10 +124,10 @@ boolean emptyIntersectionTwoDisks(pt ca, vec va, float ra, pt cb, vec vb, float 
       return true;
     }
   } else {  // two planes are not parallel
-    // find intersection line of two supporting planes
-    pt p0 = new pt(), p1 = new pt();
-    if (!intersectionTwoPlanes(ca, va, cb, vb, p0, p1)) return true;
-    if (distanceToLine(ca, p0, p1) > ra || distanceToLine(cb, p0, p1) > rb) {
+    pt[] ps = intersectionTwoPlanes(ca, va, cb, vb);
+    if (ps == null) return true;
+    assert ps.length == 2;
+    if (distanceToLine(ca, ps[0], ps[1]) > ra || distanceToLine(cb, ps[0], ps[1]) > rb) {
       return true;
     } else {
       return false;
@@ -150,11 +149,15 @@ boolean emptyIntersectionTwoDisks(Disk d0, Disk d1) {
 pt intersectionTwoLines(pt pa, pt pb, pt pc, pt pd) {
   vec v0 = U(pa, pb);  // unit vector
   vec v1 = U(pc, pd);  // unit vector
+
+  if (isZeroVec(A(v0, v1)) || isZeroVec(M(v0, v1))) {  // parallel or coincident lines
+    return null;
+  }
+
   vec vac = V(pa, pc);
 
   vec c0 = N(v0, v1);
   vec c1 = N(vac, v1);
-  // float x = c1.norm() / c0.norm();
   float x = sqrt(dot(c1, c1) / dot(c0, c0));
 
   /* In case when cross(v0, v1) and cross(vac, v1) don't point in the same direction. */
@@ -187,23 +190,19 @@ boolean emptyIntersectionLineDisk(pt a, pt b, pt c, float r, vec n) {
 }
 
 /*
- * Return true if circle (c, r, n) intersects plane (p, d). If true, (p0, p1)
- * will be the intersection line. p0 and p1 will be on the circle.
+ * Return the two intersection points between circle (c, r, n) and plane (p, d).
  */
-boolean intersectionCirclePlane(pt c, float r, vec n, pt p, vec d, pt p0, pt p1) {
-  pt pa = new pt();
-  pt pb = new pt();
-  if (!intersectionTwoPlanes(c, n, p, d, pa, pb)) return false;
-  vec vab = V(pa, pb);
-  vec vca = V(c, pa);
+pt[] intersectionCirclePlane(pt c, float r, vec n, pt p, vec d) {
+  pt[] ps = intersectionTwoPlanes(c, n, p, d);
+  if (ps == null) return null;
+  vec vab = V(ps[0], ps[1]);
+  vec vca = V(c, ps[0]);
   float a = dot(vab, vab);
   float b = 2 * dot(vca, vab);
   float e = dot(vca, vca) - r * r;
   float[] xs = solveQuadraticEquation(a, b, e);
-  if (xs == null) return false;
-  if (p0 != null) p0.set(P(pa, xs[0], vab));
-  if (p1 != null) p1.set(P(pa, xs[1], vab));
-  return true;
+  if (xs == null) return null;
+  return new pt[] {P(ps[0], xs[0], vab), P(ps[0], xs[1], vab)};
 }
 
 /*
@@ -218,6 +217,72 @@ pt[] intersectionLineSphere(pt o, vec d, pt c, float r) {
   float[] ts = solveQuadraticEquation(c2, c1, c0);
   if (ts == null) return null;
   return new pt[] {P(o, ts[0], d), P(o, ts[1], d)};
+}
+
+/*
+ * Compute the intersection circle of two spheres (c1, r1) and (c2, r2).
+ */
+Circle intersectionSphereSphere(pt c1, float r1, pt c2, float r2) {
+  vec v12 = V(c1, c2);
+  float d12 = v12.norm();
+  if (d12 > r1 + r2) {
+    println("No solution!");
+    return null;
+  }
+
+  /* Find the plane that the intersection circle lies. The plane is nx = p. */
+  vec n = V(2, v12);
+  float p = r1 * r1 - r2 * r2 - dot(c1, c1) + dot(c2, c2);
+  float norm = 2 * d12;
+  assert notZero(norm);
+  n.div(norm);
+  p = p / norm;
+
+  float d = -dot(n, c1) + p;
+  pt c = P(c1, d, n);
+  float r = sqrt(r1 * r1 - d * d);
+
+  return new Circle(c, n, r);
+}
+
+/*
+ * Inflate two spheres appropriately and compute the intersection circle of them.
+ */
+Circle intersectionTwoInflatedSpheres(pt c1, float r1, pt c2, float r2) {
+  float r = (r1 + r2) / 2;  // estimated radius
+
+  float r1sq = r1 * r1;
+  float r2sq = r2 * r2;
+  float rsq = r * r;
+  float rsqsq = rsq * rsq;
+  float d = d(c1, c2);
+  float dsq = d * d;
+
+  float a = -(r1sq - r2sq) * (r1sq - r2sq);
+  float b = 2 * dsq * (r1sq + r2sq);
+  float c = - dsq * dsq - 4 * rsq * dsq;
+
+  float[] xs = solveQuadraticEquation(a, b, c);
+
+  if (xs == null) {
+    println("No solution!");
+    return null;
+  }
+
+  float x = 0;
+  if (xs[0] < xs[1] && xs[0] > 0) x = xs[0];
+  else x = xs[1];
+  assert x > 0;
+  float alpha = sqrt(x);
+
+  {
+    fill(pink, 100);
+    show(c1, alpha * r1);
+    fill(green, 100);
+    show(c2, alpha * r2);
+  }
+
+  return intersectionSphereSphere(c1, alpha * r1, c2, alpha * r2);
 }
 
 /*
@@ -271,13 +336,10 @@ pt[] pivotPlaneAroundLineHitCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec
  * the circle.
  */
 pt[] contactsOnSupportingPlaneOfLineCircle(pt c, float r, vec n, pt a, pt b, vec vi, vec vj) {
-  pt[] ps = new pt[2];
   boolean empty = emptyIntersectionLineDisk(a, b, c, r, n);
   if (!empty) {
     println("Line AB intersects disk C");
-    ps[0] = P(c, r, vi);
-    ps[1] = P(c, -r, vi);
-    return ps;
+    return new pt[] {P(c, r, vi), P(c, -r, vi)};
   }
 
   vec ac = V(a, c);
@@ -287,24 +349,31 @@ pt[] contactsOnSupportingPlaneOfLineCircle(pt c, float r, vec n, pt a, pt b, vec
   float dnac = dot(n, ac);
   if (isZero(dnab) && isZero(dnac)) {
     println("Line AB is on the supporting plane of Circle C");
-    ps[0] = P(c, r, vi);
-    ps[1] = P(c, -r, vi);
-    return ps;
+    return new pt[] {P(c, r, vi), P(c, -r, vi)};
   }
 
   if (vj == null) vj = N(n, vi);  // cross product
+
+  if (isZero(dnab)) {
+    float fa = dot(vi, ab);
+    float fb = dot(vj, ab);
+    float[] thetas = solveLinearEquationInCosSin(fa, fb);
+    return new pt[] {P(c, r * cos(thetas[0]), vi, r * sin(thetas[0]), vj),
+                     P(c, r * cos(thetas[1]), vi, r * sin(thetas[1]), vj)};
+  }
+
   float t = dnac / dnab;
+  assert Float.isNaN(t) == false;
   pt tmp = P(a, t, ab);
   float cosa = r / d(c, tmp);  // 0 < cosa <= 1
-  float alpha = acos(cosa);  // [0, PI/2)
+  float alpha = acosClamp(cosa);  // [0, PI/2)
   float sina = sin(alpha);
-  vec v0 = U(c, tmp);
+  vec v0 = U(c, tmp);  // numerical issue?
+  // println("v0 =", v0);
   vec v1 = R(v0, HALF_PI, vi, vj);
   float rc = r * cosa;
   float rs = r * sina;
-  ps[0] = P(c, rc, v0, rs, v1);
-  ps[1] = P(c, rc, v0, -rs, v1);
-  return ps;
+  return new pt[] {P(c, rc, v0, rs, v1), P(c, rc, v0, -rs, v1)};
 }
 
 /*
@@ -346,11 +415,11 @@ void exactCHEdgeCircle(pt a, pt b, pt c, float r, vec n, vec vi, vec vj) {
     }
     vec v0 = V(c, ps[0]);
     vec v1 = V(c, ps[1]);
-    float angle0 = acos(dot(v0, vi) / r);
+    float angle0 = acosClamp(dot(v0, vi) / r);
     if (dot(v0, vj) < 0) angle0 = TWO_PI - angle0;
-    float angle1 = acos(dot(v1, vi) / r);
+    float angle1 = acosClamp(dot(v1, vi) / r);
     if (dot(v1, vj) < 0) angle1 = TWO_PI - angle1;
-    float angle01 = acos(dot(v0, v1) / (r * r));
+    float angle01 = acosClamp(dot(v0, v1) / (r * r));
     if (dot(N(v0, v1), n) < 0) angle01 = TWO_PI - angle01;
     float angle10 = TWO_PI - angle01;
 
@@ -409,11 +478,11 @@ void exactCHEdgeCircle(pt a, pt b, pt c, float r, vec n, vec vi, vec vj) {
       }
       vec v0 = V(c, ps[0]);
       vec v1 = V(c, ps[1]);
-      float angle0 = acos(dot(v0, vi) / r);
+      float angle0 = acosClamp(dot(v0, vi) / r);
       if (dot(v0, vj) < 0) angle0 = TWO_PI - angle0;
-      float angle1 = acos(dot(v1, vi) / r);
+      float angle1 = acosClamp(dot(v1, vi) / r);
       if (dot(v1, vj) < 0) angle1 = TWO_PI - angle1;
-      float angle01 = acos(dot(v0, v1) / (r * r));
+      float angle01 = acosClamp(dot(v0, v1) / (r * r));
       if (dot(N(v0, v1), n) < 0) angle01 = TWO_PI - angle01;
 
       // connect arc ps[1]-ps[0] (w.r.t. -n) to a
@@ -495,9 +564,9 @@ void exactCHEdgeCircle(pt a, pt b, pt c, float r, vec n, vec vi, vec vj) {
  * respectively. This function uses an iterative method.
  */
 pt[] supPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
-                            pt c1, float r1, vec n1, vec vi1, vec vj1,
-                            pt c2, float r2, vec n2, vec vi2, vec vj2,
-                            DebugIterSPInfo dInfo) {
+                              pt c1, float r1, vec n1, vec vi1, vec vj1,
+                              pt c2, float r2, vec n2, vec vi2, vec vj2,
+                              DebugIterSPInfo dInfo) {
   if (vi0 == null) vi0 = constructNormal(n0);
   if (vj0 == null) vj0 = N(n0, vi0);
   if (vi1 == null) vi1 = constructNormal(n1);
@@ -522,12 +591,13 @@ pt[] supPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
       break;
     case 2:
       vec tmpN2 = normalOfTriangle(c0, c1, c2);
-      p0 = new pt();
-      intersectionCirclePlane(c0, r0, n0, c0, tmpN2, p0, null);
-      p1 = new pt();
-      intersectionCirclePlane(c1, r1, n1, c0, tmpN2, p1, null);
-      p2 = new pt();
-      intersectionCirclePlane(c2, r2, n2, c0, tmpN2, p2, null);
+      pt[] tmpPs;
+      tmpPs = intersectionCirclePlane(c0, r0, n0, c0, tmpN2);
+      p0 = tmpPs[0];
+      tmpPs = intersectionCirclePlane(c1, r1, n1, c0, tmpN2);
+      p1 = tmpPs[0];
+      tmpPs = intersectionCirclePlane(c2, r2, n2, c0, tmpN2);
+      p2 = tmpPs[0];
       t0 = U(N(n0, V(c0, p0)));
       t1 = U(N(n1, V(c1, p1)));
       t2 = U(N(n2, V(c2, p2)));
@@ -595,9 +665,7 @@ pt[] supPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
   // println("iter =", iter);
   if (dInfo != null) dInfo.iter = iter;
 
-  pt[] ps = new pt[] {p0, p1, p2};
-  // println("ps.length =", ps.length);
-  return ps;
+  return new pt[] {p0, p1, p2};
 }
 
 /*
@@ -694,14 +762,16 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     float ra = radii[i], rb = radii[j];
     vec na = normals[i], nb = normals[j];
 
-    float aa = acos(dot(V(ca, pa0), V(ca, pa1)) / (ra * ra));  // [0, PI]
+    float aa = acosClamp(dot(V(ca, pa0), V(ca, pa1)) / (ra * ra));  // [0, PI]
     if (dot(na, N(ca, pa0, pa1)) < 0) aa = TWO_PI - aa;
 
-    float ab = acos(dot(V(cb, pb0), V(cb, pb1)) / (rb * rb));
+    float ab = acosClamp(dot(V(cb, pb0), V(cb, pb1)) / (rb * rb));
     if (dot(nb, N(cb, pb0, pb1)) < 0) ab = TWO_PI - ab;
 
-    // TODO: may pick the arc with bigger angle to split
-    // Assume that arc b has a bigger angle than arc a
+    /*
+     * May pick the arc with bigger angle to split. Now assume that arc b has a
+     * bigger angle than arc a.
+     */
     correspondences[i][0] = j;
     correspondences[i][1] = i;
     correspondences[i][2] = oppo[j];
@@ -709,10 +779,9 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
 
     vec via = vis[i], vja = vjs[i];
     vec vib = vis[j], vjb = vjs[j];
-    float angle = acos(dot(V(cb, pb0), vib) / rb);
+    float angle = acosClamp(dot(V(cb, pb0), vib) / rb);
     if (dot(V(cb, pb0), vjb) < 0) angle = TWO_PI - angle;
     float da = ab / nSamples;
-    // println("ab = ", ab);
     for (int k = 1; k < nSamples; ++k) {
       angle += da;
       float c = cos(angle), s = sin(angle);
@@ -740,9 +809,6 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     fill(orange, 100);
     showTriangle(points.get(0), points.get(1), points.get(2));
     showTriangle(points.get(3), points.get(4), points.get(5));
-    // fill(cyan, 100);
-    // showNormalToTriangle(points.get(0), points.get(1), points.get(2), 20, 2);
-    // showNormalToTriangle(points.get(3), points.get(4), points.get(5), 20, 2);
   }
   if (show2RT) {
     fill(violet, 100);
