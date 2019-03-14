@@ -359,7 +359,12 @@ class RingSet {
       edges = new IncEdge[] {new IncEdge(), new IncEdge()};
       edges[0].setEndPoints(v1, v2);  // BC
       edges[1].setEndPoints(v3, v0);  // DA
-      isCollapsed = isZeroVec(V(v0.position, v1.position)) && isZeroVec(V(v2.position, v3.position));
+      isCollapsed = isZeroVec(V(v0.position, v1.position), 0.0001) && isZeroVec(V(v2.position, v3.position), 0.0001);
+      // println("collapase? ", isCollapsed);
+      // println("isZeroVec(V(v0.position, v1.position)) = ", isZeroVec(V(v0.position, v1.position)));
+      // println("isZeroVec(V(v2.position, v3.position)) = ", isZeroVec(V(v2.position, v3.position)));
+      // println("V(v0.position, v1.position)", V(v0.position, v1.position));
+      // println("V(v2.position, v3.position)", V(v2.position, v3.position));
 
       setupCone();
 
@@ -941,6 +946,8 @@ class RingSet {
   Debug2RTInfo debug2RTInfo = new Debug2RTInfo();
   DebugSTInfo debugSTInfo = new DebugSTInfo();
   DebugIncCHInfo debugIncCHInfo = new DebugIncCHInfo();
+
+  RingSet() {}
 
   RingSet(pt c, float r) {
     this.sphereCenter = c;
@@ -1767,7 +1774,7 @@ class RingSet {
     float[] ts = new float[2];  // the 2 values of tan(alpha)
     vec[] ns = new vec[2];  // the 2 normals
     pt[] ps = new pt[2];  // the 2 centers
-    if (notCloseTo(mix, gEpsilonBig)) {
+    if (notZero(mix, gEpsilonBig)) {
       // println("mix =", mix);
       float invMix = 1.0 / mix;
       n23 = V(invMix, n23);
@@ -1784,12 +1791,13 @@ class RingSet {
       aa = dot(va, va);
       ab = dot(va, vb);
       det = ab * ab - (aa - 1) * bb1;
-      if (det < 0.0) {
+      if (det < -gEpsilon) {
         println("i =", i, "j =", j, "k =", k, "determinant =", det);
-        // save("data/rs_unnamed");
+        save("data/rs_unnamed");
         // det = 0.0;  // not correct?
         return null;
       }
+      // if (det < 0.0) det = 0.0;
 
       float sqrtDet = sqrt(det);
       ts[0] = (ab + sqrtDet) / bb1;
@@ -1801,7 +1809,7 @@ class RingSet {
         ps[ii] = P(sphereCenter, sphereRadius * cosa, ns[ii]);
       }
     } else {
-      // println("The mix product of the 3 circle normals is 0.");
+      // println("The mix product of the 3 circle normals is 0, mix =", mix);
       vec va = V(c1, n23, c2, n31, c3, n12);
       vec vb = V(s1, n23, s2, n31, s3, n12);
 
@@ -1829,6 +1837,7 @@ class RingSet {
         println("No intersection between any 2 planes of the 3 planes!");
         return null;
       }
+
       pt p1 = p1p2[0];
       pt p2 = p1p2[1];
       pt[] tmp = intersectionLineSphere(p1, V(p1, p2), P(), 1);
@@ -1840,6 +1849,18 @@ class RingSet {
       ns[1] = V(tmp[1].x, tmp[1].y, tmp[1].z);
       ps[0] = P(sphereCenter, sphereRadius * cosa, ns[0]);
       ps[1] = P(sphereCenter, sphereRadius * cosa, ns[1]);
+
+      {  // debug
+        // System.out.format("d1 = %f, d2 = %f, d3 = %f\n", d1, d2, d3);
+        // println("n1 =", normals[i], "n2 =", normals[j], "n3 =", normals[k]);
+        // println("p1 =", p1, "p2 =", p2);
+        // fill(red);
+        // showBall(ps[0], 2);
+        // showBall(ps[1], 2);
+        // fill(green);
+        // arrow(ps[0], V(50, ns[0]), 1);
+        // arrow(ps[1], V(50, ns[1]), 1);
+      }
     }
 
     /*
@@ -2713,8 +2734,8 @@ class RingSet {
     return tm;
   }
 
-  private void updateSwingListGivenCorridor(IncCorridor cor, HashMap<pt, Integer> pids) {
-    if (cor.samples == null) return;
+  private void updateSwingListGivenCorridor(IncCorridor cor, HashMap<pt, Integer> pids, ArrayList<pt> posList) {
+    if (cor.samples == null || cor.samples.size() == 0) return;
     int ridLeft = cor.vertices[2].rid;
     int ridRight = cor.vertices[0].rid;
     int pidC = pids.get(cor.vertices[2].position);
@@ -2749,6 +2770,20 @@ class RingSet {
     }
     assert locLeft < slLeft.size() && locRight < slRight.size();
 
+    {  // adjust locLeft and locRight when there are duplicates which mess up the orders
+      int nLeft = slLeft.size();
+      int nRight = slRight.size();
+      int prevLoc = (locLeft + nLeft -1) % nLeft;
+      pt prev = posList.get(slLeft.get(prevLoc));
+      pt cur = posList.get(slLeft.get(locLeft));
+      if (samePt(cur, prev, gEpsilonBig)) locLeft = prevLoc;
+
+      prevLoc = (locRight + nRight - 1) % nRight;
+      prev = posList.get(slRight.get(prevLoc));
+      cur = posList.get(slRight.get(locRight));
+      if (samePt(cur, prev, gEpsilonBig)) locRight = prevLoc;
+    }
+
     slLeft.addAll(locLeft, pidsDC);
     slRight.addAll(locRight, pidsBA);
   }
@@ -2782,16 +2817,18 @@ class RingSet {
       }
     }
 
-    {  // verify the swing lists
-      // fill(orange, 100);
+    {  // debug: verify the swing lists after generating triangles
+      // fill(orange);
       // for (int i = 0; i < nRings; ++i) {
         // int i = 1;
         // ArrayList<Integer> sl = swingLists[i];
         // for (int j = 0; j < sl.size() - 1; ++j) {
         //   pt a = posList.get(sl.get(j));
         //   pt b = posList.get(sl.get(j + 1));
-        //   arrow(a, V(a, b), 1);
+        //   arrow(a, V(a, b), 3);
         // }
+        // println("sl[0] =", posList.get(sl.get(0)), "sl[1] =", posList.get(sl.get(1)));
+        // for (int s : sl) println("s =", s);
         // ArrayList<Float> al = angleLists[i];
         // for (int j = 0; j < al.size(); ++j) println("j = ", j, "angle =", al.get(j));
       // }
@@ -2809,20 +2846,22 @@ class RingSet {
     if (incCorridors != null) {
       for (IncCorridor cor : incCorridors) {
         triList.addAll(cor.toTriangles(posList, pids));
-        updateSwingListGivenCorridor(cor, pids);
+        updateSwingListGivenCorridor(cor, pids, posList);  // angle lists are not updated
       }
     }
     // println("After converting corridors, size of pids =", pids.size());
 
-    {  // verify the swing lists
+    {  // debug: verify the swing lists after inserting sampled points on corridors
       // fill(cyan);
       // for (int i = 0; i < nRings; ++i) {
-      //   ArrayList<Integer> sl = swingLists[i];
-      //   for (int j = 0; j < sl.size() - 1; ++j) {
-      //     pt a = posList.get(sl.get(j));
-      //     pt b = posList.get(sl.get(j + 1));
-      //     arrow(a, V(a, b), 3);
-      //   }
+        // int i = 1;
+        // ArrayList<Integer> sl = swingLists[i];
+        // for (int j = 0; j < sl.size() - 1; ++j) {
+        //   pt a = posList.get(sl.get(j));
+        //   pt b = posList.get(sl.get(j + 1));
+        //   arrow(a, V(a, b), 1);
+        // }
+        // for (int s : sl) println("s =", s);
       // }
     }
 
@@ -2840,6 +2879,21 @@ class RingSet {
     if (triList.size() == 0) return null;
     TriangleMesh tm = new TriangleMesh(posList, triList);
     return tm;
+  }
+
+  void translate(vec v) {
+    sphereCenter.add(v);
+    if (contacts != null) {
+      for (pt p : contacts) p.add(v);
+    }
+    if (points != null) {
+      for (pt[] ps : points) {
+        for (pt p : ps) p.add(v);
+      }
+    }
+    if (centers != null) {
+      for (pt p : centers) p.add(v);
+    }
   }
 
   void show() {

@@ -388,9 +388,7 @@ class TriangleMesh {
 
   /* Test if the triangle mesh is convex. */
   boolean isConvex() {
-    pt[] points = new pt[nv];
-    for (int i = 0; i < nv; ++i) points[i] = positions.get(i);
-    return passConvexityTest(triangles, points, nv);
+    return passConvexityTest(triangles, positions);
   }
 
   void show(color c, boolean useStroke) {
@@ -507,6 +505,24 @@ class BorderedTriangleMesh {
         border.set(i, border.get(i) + offset);
       }
     }
+  }
+
+  boolean validBorders() {
+    ArrayList<pt> positions = triangleMesh.positions;
+    for (ArrayList<Integer> border : borders) {
+      ArrayList<pt> points = new ArrayList<pt>();
+      for (Integer i : border) {
+        points.add(positions.get(i));
+      }
+      if (!isConvexLoop(points)) {
+        {  // debug
+          // fill(magenta, 100);
+          // showOrientedLoop(points);
+        }
+        return false;
+      }
+    }
+    return true;
   }
 
   void show(color cMesh, color cBorder, boolean useStroke) {

@@ -88,6 +88,11 @@ class Lattice {
           Collections.reverse(ps1);
           Collections.reverse(otherBorder);
 
+          {  // remove duplicate vertices before feeding them to convex gap constructor
+            removeDuplicates(ps0, border);
+            removeDuplicates(ps1, otherBorder);
+          }
+
           ConvexGap gap = new ConvexGap(ps0, ps1);
           ArrayList<Triangle> tris = gap.gapHullGlobal(border, otherBorder);
 
@@ -105,7 +110,8 @@ class Lattice {
 
             gGap = gap;
             gGap.save("data/gap_unnamed");
-            // return triMesh;
+            hub.save("data/hub_unnamed");
+            return triMesh;
           }
 
           if (showGapMesh) triMesh.augmentWithoutShift(tris);

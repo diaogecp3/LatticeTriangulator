@@ -223,6 +223,20 @@ class ConvexGap {
     return posList;
   }
 
+  void removeDuplicatePoints(int idx) {
+    ArrayList<pt> points = idx == 0 ? points0 : points1;
+    if (points == null) return;
+    int i = 1;
+    while (i < points.size()) {
+      if (samePt(points.get(i), points.get(i-1))) {
+        points.remove(i);
+      } else i++;
+    }
+    if (samePt(points.get(i-1), points.get(0))) {
+      points.remove(i-1);
+    }
+  }
+
   /*
    * Make the convex gap center at (0, 0, 0) and have appropriate scale.
    * c is the center of this object, s is the "target" scale.
@@ -295,6 +309,15 @@ class ConvexGap {
     assert j < nv1;
     triangles.add(new Triangle(0, 1, j + nv0));
 
+    {
+      // fill(red);
+      // showBall(points0.get(0), 3);
+      // fill(green);
+      // showBall(points0.get(1), 3);
+      // fill(blue);
+      // showBall(points1.get(j), 3);
+    }
+
     /* Traverse the loops. */
     int stop0 = 0;
     int stop1 = j;
@@ -313,6 +336,17 @@ class ConvexGap {
         vec n = N(pa, pb, pc);
         vec vLeft = V(pa, points1.get((j + nv1 - 1) % nv1));
         vec vRight = V(pa, points1.get(jNext));
+        // if (i == 1) {
+          // fill(navy);
+          // arrow(pa, vLeft, 5);
+          // fill(chocolate);
+          // arrow(pa, vRight, 5);
+          // for (pt p : points1) println("p =", p);
+          // println("pa =", pa, "points1.get(jNext) =", points1.get(jNext));
+          // println("j =", j, "jNext =", jNext);
+          // println("n =", n, "vLeft =", vLeft, "vRight =", vRight);
+          // println("dot(n, vLeft) =", dot(n, vLeft), "dot(n, vRight) =", dot(n, vRight));
+        // }
         if (dot(n, vLeft) <= 0 && dot(n, vRight) <= 0) valid = true;
       }
 
@@ -351,6 +385,17 @@ class ConvexGap {
   ArrayList<Triangle> gapHullGlobal(ArrayList<Integer> pIDs0, ArrayList<Integer> pIDs1) {
     ArrayList<Triangle> tris = gapHull();
     if (tris == null) return null;
+
+    {  // debug
+      // ArrayList<pt> ps = new ArrayList<pt>(points0);
+      // ps.addAll(points1);
+      // boolean pass = passConvexityTest(tris, ps);
+      // if (!pass) {
+      //   println("Gap hull fails convexity test!");
+      //   return null;
+      // }
+    }
+
     for (Triangle t : tris) {
       t.set(toGlobalPID(t.a, pIDs0, pIDs1), toGlobalPID(t.b, pIDs0, pIDs1), toGlobalPID(t.c, pIDs0, pIDs1));
     }
@@ -522,6 +567,7 @@ class Hub {
 
     pt px = intersectionTwoLines(pba10, pba11, pca00, pca01);
     if (px == null) {  // parallel lines
+      // println("parallel lines");
       // println("difference =", V(pba11, pca01));
       // assert isZeroVec(V(pba11, pca01));
       px = P(pba11, pca01);
@@ -530,8 +576,8 @@ class Hub {
     {
       // println("intersection point =", px);
       // fill(green);
-      // showBall(px, 10);
-      // if (i == 1 && j == 2) {
+      // showBall(px, 5);
+      // if (i == 0 && j == 2) {
         // println("pba10 =", pba10, "pba11 =", pba11);
         // println("pca00 =", pca00, "pca01 =", pca01);
         // strokeWeight(5);

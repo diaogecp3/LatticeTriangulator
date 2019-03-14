@@ -25,6 +25,11 @@ class vec {
   String toString() {
     return "(" + x + ", " + y + ", " + z + ")";
   }
+  float get(int i) {
+    if (i == 0) return x;
+    else if (i == 1) return y;
+    else return z;
+  }
 }
 
 class pt {
@@ -47,6 +52,11 @@ class pt {
   pt div(int f) {x/=f; y/=f; z/=f; return this;};
   String toString() {
     return "(" + x + ", " + y + ", " + z + ")";
+  }
+  float get(int i) {
+    if (i == 0) return x;
+    else if (i == 1) return y;
+    else return z;
   }
 }
 
@@ -299,7 +309,7 @@ void arrow(pt P, vec V, float r) {
 void showFrame(float d) {
   noStroke();
   fill(snow); sphere(d/10);
-  fill(blue);  showArrow(d,d/10);
+  fill(blue); showArrow(d,d/10);
   fill(red); pushMatrix(); rotateY(PI/2); showArrow(d,d/10); popMatrix();
   fill(green); pushMatrix(); rotateX(-PI/2); showArrow(d,d/10); popMatrix();
 }

@@ -59,10 +59,28 @@ boolean passConvexityTest(ArrayList<Triangle> triangles, pt[] points, int nv) {
       pt pd = points[j];
       vec AD = U(pa, pd);
       if (dot(normal, AD) > gEpsilon) {
-        DebugInfoConvexity dInfo = new DebugInfoConvexity(points, t.a, t.b, t.c, j);
-        dInfo.show(green, orange);
+        // DebugInfoConvexity dInfo = new DebugInfoConvexity(points, t.a, t.b, t.c, j);
+        // dInfo.show(green, orange);
         return false;
       }
+    }
+  }
+  return true;
+}
+
+boolean passConvexityTest(ArrayList<Triangle> triangles, ArrayList<pt> points) {
+  int nv = points.size();
+  for (Triangle t : triangles) {
+    if (t == null) continue;
+    pt pa = points.get(t.a);
+    pt pb = points.get(t.b);
+    pt pc = points.get(t.c);
+    vec normal = U(N(pa, pb, pc));
+    for (int j = 0; j < nv; ++j) {
+      if (j == t.a || j == t.b || j == t.c) continue;
+      pt pd = points.get(j);
+      vec AD = U(pa, pd);
+      if (dot(normal, AD) > gEpsilon) return false;
     }
   }
   return true;
@@ -898,7 +916,10 @@ void supPlaneThreeCirclesSpecialTest() {
     validRS = true;
   }
 
-  if (showDiskSet) gRingSet.showDisks(null);
+  if (showDiskSet) {
+    fill(red);
+    gRingSet.showDisks(null);
+  }
 
   gRingSet.generateExactCHIncremental(null);
 
@@ -1203,6 +1224,8 @@ void latticeTest() {
 void convexGapTest() {
   assert gGap != null && gGap.points0 != null && gGap.points1 != null;
 
+  gFocus = gGap.center();
+
   {
     fill(magenta);
     gGap.show();
@@ -1220,21 +1243,23 @@ void convexGapTest() {
 void incCHTest() {
   assert gRingSet != null;
 
+  gFocus = gRingSet.sphereCenter;
   {
-    // fill(orange);
-    // gRingSet.showDisk(0);
-    // gRingSet.showDisk(2);
-    // gRingSet.showDisk(3);
+    // int i = 1, j = 2, k = 4;
+    // fill(red);
+    // gRingSet.showDisk(i);
+    // gRingSet.showDisk(j);
+    // gRingSet.showDisk(k);
 
     // fill(cyan);
-    // pt[] sp1 = gRingSet.supPlaneThreeCirclesIterative(0, 2, 3);
+    // pt[] sp1 = gRingSet.supPlaneThreeCirclesIterative(i, j, k);
     // showPlane(sp1[0], sp1[1], sp1[2], 40);
     // fill(magenta);
-    // pt[] sp2 = gRingSet.supPlaneThreeCirclesIterative(0, 3, 2);
+    // pt[] sp2 = gRingSet.supPlaneThreeCirclesIterative(i, k, j);
     // showPlane(sp2[0], sp2[1], sp2[2], 40);
 
     // fill(lime);
-    // pt[] sps = gRingSet.twoSupPlanesThreeCircles(0, 2, 3, null, null, false);
+    // pt[] sps = gRingSet.twoSupPlanesThreeCircles(i, j, k, null, null, false);
     // showPlane(sps[0], sps[1], sps[2], 40);
     // showPlane(sps[3], sps[4], sps[5], 40);
   }
@@ -1266,15 +1291,17 @@ void incCHTest() {
     gRingSet.showIncCorridors();
   }
 
-  // fill(yellow, 100);
-  // gRingSet.showSphere();
+  fill(yellow, 100);
+  gRingSet.showSphere();
 }
 
 void hubTest() {
   assert gHub != null && gHub.nNeighbors > 0;
 
+  gFocus = gHub.ball.c;
+
   {
-    // gHub.intersectionDistance(1, 2);
+    // gHub.intersectionDistance(0, 2);
   }
 
   gHub.generateIntersectionCircles();
@@ -1282,7 +1309,25 @@ void hubTest() {
     gHub.showIntersectionCircles();
   }
 
+  {
+    gRingSet = gHub.circlesToRingSet(gNumPointsPerRing);
+    gRingSet.generateExactCHIncremental(null);
+    if (showTriangleFaces) {
+      fill(blue, 200);
+      gRingSet.showIncTriangles();
+    }
+    if (showCorridorFaces) {
+      fill(green, 200);
+      gRingSet.showIncCorridors();
+    }
+  }
+
   BorderedTriangleMesh btm = gHub.generateConvexHullMesh(gNumPointsPerRing);  // gNumPointsPerRing controls the resolution of each corridor
+
+  if (!btm.validBorders()) {
+    println("borders are not valid (convex).");
+  }
+
   gTriangleMesh = btm.triangleMesh;
   if (showTriMesh) {
     gTriangleMesh.show(cyan, true);

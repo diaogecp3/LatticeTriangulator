@@ -55,12 +55,12 @@ int inputMethodGap = 0;  // 0: read from file
 
 /* File paths for different objects. */
 String gPointSetPath = "data/point_set/ps_arcs_16";
-String gRingSetPath = "data/ring_set/rs_1";
-String gHubPath = "data/hub/hub_0";
+String gRingSetPath = "data/ring_set/rs_3";
+String gHubPath = "data/hub/hub_3";
 String gEdgeCirclePath = "data/edge_circle/ec_0";
 String gTriangleMeshPath = "data/triangle_mesh/tm_0";
-String gLatticePath = "data/lattice/lattice_1";
-String gGapPath = "data/gap/gap_3";
+String gLatticePath = "data/lattice/lattice_4";
+String gGapPath = "data/gap/gap_5";
 
 boolean showSphere = true;
 boolean showCenterOfSphere = true;
@@ -75,11 +75,10 @@ boolean animating = true;
 boolean tracking = false;
 boolean center = true;
 boolean showFrame = false;
+boolean showFocus = false;
 boolean snappingPDF = false;
-boolean viewpoint = false;
 
-pt Viewer = new pt(0.0, 0.0, 0.0);
-pt F = new pt(0.0, 0.0, 0.0);  // focus point: the camera is looking at it (moved when 'f or 'F' are pressed)
+pt gFocus = new pt(0.0, 0.0, 0.0);  // focus point: the camera is looking at it (moved when 'f or 'F' are pressed)
 pt Pick = new pt(0.0, 0.0, 0.0);
 
 float gSphereRadius = 100;  // default: 100
@@ -153,8 +152,11 @@ void setup() {
 
   switch (inputMethodRingSet) {
     case 0:  // read from file
-      gRingSet = new RingSet(gSphereCenter, gSphereRadius);
+      gRingSet = new RingSet();
       gRingSet.load(gRingSetPath);
+      {
+        // gRingSet.translate(V(gRingSet.sphereCenter).rev());
+      }
       break;
     case 1:  // generate randomly
       gRingSet = new RingSet(gSphereCenter, gSphereRadius, gNumRings, gNumPointsPerRing);
@@ -225,6 +227,10 @@ void setup() {
         // pt c = gGap.center();
         // gGap.translate(V(c).rev());
         // gGap.scale(10.0);
+        // println("before, gGap.points0.size() =", gGap.points0.size(), "gGap.points1.size() =", gGap.points1.size());
+        // gGap.removeDuplicatePoints(0);
+        // gGap.removeDuplicatePoints(1);
+        // println("after, gGap.points0.size() =", gGap.points0.size(), "gGap.points1.size() =", gGap.points1.size());
       }
       break;
     default:
@@ -254,29 +260,29 @@ void draw() {
   if (snappingPDF) beginRecord(PDF, "PDFimages/P" + nf(pictureCounter++, 3) + ".pdf");
 
   /* Set perspective. */
-  float fov = PI / 3.0;
-  float cameraZ = (height / 2.0) / tan(fov / 2.0);
+  float cameraZ = (height / 2.0) / tan(gCamera.fov / 2.0);
   camera(0, 0, cameraZ, 0, 0, 0, 0, 1, 0);  // sets a standard perspective
-  perspective(fov, 1.0, 1.0, 10000);
+  perspective(gCamera.fov, float(width)/float(height), gCamera.zNear, gCamera.zFar);
 
   /* Set view. */
-  translate(gCamera.dx, gCamera.dy, gCamera.dz);  // puts origin of model at screen center and moves forward/away by dz
+  translate(gCamera.dx, gCamera.dy, gCamera.dz);
   lights();  // turns on view-dependent lighting
-  rotateX(gCamera.rx);
-  rotateY(gCamera.ry);  // rotates the model around the new origin (center of screen)
+  rotateX(gCamera.rx);  // rotates the scene around the focus
+  rotateY(gCamera.ry);  // rotates the scene around the focus
   rotateX(HALF_PI);  // rotates frame around X to make X and Y basis vectors parallel to the floor
-  if (center) translate(-F.x, -F.y, -F.z);
-  if (viewpoint) {  // sets Viewer to the current viewpoint when ',' is pressed
-    Viewer = viewPoint();
-    viewpoint = false;
-  }
+  if (center) translate(-gFocus.x, -gFocus.y, -gFocus.z);
+
   computeProjectedVectors(); // computes screen projections I, J, K of basis vectors (see bottom of pv3D): used for dragging in viewer's frame
   if (showFrame) showFrame(150); // X-red, Y-green, Z-blue arrows
+  if (showFocus) {
+    fill(red);
+    showBall(gFocus, 10);
+  }
 
   if (showCenterOfSphere) {
     noStroke();
     fill(black);
-    show(gSphereCenter, 3); // show center of the sphere
+    showBall(gSphereCenter, 3); // show center of the sphere
   }
 
   switch (test) {

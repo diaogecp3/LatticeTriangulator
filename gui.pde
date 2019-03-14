@@ -35,7 +35,6 @@ void keyPressed() {
   if (key == 'l') {
     if (gCamera != null) gCamera.load("data/point_set/cam_37");
   }
-  if (key == ',') viewpoint = true;
   if (key == '>') showFrame = !showFrame;
 
   /* Following are Yaohong's keys. */
@@ -83,6 +82,7 @@ void keyPressed() {
   }
   if (key == '9') {
     if ((test >= 11 && test <= 15) || test == 18) showAuxPlane = !showAuxPlane;
+    if (test >= 23 && test <= 25) showFocus = !showFocus;
   }
 
   /* Keys: increase/decrease operators. */
@@ -252,13 +252,13 @@ void mouseDragged() {
   if (keyPressed && key == 'z') gPoints.movePicked(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   if (keyPressed && key == 'X') gPoints.moveAll(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   if (keyPressed && key == 'Z') gPoints.moveAll(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
-  if (keyPressed && key == 'f') { // move focus point on plane
-    if (center) F.sub(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
-    else F.add(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
+  if (keyPressed && key == 'f') {  // move focus point on plane
+    if (center) gFocus.sub(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
+    else gFocus.add(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   }
-  if (keyPressed && key == 'F') { // move focus point vertically
-    if (center) F.sub(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
-    else F.add(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
+  if (keyPressed && key == 'F') {  // move focus point vertically
+    if (center) gFocus.sub(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
+    else gFocus.add(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   }
 }
 

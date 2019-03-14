@@ -6,7 +6,7 @@
 
 
 float gEpsilon = 0.000001;
-float gEpsilonBig = 0.00001;
+float gEpsilonBig = 0.0001;
 
 boolean exitDraw = false;
 
@@ -61,17 +61,25 @@ boolean notZero(float x) {
 }
 
 /*
- * Return true iff |x| is not close to e.
+ * Return true iff |x| >= e.
  */
-boolean notCloseTo(float x, float e) {
+boolean notZero(float x, float e) {
   return x <= -e || x >= e;
 }
+
 
 /*
  * Return true iff |x| is close to 0.
  */
 boolean isZero(float x) {
   return x > -gEpsilon && x < gEpsilon;
+}
+
+/*
+ * Return true iff |x| < e.
+ */
+boolean isZero(float x, float e) {
+  return x > -e && x < e;
 }
 
 /*
@@ -95,18 +103,6 @@ float asinClamp(float x) {
   return asin(constrain(x, -1.0, 1.0));
 }
 
-/*
- * Return the normalized vector of v.
- */
-vec normalizeSafely(vec v) {
-  float n = v.norm();
-  if (n > 0.000001) {
-    return new vec(v.x / n, v.y / n, v.z / n);
-  } else {
-    return new vec(v.x * 1000 / (n * 1000), v.y * 1000 / (n * 1000), v.z * 1000 / (n * 1000));
-  }
-}
-
 boolean isNaNVec(vec v) {
   return Float.isNaN(v.x) || Float.isNaN(v.y) || Float.isNaN(v.z);
 }
@@ -119,8 +115,24 @@ boolean isZeroVec(vec v) {
   return isZero(v.x) && isZero(v.y) && isZero(v.z);
 }
 
+boolean isZeroVec(vec v, float e) {
+  return isZero(v.x, e) && isZero(v.y, e) && isZero(v.z, e);
+}
+
 boolean isZeroPt(pt p) {
   return isZero(p.x) && isZero(p.y) && isZero(p.z);
+}
+
+boolean isZeroPt(pt p, float e) {
+  return isZero(p.x, e) && isZero(p.y, e) && isZero(p.z, e);
+}
+
+boolean samePt(pt p, pt q) {
+  return isZero(p.x - q.x) && isZero(p.y - q.y) && isZero(p.z - q.z);
+}
+
+boolean samePt(pt p, pt q, float e) {
+  return isZero(p.x - q.x, e) && isZero(p.y - q.y, e) && isZero(p.z - q.z, e);
 }
 
 /*
@@ -136,6 +148,23 @@ int argmin(ArrayList<Integer> a) {
     }
   }
   return ret;
+}
+
+int argAbsMax(vec v) {
+  float a = abs(v.x);
+  float b = abs(v.y);
+  float c = abs(v.z);
+  if (a >= b && a >= c) return 0;
+  if (b >= a && b >= c) return 1;
+  return 2;
+}
+
+/*
+ * Return true if a and b point the same direction. Assume that a and b are colinear.
+ */
+boolean sameDirection(vec a, vec b) {
+  int i = argAbsMax(a);  // pick the dimension with largest abs value for numerical stability
+  return a.get(i) * b.get(i) > 0;
 }
 
 /*
@@ -535,4 +564,21 @@ pt[] convertTo1DArray(pt[][] points, int nr, int nc) {
     }
   }
   return G;
+}
+
+
+void removeDuplicates(ArrayList<pt> points, ArrayList<Integer> pids) {
+  if (points == null && pids == null) return;
+  assert points.size() == pids.size();
+  int i = 1;
+  while (i < points.size()) {
+    if (samePt(points.get(i), points.get(i-1))) {
+      points.remove(i);
+      pids.remove(i);
+    } else i++;
+  }
+  if (samePt(points.get(i-1), points.get(0))) {
+    points.remove(i-1);
+    pids.remove(i-1);
+  }
 }

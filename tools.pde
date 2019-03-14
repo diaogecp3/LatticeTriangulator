@@ -20,6 +20,10 @@ class Camera {
   final float sxPan = 0.2;  // scaling factor for panning in x direction
   final float syPan = 0.2;  // scaling factor for panning in y direction
 
+  final float fov = PI / 3.0;  // field of view
+  final float zNear = 1.0;
+  final float zFar = 10000.0;
+
   Camera(float dz, float rx, float ry) {
     this.dz = dz;
     this.rx = rx;

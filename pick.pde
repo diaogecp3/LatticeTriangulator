@@ -47,7 +47,8 @@ public pt pick(float mX, float mY, float mZ) {
   return P( unprojected[0]/unprojected[3], unprojected[1]/unprojected[3], unprojected[2]/unprojected[3] );
 }
 
-pt viewPoint() {return pick( 0,0, (height/2) / tan(PI/6));}
+pt viewPoint() { return pick(0, 0, (height/2) / tan(gCamera.fov/2)); }
+
 /*
 in draw, before popMatrix, insert
 

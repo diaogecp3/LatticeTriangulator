@@ -62,15 +62,18 @@ vec constructNormal(vec v) {
  */
 pt[] intersectionTwoPlanes(float a0, float b0, float c0, float d0,
                            float a1, float b1, float c1, float d1) {
-  if (notZero(b0 * c1 - c0 * b1)) {
+  // println("b0 * c1 - c0 * b1 =", b0 * c1 - c0 * b1);
+  // println("a0 * c1 - c0 * a1 =", a0 * c1 - c0 * a1);
+  // println("a0 * b1 - b0 * a1 =", a0 * b1 - b0 * a1);
+  if (notZero(b0 * c1 - c0 * b1, gEpsilonBig)) {
     vec2 t0 = solveLinearEquationsInTwoVars(b0, c0, b1, c1, d0, d1);
     vec2 t1 = solveLinearEquationsInTwoVars(b0, c0, b1, c1, d0 - a0, d1 - a1);
     return new pt[] {P(0.0, t0.x, t0.y), P(1.0, t1.x, t1.y)};
-  } else if (notZero(a0 * c1 - c0 * a1)) {
+  } else if (notZero(a0 * c1 - c0 * a1, gEpsilonBig)) {
     vec2 t0 = solveLinearEquationsInTwoVars(a0, c0, a1, c1, d0, d1);
     vec2 t1 = solveLinearEquationsInTwoVars(a0, c0, a1, c1, d0 - b0, d1 - b1);
     return new pt[] {P(t0.x, 0.0, t0.y), P(t1.x, 1.0, t1.y)};
-  } else if (notZero(a0 * b1 - b0 * a1)) {
+  } else if (notZero(a0 * b1 - b0 * a1, gEpsilonBig)) {
     vec2 t0 = solveLinearEquationsInTwoVars(a0, b0, a1, b1, d0, d1);
     vec2 t1 = solveLinearEquationsInTwoVars(a0, b0, a1, b1, d0 - c0, d1 - c1);
     return new pt[] {P(t0.x, t0.y, 0.0), P(t1.x, t1.y, 1.0)};
@@ -145,6 +148,7 @@ boolean emptyIntersectionTwoDisks(Disk d0, Disk d1) {
 /*
  * Compute the intesection point of line (pa, pb) and line (pc, pd). Assume that
  * these two lines are on the same plane.
+ * https://math.stackexchange.com/questions/270767/find-intersection-of-two-3d-lines
  */
 pt intersectionTwoLines(pt pa, pt pb, pt pc, pt pd) {
   vec v0 = U(pa, pb);  // unit vector
@@ -155,13 +159,13 @@ pt intersectionTwoLines(pt pa, pt pb, pt pc, pt pd) {
   }
 
   vec vac = V(pa, pc);
-
-  vec c0 = N(v0, v1);
-  vec c1 = N(vac, v1);
+  vec c0 = N(v0, v1);  // not unit
+  vec c1 = N(vac, v1);  // not unit
   float x = sqrt(dot(c1, c1) / dot(c0, c0));
 
   /* In case when cross(v0, v1) and cross(vac, v1) don't point in the same direction. */
-  if (c0.x * c1.x < 0 || c0.y * c1.y < 0 || c0.z * c1.z < 0) x = -x;
+  // if (c0.x * c1.x < 0 || c0.y * c1.y < 0 || c0.z * c1.z < 0) x = -x;
+  if (!sameDirection(c0, c1)) x = -x;
 
   return P(pa, x, v0);
 }
@@ -886,4 +890,17 @@ float roundConeDist(pt p, pt s1, float r1, pt s2, float r2) {
   }
 
   return dot(q, V(a, b)) - r1;
+}
+
+/*
+ * Return true if points form a convex loop. Assume that they are coplanar.
+ */
+boolean isConvexLoop(ArrayList<pt> points) {
+  int nv = points.size();
+  vec v0 = U(N(points.get(nv-1), points.get(0), points.get(1)));
+  for (int i = 1; i < nv; ++i) {
+    vec v = U(N(points.get(i-1), points.get(i), points.get((i+1)%nv)));
+    if (dot(v0, v) < 0) return false;
+  }
+  return true;
 }
