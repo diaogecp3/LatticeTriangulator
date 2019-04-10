@@ -1,18 +1,196 @@
 /******************************************************************************
- * Convex hull generation where all input vertices are on a sphere.
+ * Compute the convex hull of points on a sphere.
  ******************************************************************************/
-
-
-/*
- * TODO:
- * 1). manifoldMask is a n by n sparse matrix. Use an array of hash map can
- *     decrease space complexity without losing too much speed.
- */
 
 
 boolean debugCH = false;
 int numFaces = 0;
 float disturbance = 0.0001;
+
+private class FrontEdge {
+  int a, b;  // the id of two ends of the edge
+  int c; // the id of opposite vertex w.r.t. front edge [a, b]
+  boolean isValid;  // true:front, false: non-front
+  vec N;  // the outward normal defined by vertices A, B, C
+  FrontEdge(int a, int b, int c, boolean isValid, vec N) {
+    this.a = a;
+    this.b = b;
+    this.c = c;
+    this.isValid = isValid;
+    this.N = N;
+  }
+  FrontEdge(int a, int b, int c, vec N) {
+    this.a = a;
+    this.b = b;
+    this.c = c;
+    this.isValid = true;
+    this.N = N;
+  }
+}
+
+private class Front {
+  LinkedList<FrontEdge> edges;
+  HashSet<Integer> groupIDs;
+  Front() {
+    edges = new LinkedList<FrontEdge>();
+    groupIDs = new HashSet<Integer>();
+  }
+
+  Front(LinkedList<FrontEdge> edges) {
+    this.edges = edges;
+    groupIDs = new HashSet<Integer>();
+  }
+
+  Front(LinkedList<FrontEdge> edges, HashSet<Integer> groupIDs) {
+    this.edges = edges;
+    this.groupIDs = groupIDs;
+  }
+
+  LinkedList<FrontEdge> getEdges() {
+    return edges;
+  }
+
+  HashSet<Integer> getGroupIDs() {
+    return groupIDs;
+  }
+
+  int size() {
+    return edges.size();
+  }
+
+  boolean empty() {
+    return edges.size() == 0;
+  }
+
+  FrontEdge poll() {
+    return edges.poll();
+  }
+
+  boolean add(FrontEdge e) {
+    return edges.add(e);
+  }
+
+  void invalidate(FrontEdge e) {
+    e.isValid = false;
+  }
+
+  FrontEdge get(int index) {
+    return edges.get(index);
+  }
+
+  int indexOf(Vertex v) {
+    int n = edges.size();
+    int i = 0;
+    for (; i < n; ++i) {
+      if (edges.get(i).a == v.id) break;
+    }
+    return i;
+  }
+
+  void shiftK(int k) {
+    while (k > 0) {
+      FrontEdge e = edges.poll();
+      edges.add(e);
+      k--;
+    }
+    return;
+  }
+
+  boolean containGroupID(Integer gid) {
+    return groupIDs.contains(gid);
+  }
+
+  void mergeWithFront(Front front) {
+    edges.addAll(front.getEdges());
+    front.getEdges().clear();
+    for (Integer gid : front.getGroupIDs()) {
+      groupIDs.add(gid);
+    }
+    front.getGroupIDs().clear();
+  }
+
+  void mergeWithFront(Vertex v, Front[] fronts) {
+    int groupID = v.groupID;
+    Front anotherFront = fronts[groupID];
+    int k = anotherFront.indexOf(v);
+    anotherFront.shiftK(k);
+    this.mergeWithFront(anotherFront);
+  }
+
+  boolean isInnerVertex(Vertex v) {
+    for (FrontEdge edge : edges) {
+      if (edge.isValid && (edge.a == v.id || edge.b == v.id)) return false;
+    }
+    return true;
+  }
+
+  void showEdges(pt[] G) {
+    for (FrontEdge edge : edges) {
+      if (!edge.isValid) continue;
+      pt A, B;
+      A = G[edge.a];
+      B = G[edge.b];
+      arrow(A, V(A, B), 2);
+    }
+  }
+}
+
+private class Vertex {
+  int id;
+  pt position;
+  boolean isInner;
+  int groupID;
+  HashMap<Vertex, FrontEdge> outEdges;  // front edges going from this vertex
+  Vertex(){}
+  Vertex(int id, pt position) {
+    this.id = id;
+    this.position = position;
+    isInner = false;
+    groupID = -1;
+    outEdges = new HashMap<Vertex, FrontEdge>();
+  }
+  Vertex(int id, pt position, int groupID) {
+    this.id = id;
+    this.position = position;
+    isInner = false;
+    this.groupID = groupID;
+    outEdges = new HashMap<Vertex, FrontEdge>();
+  }
+}
+
+class DebugCHInfo {
+  int a, b, d;
+  int numFaces;
+  DebugCHInfo() {
+    a = b = d = -1;
+    numFaces = 1;
+  }
+}
+
+/*
+ * Show inner vertices.
+ */
+private void showInnerVertices(ArrayList<Vertex> vertices, pt[] G) {
+  int n = vertices.size();
+  for (int i = 0; i < n; ++i) {
+    if (vertices.get(i).isInner) {
+      show(G[vertices.get(i).id], 2);
+    }
+  }
+}
+
+/*
+ * Show manifold edges, i.e. those with exactly 2 adjacent faces.
+ */
+void showManifoldEdges(boolean[][] manifoldMask, pt[] G, int nv) {
+  for (int i = 0; i < nv; ++i) {
+    for (int j = i + 1; j < nv; ++j) {
+      if (manifoldMask[i][j] && manifoldMask[j][i]) {
+        collar(G[i], V(G[i], G[j]), 1, 1);
+      }
+    }
+  }
+}
 
 /*
  * Convert a point array to a vertex array list. Disturb positions if needed.
@@ -160,7 +338,7 @@ void initFronts(int nGroups,                                         // in
                 ArrayList<Vertex> vertices,                          // in/out
                 Front[] fronts,                                      // out
                 boolean[][] manifoldMask,                            // out
-                DebugCHInfo debugInfo) {                               // out
+                DebugCHInfo debugInfo) {                             // out
   for (int i = 0; i < nGroups; ++i) {
     LinkedList<FrontEdge> edges = new LinkedList<FrontEdge>();
     HashSet<Integer> groupIDs = new HashSet<Integer>();
@@ -221,7 +399,7 @@ int pivot(FrontEdge e,                                               // in/out
     if (cosTheta > maxCosTheta) {  // the angle should be [0, pi]
       maxCosTheta = cosTheta;
       d = i;
-      N.setTo(normalADB);
+      N.set(normalADB);
     }
   }
   return d;
@@ -235,7 +413,7 @@ boolean generateConvexHullWithFronts(ArrayList<Vertex> vertices,     // in/out
                                      ArrayList<Triangle> triangles,  // out
                                      Front[] fronts,                 // out
                                      boolean[][] manifoldMask,       // out
-                                     DebugCHInfo debugInfo) {          // out
+                                     DebugCHInfo debugInfo) {        // out
   Front curFront = fronts[0];
   assert curFront.size() > 0;
   while (curFront.size() > 0) {
@@ -362,14 +540,29 @@ ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
   if (debugCH) {
     fill(blue); fronts[0].showEdges(G);
     fill(black); showInnerVertices(vertices, G);
-    fill(#9AFF05); showManifoldEdges(manifoldMask, G, nv);  // light green
+    fill(springGreen); showManifoldEdges(manifoldMask, G, nv);
     fill(cyan); showTriangleNormals(triangles, G);
-    if (debugInfo.a >= 0) { fill(#970EED, 160); show(G[debugInfo.a], 3); }  // violet
-    if (debugInfo.b >= 0) { fill(#21C2FA, 160); show(G[debugInfo.b], 3); }  // light blue
-    if (debugInfo.d >= 0) { fill(#FFF705, 160); show(G[debugInfo.d], 3); }  // light yellow
+    if (debugInfo.a >= 0) { fill(violet, 160); show(G[debugInfo.a], 3); }
+    if (debugInfo.b >= 0) { fill(cyan, 160); show(G[debugInfo.b], 3); }
+    if (debugInfo.d >= 0) { fill(khaki, 160); show(G[debugInfo.d], 3); }
   }
 
   return triangles;
+}
+
+/*
+ * Convert a 2D point array into a 1D point array. This is used for ring set
+ * processing.
+ */
+pt[] convertTo1DArray(pt[][] points, int nr, int nc) {
+  pt[] G = new pt[nr * nc];
+  int k = 0;
+  for (int i = 0; i < nr; ++i) {
+    for (int j = 0; j < nc; ++j) {
+      G[k++] = points[i][j];
+    }
+  }
+  return G;
 }
 
 /*
@@ -414,15 +607,15 @@ ArrayList<Triangle> generateConvexHull(pt[][] points,                // in
   if (k >= 1) System.out.format("number of times tried = %d\n", k + 1);
   if (debugCH) {
     fill(blue); fronts[0].showEdges(G);
-    fill(#A08888);  // light gray
+    fill(gray);
     for (int i = 1; i < nGroup; ++i) {
       if (fronts[i].size() > 0) fronts[i].showEdges(G);
     }
     fill(black); showInnerVertices(vertices, G);
-    fill(#9AFF05); showManifoldEdges(manifoldMask, G, nv);  // light green
-    if (debugInfo.a >= 0) { fill(#970EED, 160); show(G[debugInfo.a], 3); }  // violet
-    if (debugInfo.b >= 0) { fill(#21C2FA, 160); show(G[debugInfo.b], 3); }  // light blue
-    if (debugInfo.d >= 0) { fill(#FFF705, 160); show(G[debugInfo.d], 3); }  // light yellow
+    fill(springGreen); showManifoldEdges(manifoldMask, G, nv);
+    if (debugInfo.a >= 0) { fill(violet, 160); show(G[debugInfo.a], 3); }
+    if (debugInfo.b >= 0) { fill(cyan, 160); show(G[debugInfo.b], 3); }
+    if (debugInfo.d >= 0) { fill(khaki, 160); show(G[debugInfo.d], 3); }
   }
 
   return triangles;

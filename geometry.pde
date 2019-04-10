@@ -55,6 +55,10 @@ vec constructNormal(vec v) {
   }
 }
 
+vec perp(vec v) {
+  return constructNormal(v);
+}
+
 /*
  * Compute the intersection line of two planes, defined by:
  * a0x + b0y + c0z = d0
@@ -677,14 +681,14 @@ pt[] supPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
  * and (c1, r1, n2). (vi0, vj0) and (vi1, vj1), which are optional, are local
  * frames on the two circles, respectively.
  */
-void exactCHTwoCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
-                       pt c1, float r1, vec n1, vec vi1, vec vj1) {
+ArrayList<pt> exactCHTwoCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
+                                pt c1, float r1, vec n1, vec vi1, vec vj1) {
   if (vi0 == null) vi0 = constructNormal(n0);
   if (vj0 == null) vj0 = N(n0, vi0);
   if (vi1 == null) vi1 = constructNormal(n1);
   if (vj1 == null) vj1 = N(n1, vi1);
 
-  int nSamples = 16;
+  int nSamples = 40;
   ArrayList<pt> points = new ArrayList<pt>();
   float da = TWO_PI / nSamples;
   float a = 0;
@@ -706,10 +710,10 @@ void exactCHTwoCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
 
   // show the mesh
   {
-    fill(red, 100);
-    disk(c0, n0, r0);
-    fill(green, 100);
-    disk(c1, n1, r1);
+    // fill(red, 100);
+    // disk(c0, n0, r0);
+    // fill(green, 100);
+    // disk(c1, n1, r1);
   }
   {
     fill(violet, 100);
@@ -720,7 +724,10 @@ void exactCHTwoCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     vertex(points.get(0));
     vertex(points.get(1));
     endShape();
+    strokeWeight(1);
+    noStroke();
   }
+  return points;
 }
 
 /*
@@ -903,4 +910,42 @@ boolean isConvexLoop(ArrayList<pt> points) {
     if (dot(v0, v) < 0) return false;
   }
   return true;
+}
+
+Circle circumcircleOfTriangle(pt a, pt b, pt c) {
+  pt center = circumcenterOfTriangle(a, b, c);
+  vec normal = normalOfTriangle(a, b, c);
+  float radius = d(center, a);
+  return new Circle(center, normal, radius);
+}
+
+float signedDistToBallCappedCone(pt Q, pt A, float a, pt B, float b) {
+  if (b > a) return signedDistToBallCappedCone(Q, B, b, A, a);
+
+  float l = dist(A, B);
+  float invL = 1.0 / l;
+  vec u = disp(A, B).mul(invL);
+
+  float delta = a - b;
+  float s = sqrt(l*l - delta*delta);
+
+  vec2 j = V(-delta*invL, s*invL);
+  vec2 i = V(s*invL, delta*invL);
+  vec2 c = j.c().mul(a);  // Assume center of a is (0,0)
+
+  vec AQ = disp(A, Q);
+  float x = dot(AQ, u);
+  float y = sqrt(abs(dot(AQ, AQ) - x*x));
+
+  vec2 cQ = disp(c, V(x,y));
+  float xPrime = dot(i, cQ);
+  float yPrime = dot(j, cQ);
+
+  if (xPrime <= 0) return dist(Q, A) - a;
+  if (xPrime >= s) return dist(Q, B) - b;
+  return yPrime;
+}
+
+float signedDistToBallCappedCone(pt Q, Ball A, Ball B) {
+  return signedDistToBallCappedCone(Q, A.c, A.r, B.c, B.r);
 }

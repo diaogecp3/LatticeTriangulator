@@ -38,6 +38,13 @@ class TriangleMesh {
     nv = nt = 0;
   }
 
+  TriangleMesh(ArrayList<pt> positions) {
+    this.positions = positions;
+    nv = positions.size();
+    triangles = new ArrayList<Triangle>();
+    nt = 0;
+  }
+
   TriangleMesh(pt[] positionArray) {
     nv = positionArray.length;
     positions = new ArrayList<pt>();

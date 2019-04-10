@@ -4,12 +4,9 @@
  * Statistics, rendering, math, etc.
  ******************************************************************************/
 
-
 float gEpsilon = 0.000001;
 float gEpsilonBig = 0.0001;
-
 boolean exitDraw = false;
-
 
 /* Statistics functions below. */
 
@@ -135,6 +132,27 @@ boolean samePt(pt p, pt q, float e) {
   return isZero(p.x - q.x, e) && isZero(p.y - q.y, e) && isZero(p.z - q.z, e);
 }
 
+boolean isApproximately(float a, float b, float epsilon) {
+  return a + epsilon > b && a - epsilon < b;
+}
+
+boolean isApproximately(double a, double b, double epsilon) {
+  return a + epsilon > b && a - epsilon < b;
+}
+
+boolean isApproximately(vec a, vec b, float epsilon) {
+  return isApproximately(a.x, b.x, epsilon) && isApproximately(a.y, b.y, epsilon) && isApproximately(a.z, b.z, epsilon);
+}
+
+boolean isApproximately(MinMaxF a, MinMaxF b, float epsilon) {
+  return isApproximately(a.min, b.min, epsilon) && isApproximately(a.max, b.max, epsilon);
+}
+
+float logb(float base, float val) { return log(val) / log(base); }  // log base b
+
+double logb(double base, double val) { return Math.log(val) / Math.log(base); }
+
+
 /*
  * Return the index whose value is minimum in an array list. If there are more
  * than one minimums, return the lowest index.
@@ -157,6 +175,31 @@ int argAbsMax(vec v) {
   if (a >= b && a >= c) return 0;
   if (b >= a && b >= c) return 1;
   return 2;
+}
+
+float min3(float a, float b, float c) { return min(a, min(b, c)); }
+float max3(float a, float b, float c) { return max(a, max(b, c)); }
+
+MinMaxI intersect(MinMaxI a, MinMaxI b) {
+  MinMaxI interval = new MinMaxI( a.min>b.min?a.min:b.min, a.max<b.max?a.max:b.max );
+  if (interval.min > interval.max) interval.max = interval.min;
+  return interval;
+}
+
+MinMaxI bound(MinMaxI a, MinMaxI b) {
+  MinMaxI interval = new MinMaxI( a.min<b.min?a.min:b.min, a.max>b.max?a.max:b.max );
+  return interval;
+}
+
+MinMaxF intersect(MinMaxF a, MinMaxF b) {
+  MinMaxF interval = new MinMaxF(a.min>b.min?a.min:b.min, a.max<b.max?a.max:b.max);
+  if (interval.min > interval.max) interval.max = interval.min;
+  return interval;
+}
+
+MinMaxF bound(MinMaxF a, MinMaxF b) {
+  MinMaxF interval = new MinMaxF(a.min<b.min?a.min:b.min, a.max>b.max?a.max:b.max);
+  return interval;
 }
 
 /*
@@ -280,51 +323,22 @@ void showTriangles(ArrayList<Triangle> triangles, pt[] points) {
 }
 
 /*
- * Show the normal to triangle (A, B, C) as an arrow. d controls the length of
+ * Show the normal to triangle (a, b, c) as an arrow. d controls the length of
  * the arrow and r controls the size of the arrow tip.
  */
-void showNormalToTriangle(pt A, pt B, pt C, float d, float r) {
-  vec N = normalOfTriangle(A, B, C);
-  pt D = P(A, B, C);
-  arrow(D, V(d, N), r);
+void showTriangleNormal(pt a, pt b, pt c, float d, float r) {
+  vec n = normalOfTriangle(a, b, c);
+  pt m = P(a, b, c);
+  arrow(m, V(d, n), r);
 }
 
 /*
- * Show normals of triangles, one normal per triangle face starting at its center.
+ * Show normals of all triangles.
  */
 void showTriangleNormals(ArrayList<Triangle> triangles, pt[] points) {
-  int n = triangles.size();
-  for (int i = 0; i < n; ++i) {
-    if (triangles.get(i) == null) continue;
-    pt pa = points[triangles.get(i).a];
-    pt pb = points[triangles.get(i).b];
-    pt pc = points[triangles.get(i).c];
-    showNormalToTriangle(pa, pb, pc, 10, 1);
-  }
-}
-
-/*
- * Show inner vertices.
- */
-void showInnerVertices(ArrayList<Vertex> vertices, pt[] G) {
-  int n = vertices.size();
-  for (int i = 0; i < n; ++i) {
-    if (vertices.get(i).isInner) {
-      show(G[vertices.get(i).id], 2);
-    }
-  }
-}
-
-/*
- * Show manifold edges, i.e. those with exactly 2 adjacent faces.
- */
-void showManifoldEdges(boolean[][] manifoldMask, pt[] G, int nv) {
-  for (int i = 0; i < nv; ++i) {
-    for (int j = i + 1; j < nv; ++j) {
-      if (manifoldMask[i][j] && manifoldMask[j][i]) {
-        collar(G[i], V(G[i], G[j]), 1, 1);
-      }
-    }
+  for (Triangle tri : triangles) {
+    if (tri == null) continue;
+    showTriangleNormal(points[tri.a], points[tri.b], points[tri.c], 10, 1);
   }
 }
 
@@ -339,19 +353,38 @@ void showBall(pt c, float r) {
 }
 
 /*
- * Show the line defined by (o, d).
+ * Show the line defined by (o, d). d is not necessarily a unit vector.
  */
 void showLine(pt o, vec d) {
-  pt p0 = P(o, -1000, d);
-  pt p1 = P(o, 1000, d);
-  beginShape(LINES);
-  vertex(p0);
-  vertex(p1);
-  endShape();
+  pt p0 = P(o, -100.0, d);
+  pt p1 = P(o, 100.0, d);
+  line(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z);
 }
 
-void showLineSegment(pt a, pt b) {
+/*
+ * Show the line defined by (a, b).
+ */
+void showLine(pt a, pt b) {
+  vec d = V(a, b);
+  showLine(a, d);
+}
+
+/*
+ * Show the line segment defined by (a, b).
+ */
+void showSegment(pt a, pt b) {
   line(a.x, a.y, a.z, b.x, b.y, b.z);
+}
+
+/*
+ * Show the poly line defined by a list of points.
+ */
+void showPolyLine(ArrayList<pt> ps) {
+  noFill();
+  beginShape();
+  for (pt p : ps) vertex(p);
+  endShape();
+  fill(black);
 }
 
 /*
@@ -377,7 +410,6 @@ void showOrientedLoop(ArrayList<pt> ps) {
     prev = cur;
     center.add(cur);
   }
-
   center.div(ps.size());
   vec normal = U(N(ps.get(0), ps.get(1), ps.get(2)));
   arrow(center, V(8, normal), 1);
@@ -390,15 +422,11 @@ void showOrientedLoop(ArrayList<pt> ps) {
 void showPlane(pt p, vec n, float s) {
   vec vi = constructNormal(n);
   vec vj = N(n, vi);
-  pt p0 = P(p, s, vi, s, vj);
-  pt p1 = P(p, -s, vi, s, vj);
-  pt p2 = P(p, s, vi, -s, vj);
-  pt p3 = P(p, -s, vi, -s, vj);
-  beginShape(TRIANGLE_STRIP);
-  vertex(p0);
-  vertex(p1);
-  vertex(p2);
-  vertex(p3);
+  beginShape(QUAD);
+  vertex(P(p, s, vi, s, vj));
+  vertex(P(p, s, vi, -s, vj));
+  vertex(P(p, -s, vi, -s, vj));
+  vertex(P(p, -s, vi, s, vj));
   endShape();
 }
 
@@ -487,7 +515,7 @@ void showArc(pt A, pt C, pt B, float w) {
   for(float t = 0.05; t <= 1.01; t += 0.05) {
     pt QQ = onArc(A, C, B, t);
     stub(PP, QQ, w, w);
-    PP.setTo(QQ);
+    PP.set(QQ);
   }
 }
 
@@ -552,21 +580,9 @@ void exceptionHandler() {
 }
 
 /*
- * Convert a 2D point array into a 1D point array. This is used for ring set
- * processing.
+ * Keep only one point if multiple points are almost the same. Assume that points
+ * are in cyclic order. pids are the IDs of points.
  */
-pt[] convertTo1DArray(pt[][] points, int nr, int nc) {
-  pt[] G = new pt[nr * nc];
-  int k = 0;
-  for (int i = 0; i < nr; ++i) {
-    for (int j = 0; j < nc; ++j) {
-      G[k++] = points[i][j];
-    }
-  }
-  return G;
-}
-
-
 void removeDuplicates(ArrayList<pt> points, ArrayList<Integer> pids) {
   if (points == null && pids == null) return;
   assert points.size() == pids.size();

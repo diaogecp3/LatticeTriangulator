@@ -11,16 +11,26 @@ void keyPressed() {
   if (key == '~') filming = !filming;
   if (key == 'c') center = !center; // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
   if (key == 't') tracking = !tracking; // snaps focus F to the selected vertex of P (easier to rotate and zoom while keeping it in center)
-  if (key == 'x' || key == 'z' || key == 'd' || key == 'a') gPoints.setPickToIndexOfVertexClosestTo(Pick);  // picks the vertex of P that has closest projeciton to mouse
+  if (key == 'x' || key == 'z' || key == 'd' || key == 'a') gPoints.setPickToIndexOfVertexClosestTo(gPick);  // picks the vertex of P that has closest projeciton to mouse
   if (key == 'd') {
     // P.deletePicked();
     gPoints.deletePickedPair();
     if (test >= 12 && test <= 15) {
       debugIncCHIter = max(3, min(debugIncCHIter, gPoints.nv / 2));
     }
+    if (test == 27) {
+      gCubeHalfLength = max(gCubeHalfLength - 1, 0);
+    }
   }
   if (key == 'i') {
-    gPoints.addPt(Pick);  // append the new vertex Pick in P
+    if (test != 27) gPoints.addPt(gPick);  // append the new vertex Pick in P
+    if (test == 27) gCubeCenter.i = max(gCubeCenter.i - 1, gCubeHalfLength);
+  }
+  if (key == 'j') {
+    if (test == 27) gCubeCenter.j = max(gCubeCenter.j - 1, gCubeHalfLength);
+  }
+  if (key == 'k') {
+    if (test == 27) gCubeCenter.k = max(gCubeCenter.k - 1, gCubeHalfLength);
   }
   if (key == 'w') {  // save data
     if (gPoints != null) gPoints.savePts("data/pts_unnamed");
@@ -200,6 +210,7 @@ void keyPressed() {
   }
   if (key == 'P') {
     if (test == 3) projectOnSphere = !projectOnSphere;
+    if (test == 13 || test == 26) showStereoProjection = !showStereoProjection;
     if (test == 16) projectOnHub = !projectOnHub;
   }
   if (key == 'L') {
@@ -212,9 +223,22 @@ void keyPressed() {
     showTriangleStrokes = !showTriangleStrokes;
     showCorridorStrokes = !showCorridorStrokes;
     if (test == 204) showSpheres = !showSpheres;
+    if (test == 27) showSteadyLattice = !showSteadyLattice;
   }
   if (key == 'K') {
     if (test == 19) showCones = !showCones;
+  }
+  if (key == 'I') {
+    if (test == 27) gCubeCenter.i = min(gCubeCenter.i + 1, gSteadyLattice.repetitionCountU() - 1 - gCubeHalfLength);
+  }
+  if (key == 'J') {
+    if (test == 27) gCubeCenter.j = min(gCubeCenter.j + 1, gSteadyLattice.repetitionCountV() - 1 - gCubeHalfLength);
+  }
+  if (key == 'K') {
+    if (test == 27) gCubeCenter.k = min(gCubeCenter.k + 1, gSteadyLattice.repetitionCountW() - 1 - gCubeHalfLength);
+  }
+  if (key == 'D') {
+    if (test == 27) gCubeHalfLength = min(gCubeHalfLength + 1, int((gSteadyLattice.minRepetitionCount() - 1) / 2));
   }
 
   change = true;
@@ -247,8 +271,8 @@ void mouseDragged() {
     gCamera.dy += gCamera.syPan * (float)(mouseY - pmouseY);
   }
 
-  if (keyPressed && key == 'i') gPoints.setPickedTo(Pick);
-  if (keyPressed && key == 'x') gPoints.movePickedTo(Pick);
+  if (keyPressed && key == 'i') gPoints.setPickedTo(gPick);
+  if (keyPressed && key == 'x') gPoints.movePickedTo(gPick);
   if (keyPressed && key == 'z') gPoints.movePicked(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   if (keyPressed && key == 'X') gPoints.moveAll(ToIJ(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));
   if (keyPressed && key == 'Z') gPoints.moveAll(ToK(V((float)(mouseX - pmouseX), (float)(mouseY - pmouseY), 0)));

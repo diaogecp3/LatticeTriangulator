@@ -6,7 +6,7 @@ boolean showHub = true;
 boolean showBoundingSphere = false;  // the bounding sphere of a hub
 boolean showIntersectionCircles = false;  // the intersection circles between the bounding sphere and cones
 boolean showLiftedCones = false;
-boolean showGapMesh = false;
+boolean showGapMesh = true;
 
 float gGapWidth = 10;
 
@@ -201,6 +201,19 @@ class TruncatedCone {
     fill(black, 255);
     showBall(c1, 5);
   }
+}
+
+TruncatedCone truncatedConeOfTwoBalls(Ball b0, Ball b1) {
+  vec v = V(b0.c, b1.c);
+  float d = v.norm();
+  v.div(d);  // normalize
+  float cos = (b0.r - b1.r) / d;
+  float sin = sin(acosClamp(cos));
+  pt c0 = P(b0.c, b0.r * cos, v);  // the center corresponding to ball b0
+  pt c1 = P(b1.c, b1.r * cos, v);  // the center corresponding to ball b1
+  float r0 = b0.r * sin;
+  float r1 = b1.r * sin;
+  return new TruncatedCone(c0, r0, c1, r1);
 }
 
 class ConvexGap {
@@ -575,18 +588,18 @@ class Hub {
 
     {
       // println("intersection point =", px);
-      // fill(green);
+      // fill(red);
       // showBall(px, 5);
-      // if (i == 0 && j == 2) {
-        // println("pba10 =", pba10, "pba11 =", pba11);
-        // println("pca00 =", pca00, "pca01 =", pca01);
-        // strokeWeight(5);
-        // stroke(green);
-        // showLineSegment(pba10, pba11);
-        // stroke(blue);
-        // showLineSegment(pca00, pca01);
-        // strokeWeight(1);
-        // noStroke();
+      // if (i == 0 && j == 1) {
+      //   println("pba10 =", pba10, "pba11 =", pba11);
+      //   println("pca00 =", pca00, "pca01 =", pca01);
+      //   strokeWeight(5);
+      //   stroke(green);
+      //   showSegment(pba10, pba11);
+      //   stroke(blue);
+      //   showSegment(pca00, pca01);
+      //   strokeWeight(1);
+      //   noStroke();
       // }
     }
 
@@ -602,6 +615,7 @@ class Hub {
         t = max(t, d);
       }
     }
+    t = max(t, ball.r);
     // println("t =", t);
     return t;
   }
@@ -680,6 +694,7 @@ class Hub {
 
     for (Circle cir : circles) {
       if (cir == null) {
+        println("circle is null!");
         save("data/hub_unnamed");
         break;
       }
@@ -886,7 +901,7 @@ class Hub {
   BorderedTriangleMesh generateConvexHullMesh(int numEdges) {
     generateIntersectionCircles();
     RingSet rs = circlesToRingSet(numEdges);
-    rs.generateExactCHIncremental(null);
+    if (rs.nRings >= 3) rs.generateExactCHIncremental(null);
     TriangleMesh tm = rs.generateConvexTriMesh();
     ArrayList<Integer>[] borders = rs.getSwingLists();  // each border is a loop of vertex IDs
     return new BorderedTriangleMesh(tm, borders);
@@ -986,7 +1001,7 @@ class Hub {
     ball.show();
     for (int i = 0; i < nNeighbors; ++i) {
       tCones[i].show(40, false);
-      showBall(neighbors[i].c, neighbors[i].r);
+      neighbors[i].show();
     }
     return;
   }

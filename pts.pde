@@ -10,7 +10,7 @@ class pts {  // class for manipulaitng and sisplaying polyloops
   pts() {}
   pts declare() {for (int i=0; i<maxnv; i++) G[i]=P(); return this;}     // init all point objects
   pts empty() {nv=0; pv=0; return this;} // resets P so that we can start adding points
-  pts addPt(pt P) { G[nv].setTo(P); pv=nv; nv++;  return this;} // adds a point at the end
+  pts addPt(pt P) { G[nv].set(P); pv=nv; nv++;  return this;} // adds a point at the end
   pts addPt(float x,float y) { G[nv].x=x; G[nv].y=y; pv=nv; nv++; return this;}
   pts copyFrom(pts Q) {empty(); nv=Q.nv; for (int v=0; v<nv; v++) G[v]=P(Q.G[v]); return this;}
   pts setToL(pts P, float t, pts Q) { // lerp (linear interpolation betwen P and Q
@@ -52,9 +52,9 @@ class pts {  // class for manipulaitng and sisplaying polyloops
     }
 
   pts insertPt(pt P) { // inserts new vertex after vertex with ID iv
-    for(int v=nv-1; v>iv; v--) G[v+1].setTo(G[v]);
+    for(int v=nv-1; v>iv; v--) G[v+1].set(G[v]);
      iv++;
-     G[iv].setTo(P);
+     G[iv].set(P);
      nv++; // increments vertex count
      return this;
      }
@@ -65,19 +65,19 @@ class pts {  // class for manipulaitng and sisplaying polyloops
     return this;
     }
 
-  pts deletePicked() {for(int i=pv; i<nv; i++) G[i].setTo(G[i+1]); pv=max(0,pv-1); nv--;  return this;}
+  pts deletePicked() {for(int i=pv; i<nv; i++) G[i].set(G[i+1]); pv=max(0,pv-1); nv--;  return this;}
   pts deletePickedPair() {
     if (nv == 0 || nv % 2 == 1) return this;
     int j = pv - pv % 2;
     for (int i = j; i < nv - 2; ++i) {
-      G[i].setTo(G[i+2]);
+      G[i].set(G[i+2]);
     }
     pv = max(0, j - 1);
     nv -= 2;
     return this;
   }
-  pts setPt(pt P, int i) { G[i].setTo(P); return this;}
-  pts setPickedTo(pt P) { G[pv].setTo(P); return this;}
+  pts setPt(pt P, int i) { G[i].set(P); return this;}
+  pts setPickedTo(pt P) { G[pv].set(P); return this;}
   pts showPicked() {show(G[pv],13); return this;}
   pts drawBalls(float r) {for (int v=0; v<nv; v++) show(G[v],r); return this;}
   pts showPicked(float r) {show(G[pv],r); return this;}
@@ -106,7 +106,7 @@ class pts {  // class for manipulaitng and sisplaying polyloops
     for (int k = 0; k < nv; k++) {
       int i = k + s;
       float[] xyz = float(split(ss[i], ","));
-      G[k].setTo(xyz[0],xyz[1],xyz[2]);
+      G[k].set(xyz[0],xyz[1],xyz[2]);
     }
     pv = 0;
   };
