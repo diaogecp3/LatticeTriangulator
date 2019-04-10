@@ -1,5 +1,7 @@
 /******************************************************************************
- * Ring set processing.
+ * Ring set.
+ *
+ * A ring set is a set of circles on a sphere. Each circle can be discretized.
  ******************************************************************************/
 
 

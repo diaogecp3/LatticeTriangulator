@@ -1,3 +1,10 @@
+/******************************************************************************
+ * Pick a point on screen.
+ *
+ * Adapted from the version provided by Prof. Jarek Rossignac at Georgia Tech.
+ ******************************************************************************/
+
+
 import java.nio.*;
 import processing.core.PMatrix3D;
 pt PP = P(); // picked point

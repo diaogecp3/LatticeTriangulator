@@ -1,3 +1,10 @@
+/******************************************************************************
+ * Tools.
+ *
+ * Adapted from the version provided by Prof. Jarek Rossignac at Georgia Tech.
+ ******************************************************************************/
+
+
 // ************************************ IMAGES & VIDEO
 PImage face0; // picture of first author's face, should be under data/ in sketch folder
 PImage face1; // picture of second author's face, should be under data/ in sketch folder
@@ -6,7 +13,7 @@ boolean filming = false, change = false;
 
 void snapPicture() {
   println("saving picture", pictureCounter);
-  saveFrame("pictures/P"+nf(pictureCounter++,3)+".png");
+  saveFrame("pictures/P" + nf(pictureCounter++,3) + ".png");
 }
 
 class Camera {

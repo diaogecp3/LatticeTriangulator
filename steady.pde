@@ -1,5 +1,6 @@
 /******************************************************************************
  * Frames, similarities, and range finder for steady lattices.
+ *
  * Adapted from the version provided by Kelsey Kurzeja at Georgia Tech.
  ******************************************************************************/
 

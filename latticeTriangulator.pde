@@ -1,3 +1,9 @@
+/******************************************************************************
+ * Triangulate a steady lattice.
+ *
+ * Many other experiments are carried out before triangulating a steady lattice.
+ ******************************************************************************/
+
 import processing.pdf.*;
 
 /*

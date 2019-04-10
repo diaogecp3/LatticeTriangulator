@@ -2,6 +2,8 @@
 data/tmp/*
 data/*_unnamed
 pictures/*
+playground.pde
+
 applet
 application.linux-arm64
 application.linux-armv6hf

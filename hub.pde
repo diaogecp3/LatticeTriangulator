@@ -1,5 +1,5 @@
 /******************************************************************************
- * Hub (a ball and tangential cones) processing.
+ * Hub (a ball and tangential cones).
  ******************************************************************************/
 
 boolean showHub = true;

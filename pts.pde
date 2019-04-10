@@ -1,3 +1,9 @@
+/******************************************************************************
+ * Points.
+ *
+ * Adapted from the version provided by Prof. Jarek Rossignac at Georgia Tech.
+ ******************************************************************************/
+
 int pp = 1;  // index of picked vertex
 
 class pts {  // class for manipulaitng and sisplaying polyloops

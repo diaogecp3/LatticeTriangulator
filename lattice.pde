@@ -1,5 +1,8 @@
 /******************************************************************************
- * Lattice.
+ * Lattice and steady lattice.
+ *
+ * The code for steady lattice is adapted from the version provided by Kelsey
+ * Kurzeja at Georgia Tech.
  ******************************************************************************/
 
 import java.util.List;

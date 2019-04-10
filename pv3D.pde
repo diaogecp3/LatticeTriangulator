@@ -1,5 +1,6 @@
 /******************************************************************************
  * Vectors and points in 3D.
+ *
  * Adapted from the version provided by Prof. Jarek Rossignac at Georgia Tech.
  ******************************************************************************/
 

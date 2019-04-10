@@ -1,13 +1,6 @@
 /******************************************************************************
- * Test functions.
+ * Test.
  ******************************************************************************/
-
-
-/*
- * TODO:
- * 1). For multiple-tests functions, it may be better to reuse the random inputs
- *     on different methods.
- */
 
 
 int numTests = 10;
