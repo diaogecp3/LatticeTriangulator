@@ -10,7 +10,7 @@ int inputMethodRingSet = 1;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
 int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
 int inputMethodTriangleMesh = 1;  // 0: read from file, 1: nothing happens
-int inputMethodLattice = 1;  // 0: read from file, 1: generate manually
+int inputMethodLattice = 0;  // 0: read from file, 1: generate manually
 int inputMethodGap = 0;  // 0: read from file
 int inputMethodSteadyLattice = 1;  // 0: read from file, 1: generate manually
 

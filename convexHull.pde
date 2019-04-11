@@ -4,8 +4,8 @@
 
 
 boolean debugCH = false;
-int numFaces = 0;
-float disturbance = 0.0001;
+int gNumFaces = 0;
+float gDisturbance = 0.0001;
 
 private class FrontEdge {
   int a, b;  // the id of two ends of the edge
@@ -182,7 +182,7 @@ private void showInnerVertices(ArrayList<Vertex> vertices, pt[] G) {
 /*
  * Show manifold edges, i.e. those with exactly 2 adjacent faces.
  */
-void showManifoldEdges(boolean[][] manifoldMask, pt[] G, int nv) {
+private void showManifoldEdges(boolean[][] manifoldMask, pt[] G, int nv) {
   for (int i = 0; i < nv; ++i) {
     for (int j = i + 1; j < nv; ++j) {
       if (manifoldMask[i][j] && manifoldMask[j][i]) {
@@ -195,11 +195,11 @@ void showManifoldEdges(boolean[][] manifoldMask, pt[] G, int nv) {
 /*
  * Convert a point array to a vertex array list. Disturb positions if needed.
  */
-ArrayList<Vertex> convertToVertexList(pt[] G, int nv, int k) {
+private ArrayList<Vertex> convertToVertexList(pt[] G, int nv, int k) {
   ArrayList<Vertex> vertices = new ArrayList<Vertex>();
   if (k > 0) {
     for (int i = 0; i < nv; ++i) {
-      vec epsilon = random3(disturbance);
+      vec epsilon = random3(gDisturbance);
       pt p = P(G[i], epsilon);
       vertices.add(new Vertex(i, p));
     }
@@ -215,12 +215,12 @@ ArrayList<Vertex> convertToVertexList(pt[] G, int nv, int k) {
  * Convert a point array to a vertex array list. Associate a group ID
  * for each vertex. Disturb positions if needed.
  */
-ArrayList<Vertex> convertToVertexList(pt[][] points, int nr, int nc, int k) {
+private ArrayList<Vertex> convertToVertexList(pt[][] points, int nr, int nc, int k) {
   ArrayList<Vertex> vertices = new ArrayList<Vertex>();
   if (k > 0) {
     for (int i = 0; i < nr; ++i) {
       for (int j = 0; j < nc; ++j) {
-        vec epsilon = random3(disturbance);
+        vec epsilon = random3(gDisturbance);
         pt position = P(points[i][j], epsilon);
         Vertex vertex = new Vertex(i * nc + j, position, i);
         vertices.add(vertex);
@@ -248,7 +248,7 @@ boolean findFirstTriangle(ArrayList<Vertex> vertices,                // in/out
                           ArrayList<Triangle> triangles,             // out
                           Front front,                               // out
                           boolean[][] manifoldMask,                  // out
-                          DebugCHInfo debugInfo) {                     // out
+                          DebugCHInfo debugInfo) {                   // out
   assert front.size() == 0 && triangles.size() == 0 && vertices.size() > 3;
   int a = 0, b = 1, n = vertices.size();
   if (vertices.get(a).position.z > vertices.get(b).position.z) {
@@ -417,7 +417,7 @@ boolean generateConvexHullWithFronts(ArrayList<Vertex> vertices,     // in/out
   Front curFront = fronts[0];
   assert curFront.size() > 0;
   while (curFront.size() > 0) {
-    if (debugCH && debugInfo.numFaces >= numFaces) break;
+    if (debugCH && debugInfo.numFaces >= gNumFaces) break;
     FrontEdge e = curFront.poll();
     if (!e.isValid) continue;
     vec normalADB = new vec();
@@ -554,7 +554,7 @@ ArrayList<Triangle> generateConvexHull(pt[] G, int nv) {
  * Convert a 2D point array into a 1D point array. This is used for ring set
  * processing.
  */
-pt[] convertTo1DArray(pt[][] points, int nr, int nc) {
+private pt[] convertTo1DArray(pt[][] points, int nr, int nc) {
   pt[] G = new pt[nr * nc];
   int k = 0;
   for (int i = 0; i < nr; ++i) {

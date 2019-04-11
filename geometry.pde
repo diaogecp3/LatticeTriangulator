@@ -175,6 +175,28 @@ pt intersectionTwoLines(pt pa, pt pb, pt pc, pt pd) {
 }
 
 /*
+ * Determine if point p is on the segment (pa, pb) assuming that p is on line (pa, pb).
+ */
+boolean onSegment(pt pa, pt pb, pt p) {
+  vec ab = V(pa, pb);
+  vec ap = V(pa, p);
+  int idx = argAbsMax(ab);
+  float k = ap.get(idx) / ab.get(idx);
+  return k >= 0 && k <= 1;
+}
+
+/*
+ * Compute the intersection of two segments (pa, pb) and (pc, pd). Assume that
+ * these two segments are on the same plane.
+ */
+pt intersectionTwoSegments(pt pa, pt pb, pt pc, pt pd) {
+  pt x = intersectionTwoLines(pa, pb, pc, pd);
+  if (x == null) return null;
+  if (onSegment(pa, pb, x) && onSegment(pc, pd, x)) return x;
+  return null;
+}
+
+/*
  * Return true if line (a, b) and disk (c, r, n) don't intersect.
  */
 boolean emptyIntersectionLineDisk(pt a, pt b, pt c, float r, vec n) {

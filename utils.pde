@@ -356,8 +356,8 @@ void showBall(pt c, float r) {
  * Show the line defined by (o, d). d is not necessarily a unit vector.
  */
 void showLine(pt o, vec d) {
-  pt p0 = P(o, -100.0, d);
-  pt p1 = P(o, 100.0, d);
+  pt p0 = P(o, -1000.0, d);
+  pt p1 = P(o, 1000.0, d);
   line(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z);
 }
 
@@ -480,7 +480,9 @@ void showObliqueCone(pt p, pt c, vec n, float r) {
   beginShape(TRIANGLE_FAN);
   vertex(p);
   for (int i = 0; i <= nSamples; ++i, a += da) {
-    vertex(P(c, r * cos(a), vi, r * sin(a), vj));
+    pt q = P(c, r * cos(a), vi, r * sin(a), vj);
+    q = P(p, 300.0, U(p, q));
+    vertex(q);
   }
   endShape();
 }

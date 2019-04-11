@@ -15,22 +15,18 @@ void keyPressed() {
   if (key == 'd') {
     // P.deletePicked();
     gPoints.deletePickedPair();
-    if (test >= 12 && test <= 15) {
-      debugIncCHIter = max(3, min(debugIncCHIter, gPoints.nv / 2));
-    }
-    if (test == 27) {
-      gCubeHalfLength = max(gCubeHalfLength - 1, 0);
-    }
+    if (test == 14) debugIncCHIter = max(3, min(debugIncCHIter, gPoints.nv / 2));
+    if (test == 25) gCubeHalfLength = max(gCubeHalfLength - 1, 0);
   }
   if (key == 'i') {
-    if (test != 27) gPoints.addPt(gPick);  // append the new vertex Pick in P
-    if (test == 27) gCubeCenter.i = max(gCubeCenter.i - 1, gCubeHalfLength);
+    if (test != 25) gPoints.addPt(gPick);  // append the new vertex gPick in P
+    if (test == 25) gCubeCenter.i = max(gCubeCenter.i - 1, gCubeHalfLength);
   }
   if (key == 'j') {
-    if (test == 27) gCubeCenter.j = max(gCubeCenter.j - 1, gCubeHalfLength);
+    if (test == 25) gCubeCenter.j = max(gCubeCenter.j - 1, gCubeHalfLength);
   }
   if (key == 'k') {
-    if (test == 27) gCubeCenter.k = max(gCubeCenter.k - 1, gCubeHalfLength);
+    if (test == 25) gCubeCenter.k = max(gCubeCenter.k - 1, gCubeHalfLength);
   }
   if (key == 'w') {  // save data
     if (gPoints != null) gPoints.savePts("data/pts_unnamed");
@@ -54,24 +50,24 @@ void keyPressed() {
     debug3RT = !debug3RT;
     debug2RT = !debug2RT;
     debugST = !debugST;
-    if (test == 13 || test == 20) {
+    if (test == 14) {
       debugIncCH = !debugIncCH;
       debugApolloniusDiagram = !debugApolloniusDiagram;
     }
   }
   if (key == '1') {
-    numFaces = 1;
+    gNumFaces = 1;
     numSteps3RT = 1;
     showDiskSet = !showDiskSet;
   }
   if (key == '2') {
     show2RT = !show2RT;
     fix3RT = show2RT;
-    if (test == 19) showFirstCone = !showFirstCone;
+    if (test == 11) showFirstCone = !showFirstCone;
   }
   if (key == '3') {
     show3RT = !show3RT;
-    if (test == 19) showSecondCone = !showSecondCone;
+    if (test == 11) showSecondCone = !showSecondCone;
   }
   if (key == '4') {
     showCorridorFaces = !showCorridorFaces;
@@ -82,59 +78,57 @@ void keyPressed() {
   if (key == '6') {
     showPolygons = !showPolygons;
   }
-
   if (key == '7') {
     simpleCorridor = !simpleCorridor;
   }
-
   if (key == '8') {
-    if (test >= 11 && test <= 20) showArcSet = !showArcSet;
+    showArcSet = !showArcSet;
   }
   if (key == '9') {
-    if ((test >= 11 && test <= 15) || test == 18) showAuxPlane = !showAuxPlane;
-    if (test >= 23 && test <= 25) showFocus = !showFocus;
+    if (test == 26 || test == 27) showAuxPlane = !showAuxPlane;
+    if (test == 24 || test == 25) showFocus = !showFocus;
   }
 
   /* Keys: increase/decrease operators. */
   if (key == '+') {
-    if (test == 13) {
+    if (test == 14) {
       debugIncCHIter = min(debugIncCHIter + 1, int(gPoints.nv / 2) - 1);
     }
-    if (test == 15 || test == 16 || test == 21 || test == 23)  {
+    if (test >= 14 && test <= 25)  {
       gNumPointsPerRing++;
     }
-    if (gNumTriangles >= 0) {
-      numFaces = gNumTriangles + 1;
+    if (test == 1 && gNumTriangles >= 0) {
+      gNumFaces = gNumTriangles + 1;
     }
   }
   if (key == '-') {
-    if (test == 13) {
+    if (test == 14) {
       debugIncCHIter = max(debugIncCHIter - 1, 3);
     }
-    if (test == 15 || test == 16 || test == 21 || test == 23) {
+    if (test >= 15 && test <= 25) {
       gNumPointsPerRing = max(gNumPointsPerRing - 1, 3);
     }
-    if (numFaces > 0) {
-      numFaces--;
+    if (test == 1 && gNumFaces > 0) {
+      gNumFaces--;
     }
   }
   if (key == '/') {
-    if (test == 13 || test == 14) idxIncCor++;
-    if (test == 16) projectMethod = (projectMethod + 1) % numProjectMethod;
+    if (test == 16) idxIncCor++;
+    if (test == 20) projectMethod = (projectMethod + 1) % numProjectMethod;
   }
   if (key == '*') {
-    if (test == 13 || test == 14) idxIncCor = max(0, idxIncCor - 1);
-    if (test == 16) projectMethod = (projectMethod + numProjectMethod - 1) % numProjectMethod;
+    if (test == 16) idxIncCor = max(0, idxIncCor - 1);
+    if (test == 20) projectMethod = (projectMethod + numProjectMethod - 1) % numProjectMethod;
   }
   if (key == '[') {
-    if (test == 1 || test == 2) gAttenuation = min(1.0, gAttenuation + gAttenuationDelta);
-    if (test == 13) idxIncTri++;
-    if (test == 3 || test == 15 || test == 16) subdivisionTimes++;
+    if (test == 1 || test == 3) gAttenuation = min(1.0, gAttenuation + gAttenuationDelta);
+    if (test == 14) idxIncTri++;
+    if (test == 4 || test == 19 || test == 20) subdivisionTimes++;
   }
   if (key == ']') {
-    if (test == 1 || test == 2) gAttenuation = max(gAttenuationMin, gAttenuation - gAttenuationDelta);
-    if (test == 13) idxIncTri = max(0, idxIncTri - 1);
-    if (test == 3 || test == 15 || test == 16) subdivisionTimes = max(0, subdivisionTimes - 1);
+    if (test == 1 || test == 3) gAttenuation = max(gAttenuationMin, gAttenuation - gAttenuationDelta);
+    if (test == 14) idxIncTri = max(0, idxIncTri - 1);
+    if (test == 4 || test == 19 || test == 20) subdivisionTimes = max(0, subdivisionTimes - 1);
   }
 
   /* Keys: lowercase letters. */
@@ -145,44 +139,44 @@ void keyPressed() {
     generateCH = !generateCH;
   }
   if (key == 'r') {
-    if (test == 13) debugIncCHCor = !debugIncCHCor;
-    regenerateCH = !regenerateCH;
-    if (regenerateCH == false) {
-      gRingSet.generatePoints(gAttenuationMin);  // shrink all rings
-      if (test == 1) {
-        debugCH = false;
-        gRingSet.generateTriangleMesh(0);  // generate a triangle mesh and store it
-      }
-      if (test == 2) {
-        debug3RT = false;
-        debug2RT = false;
-        gRingSet.generateTriangleMesh(1);  // generate a triangle mesh and store it
+    if (test == 14) debugIncCHCor = !debugIncCHCor;
+    if (test == 1 || test == 3) {
+      regenerateCH = !regenerateCH;
+      if (regenerateCH == false) {
+        gRingSet.generatePoints(gAttenuationMin);  // shrink all rings
+        if (test == 1) {
+          debugCH = false;
+          gRingSet.generateTriangleMesh(0);  // generate a triangle mesh and store it
+        }
+        if (test == 3) {
+          debug3RT = false;
+          debug2RT = false;
+          gRingSet.generateTriangleMesh(1);  // generate a triangle mesh and store it
+        }
       }
     }
-    if (test == 20) {
-      showCoarseCorridor = !showCoarseCorridor;
-    }
+    if (test == 17) showCoarseCorridor = !showCoarseCorridor;
   }
   if (key == 'n') {
-    if (test == 13) debugIncCHNewView = !debugIncCHNewView;
+    if (test == 14) debugIncCHNewView = !debugIncCHNewView;
   }
   if (key == 'g') {
     showRingSet = !showRingSet;
     showPointSet = !showPointSet;
     showCircleSet = !showCircleSet;
-    if (test == 23) showLattice = !showLattice;
+    if (test == 24) showLattice = !showLattice;
   }
   if (key == 'b') {
     showBeams = !showBeams;
   }
   if (key == 'f') {
-    if (test == 10) fix3RT = !fix3RT;
+    fix3RT = !fix3RT;
   }
   if (key == 'm') {
     if (methodTM == 0) methodTM = 1;
     else {
       methodTM = 0;
-      if (test == 2) {
+      if (test == 3) {
         gRingSet.threeRingTriangles = null;
         gRingSet.twoRingTriangles = null;
       }
@@ -209,12 +203,12 @@ void keyPressed() {
     showHub = !showHub;
   }
   if (key == 'P') {
-    if (test == 3) projectOnSphere = !projectOnSphere;
-    if (test == 13 || test == 26) showStereoProjection = !showStereoProjection;
-    if (test == 16) projectOnHub = !projectOnHub;
+    if (test == 2) projectOnSphere = !projectOnSphere;
+    if (test == 14 || test == 28) showStereoProjection = !showStereoProjection;
+    if (test == 20) projectOnHub = !projectOnHub;
   }
   if (key == 'L') {
-    if (test == 16) showLiftedCones = !showLiftedCones;
+    if (test == 20) showLiftedCones = !showLiftedCones;
   }
   if (key == 'G') {
     showGapMesh = !showGapMesh;
@@ -223,22 +217,28 @@ void keyPressed() {
     showTriangleStrokes = !showTriangleStrokes;
     showCorridorStrokes = !showCorridorStrokes;
     if (test == 204) showSpheres = !showSpheres;
-    if (test == 27) showSteadyLattice = !showSteadyLattice;
+    if (test == 25) showSteadyLattice = !showSteadyLattice;
   }
   if (key == 'K') {
-    if (test == 19) showCones = !showCones;
+    showCones = !showCones;
   }
   if (key == 'I') {
-    if (test == 27) gCubeCenter.i = min(gCubeCenter.i + 1, gSteadyLattice.repetitionCountU() - 1 - gCubeHalfLength);
+    if (test == 25) gCubeCenter.i = min(gCubeCenter.i + 1, gSteadyLattice.repetitionCountU() - 1 - gCubeHalfLength);
   }
   if (key == 'J') {
-    if (test == 27) gCubeCenter.j = min(gCubeCenter.j + 1, gSteadyLattice.repetitionCountV() - 1 - gCubeHalfLength);
+    if (test == 25) gCubeCenter.j = min(gCubeCenter.j + 1, gSteadyLattice.repetitionCountV() - 1 - gCubeHalfLength);
   }
   if (key == 'K') {
-    if (test == 27) gCubeCenter.k = min(gCubeCenter.k + 1, gSteadyLattice.repetitionCountW() - 1 - gCubeHalfLength);
+    if (test == 25) gCubeCenter.k = min(gCubeCenter.k + 1, gSteadyLattice.repetitionCountW() - 1 - gCubeHalfLength);
   }
   if (key == 'D') {
-    if (test == 27) gCubeHalfLength = min(gCubeHalfLength + 1, int((gSteadyLattice.minRepetitionCount() - 1) / 2));
+    if (test == 25) gCubeHalfLength = min(gCubeHalfLength + 1, int((gSteadyLattice.minRepetitionCount() - 1) / 2));
+  }
+  if (key == 'e') {
+    showEllipticCone1 = !showEllipticCone1;
+  }
+  if (key == 'E') {
+    showEllipticCone2 = !showEllipticCone2;
   }
 
   change = true;
@@ -287,19 +287,19 @@ void mouseDragged() {
 }
 
 void displayDebugText() {
-  if (test == 3) {
+  if (test == 2) {
     scribeHeader("time for subdivision = " + timeSD + "ms", 6);
   }
 
-  if (test == 13 || test == 17) {
+  if (test == 14) {
     scribeHeader("valid ring set? " + (validRS ? "yes" : "no"), 3);
   }
 
-  if (test == 15 || test == 16) {
+  if (test == 19 || test == 20) {
     scribeHeader("subdivision times = " + subdivisionTimes, 6);
   }
 
-  if (test == 16) {
+  if (test == 20) {
     switch (projectMethod) {
       case 1:
         scribeHeader("Project method: shooting lines", 7);
@@ -312,7 +312,7 @@ void displayDebugText() {
     }
   }
 
-  if (test == 23) {
+  if (test == 24) {
     scribeHeader("number of balls = " + gLattice.nBalls, 2);
     scribeHeader("number of beams = " + gLattice.nBeams, 3);
     scribeHeader("corridor resolution = " + gNumPointsPerRing, 4);

@@ -9,33 +9,41 @@ import processing.pdf.*;
 /*
  * 0: one convex-hull test
  * 1: one convex-hull-with-holes test
- * 2: one ring-set-triangulation test (2 methods)
- * 3: one subdivision test
- * 4: one exact-convex-hull-of-circles test (non-interactive)
- * 5: one pivot-plane-around-line-until-hit-circle test
+ *
+ * 2: one three-ring-triangle test
+ * 3: one ring-set-triangulation test (2 methods)
+ *
+ * 4: one subdivision test
+ *
+ * 5: one supporting-plane-of-line-circle test
  * 6: one exact-convex-hull-of-edge-circle test
  * 7: one exact-convex-hull-of-two-circles test
- * 8: one supporting-plane-of-three-circles-iter test (iterative method with 3 different initializations)
- * 9: one exact-convex-hull-of-three-circles test
- * 10: one three-ring-triangle test
- * 11: one construct-elliptic-cone test
- * 12: one interactive-naive-exact-convex-hull test
- * 13: one interactive-incremental-exact-convex-hull test
- * 14: one corridor test
- * 15: one mesh-from-exact-convex-hull test
- * 16: one interactive-hub test
- * 17: one supporting-plane-of-three-circles-special-case test
- * 18: one geodesic-distance test
- * 19: one supporting-plane-of-three-circles test
- * 20: one elliptic-cone test
+ * 8: one interactive-convex-hull-two-circles test
+ * 9: one supporting-plane-of-three-circles-iter test (iterative methods with 3 different initializations)
+ * 10: one exact-convex-hull-of-three-circles-iter test
+ * 11: one supporting-plane-of-three-circles test
+ * 12: one supporting-plane-of-three-circles-special-case test
+ *
+ * 13: one interactive-naive-exact-convex-hull test
+ * 14: one interactive-incremental-exact-convex-hull test
+ * 15: one static-exact-convex-hull-of-circles test
+ * 16: one corridor test
+ * 17: one construct-elliptic-cone test
+ *
+ * 18: one convex-gap test
+ *
+ * 19: one mesh-from-exact-convex-hull test
+ * 20: one interactive-hub test
  * 21: one interactive-hub-to-mesh test
- * 22: one hub-to-mesh test
- * 23: one lattice-to-mesh test
- * 24: one convex-gap test
- * 25: one hub test (non-interactive)
- * 26: one stereographic-projection test
- * 27: one steady-lattice test
- * 28: one interactive-convex-hull-two-circles test
+ * 22: one static-augmented-hub-to-mesh test
+ * 23: one static-hub test
+ *
+ * 24: one lattice test
+ * 25: one steady-lattice test
+ *
+ * 26: one geodesic-distance test
+ * 27: one twp-elliptic-cones test
+ * 28: one stereographic-projection test
  * ...
  * 100: many convex-hull tests
  * 101: many ring-set-triangulation tests
@@ -50,7 +58,7 @@ import processing.pdf.*;
  * 203: one intersection-between-two-planes test
  * 204: one intersection-between-two-spheres test
  */
-int test = 1;
+int test = 27;
 
 boolean showSphere = true;
 boolean showCenterOfSphere = false;
@@ -103,7 +111,7 @@ void setup() {
       debugCH = false;
       gRingSet.generateTriangleMesh(0);  // generate a triangle mesh and store it
     }
-    if (test == 2) {
+    if (test == 3) {
       debug3RT = false;
       debug2RT = false;
       gRingSet.generateTriangleMesh(1);  // generate a triangle mesh and store it
@@ -143,23 +151,30 @@ void draw() {
   }
 
   switch (test) {
+    /* Convex hull of points. */
     case 0:
-      convexHullTest();
+      convexHullTest();  // convex hull of points on a sphere
       break;
     case 1:
-      convexHullWithHolesTest();
+      convexHullWithHolesTest();  // convex hull of polygons which have vertices on a sphere
       break;
+
+    /* Meshing of a ring set. */
     case 2:
-      ringSetTriangulationTest();
+      threeRingTriangleTest();
       break;
     case 3:
+      ringSetTriangulationTest();
+      break;
+
+    /* Subdivision. */
+    case 4:
       subdivisionTest();
       break;
-    case 4:
-      incCHTest();
-      break;
+
+    /* Basic geometric tools for constructing the convex hull of circles. */
     case 5:
-      pivotPlaneAroundLineHitCircleTest();
+      supPlaneLineCircleTest();
       break;
     case 6:
       exactCHEdgeCircleTest();
@@ -168,69 +183,80 @@ void draw() {
       exactCHTwoCirclesTest();
       break;
     case 8:
-      supPlaneThreeCirclesIterTest();
+      interactiveExactCHTwoCirclesTest();
       break;
     case 9:
-      exactCHThreeCirclesTest();
+      supPlaneThreeCirclesIterTest();
       break;
     case 10:
-      threeRingTriangleTest();
+      exactCHThreeCirclesIterTest();
       break;
     case 11:
-      constructEllipticConeTest();
-      break;
-    case 12:
-      interactiveNaiveCHTest();
-      break;
-    case 13:
-      interactiveIncCHTest();
-      break;
-    case 14:
-      corridorTest();
-      break;
-    case 15:
-      meshFromExactCHTest();
-      break;
-    case 16:
-      interactiveHubTest();
-      break;
-    case 17:
-      supPlaneThreeCirclesSpecialTest();
-      break;
-    case 18:
-      geodesicDistanceTest();
-      break;
-    case 19:
       supPlaneThreeCirclesTest();
       break;
-    case 20:
+    case 12:
+      supPlaneThreeCirclesSpecialTest();
+      break;
+
+    /* Convex hull of circles on a sphere. */
+    case 13:
+      interactiveNaiveCHTest();
+      break;
+    case 14:
+      interactiveIncCHTest();
+      break;
+    case 15:
+      staticIncCHTest();
+      break;
+    case 16:
+      corridorTest();
+      break;
+    case 17:
       ellipticConeTest();
+      break;
+
+    /* Convex hull of two convex poly-loops. */
+    case 18:
+      convexGapTest();
+      break;
+
+    /* Hub. */
+    case 19:
+      meshFromExactCHTest();
+      break;
+    case 20:
+      interactiveHubTest();
       break;
     case 21:
       interactiveHubToMeshTest();
       break;
     case 22:
-      hubToMeshTest();
+      staticAugHubToMeshTest();
       break;
     case 23:
-      latticeTest();
-      break;
-    case 24:
-      convexGapTest();
-      break;
-    case 25:
-      hubTest();
-      break;
-    case 26:
-      stereoProjectionTest();
-      break;
-    case 27:
-      steadyLatticeTest();
-      break;
-    case 28:
-      interactiveExactCHTwoCirclesTest();
+      staticHubTest();
       break;
 
+    /* Lattice. */
+    case 24:
+      latticeTest();
+      break;
+    case 25:
+      steadyLatticeTest();
+      break;
+
+    /* Misc. */
+    case 26:
+      geodesicDistanceTest();
+      break;
+    case 27:
+      twoEllipticConesTest();
+      break;
+    case 28:
+      stereoProjectionTest();
+      break;
+
+    /* Multiple tests. */
     case 100:  // many convex-hull tests
       convexHullTests(numTests, numPointsPerTest);
       break;
@@ -250,6 +276,7 @@ void draw() {
       incrementalConvexHullTests();
       break;
 
+    /* Basic tests. */
     case 200:
       circlePlaneIntersectionTest();
       break;

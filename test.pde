@@ -436,7 +436,7 @@ void subdivisionTest() {
   }
 }
 
-void pivotPlaneAroundLineHitCircleTest() {
+void supPlaneLineCircleTest() {
   assert gRingSet.nRings >= 3;
   gRingSet.generatePoints(gAttenuation);
   assert gRingSet.points != null && gRingSet.centers != null && gRingSet.normals != null && gRingSet.radii != null;
@@ -568,7 +568,7 @@ void supPlaneThreeCirclesIterTest() {
   if (showRingSet) gRingSet.show();
 }
 
-void exactCHThreeCirclesTest() {
+void exactCHThreeCirclesIterTest() {
   assert gRingSet.nRings >= 3;
   gRingSet.generatePoints(gAttenuation);
   assert gRingSet.points != null && gRingSet.centers != null && gRingSet.normals != null &&
@@ -841,6 +841,7 @@ void interactiveIncCHTest() {
   }
 }
 
+/* Pick a specific corridor and analyse its property. */
 void corridorTest() {
   if (gPoints.nv < 6) {
     println("Should use at least 6 points.");
@@ -983,17 +984,17 @@ void interactiveHubTest() {
   gTriangleMesh = gRingSet.generateConvexTriMesh();
 
   /* Generate gap mesh. */
-  // gHub.initGaps(gRingSet.borders);
-  // gGapMesh = gHub.generateGapMesh();
-  // if (showGapMesh) {
-  //   gGapMesh.show(navy, showTriangleStrokes);
-  // }
-  // gTriangleMesh.augment(gGapMesh);  // merge convex hull mesh and gap mesh
+  gHub.initGaps(gRingSet.borders);
+  gGapMesh = gHub.generateGapMesh();
+  if (showGapMesh) {
+    gGapMesh.show(navy, showTriangleStrokes);
+  }
+  gTriangleMesh.augment(gGapMesh);  // merge convex hull mesh and gap mesh
 
-  // gTriangleMesh.subdivide(subdivisionTimes);
-  // if (projectOnHub) {
-  //   gTriangleMesh.projectOnHub(gHub, projectMethod);
-  // }
+  gTriangleMesh.subdivide(subdivisionTimes);
+  if (projectOnHub) {
+    gTriangleMesh.projectOnHub(gHub, projectMethod);
+  }
 
   if (showTriMesh) {
     gTriangleMesh.show(purple, showTriangleStrokes);
@@ -1126,7 +1127,7 @@ void supPlaneThreeCirclesTest() {
 
 /*
  * Given two circles, tangent to each other, on a sphere, test whether the two
- * circle centers, the sphere center, and the point of tangency are coplanar.
+ * circle centers (on sphere), the sphere center, and the point of tangency are coplanar.
  */
 void geodesicDistanceTest() {
   if (gPoints.nv < 4) return;
@@ -1156,8 +1157,8 @@ void geodesicDistanceTest() {
 
   hint(DISABLE_DEPTH_TEST);
   pen(cyan, 3);
-  show(gSphereCenter, points[0]);
-  show(gSphereCenter, points[2]);
+  showSegment(gSphereCenter, points[0]);
+  showSegment(gSphereCenter, points[2]);
   strokeWeight(3);
   showCircle(gSphereCenter, n1, gSphereRadius);
   strokeWeight(1);
@@ -1254,7 +1255,7 @@ void interactiveHubToMeshTest() {
   }
 }
 
-void constructEllipticConeTest() {
+void twoEllipticConesTest() {
   if (gPoints.nv < 4) {
     println("Should use at least 4 points.");
     return;
@@ -1262,25 +1263,27 @@ void constructEllipticConeTest() {
 
   gRingSet = new RingSet(gSphereCenter, gSphereRadius, gPoints.G, 4);
 
-  gRingSet.showEllipticCone(0, 1);
+  if (showEllipticCone1) gRingSet.showEllipticCone(0, 1, 0);
+  if (showEllipticCone2) gRingSet.showEllipticCone(0, 1, 1);
 
+  if (showDiskSet) {
+    fill(red, 200);
+    gRingSet.showDisks(2);
+  }
   if (showCircleSet) gRingSet.showCircles(2);
-  if (showDiskSet) gRingSet.showDisks(2);
   if (showAuxPlane) {
     fill(orange, 180);
     showPlane(gSphereCenter, gPoints.G[0], gPoints.G[2], gSphereRadius);
   }
-
 }
 
 
 /*
  * Read a hub from an augmented file and convert this hub to a mesh.
  */
-void hubToMeshTest() {
+void staticAugHubToMeshTest() {
   gHub = new Hub();
-  // gHub.loadAugFile("data/hub_aug_unnamed");
-  gHub.loadAugFile("data/outrings.cir");
+  gHub.loadAugFile("data/hub_aug_unnamed");
   gHub.setGapDistance(gGapWidth);
   gHub.setIsHalved(true);
   gTriangleMesh = gHub.generateTriMesh();
@@ -1359,7 +1362,7 @@ void convexGapTest() {
   gTriangleMesh.show(cyan, true);
 }
 
-void incCHTest() {
+void staticIncCHTest() {
   assert gRingSet != null;
 
   gFocus = gRingSet.sphereCenter;
@@ -1414,7 +1417,7 @@ void incCHTest() {
   gRingSet.showSphere();
 }
 
-void hubTest() {
+void staticHubTest() {
   assert gHub != null && gHub.nNeighbors > 0;
 
   gFocus = gHub.ball.c;

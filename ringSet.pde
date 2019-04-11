@@ -29,6 +29,8 @@ boolean showCircleSet = false;
 boolean showDiskSet = false;
 boolean showCones = false;
 boolean showPolygons = false;
+boolean showEllipticCone1 = false;
+boolean showEllipticCone2 = false;
 
 boolean debugIncCH = false;
 int debugIncCHIter = 3;
@@ -391,7 +393,7 @@ class RingSet {
 
       generateSamples(delta);
       // if (showApolloniusDiagram) generatePointsAD();
-      generatePointsAD();
+      // generatePointsAD();
     }
 
     /*
@@ -3223,7 +3225,7 @@ class RingSet {
   /*
    * Show the elliptic cone defined by circle c0 and circle c1.
    */
-  void showEllipticCone(int c0, int c1) {
+  void showEllipticCone(int c0, int c1, int option) {
     pt pc0 = centers[c0];
     pt pc1 = centers[c1];
     float r0 = radii[c0];
@@ -3241,9 +3243,28 @@ class RingSet {
     pt a2 = P(pc1, r1, v1);
     pt b2 = P(pc1, -r1, v1);
 
-    pt f = intersectionTwoLines(a1, b2, b1, a2);
+    pt f = new pt();
+    if (option == 0) f = intersectionTwoLines(a1, b2, b1, a2);  // apex choice 1
+    else f = intersectionTwoLines(a1, a2, b1, b2);  // apex choice 2
     assert f != null;
-    vec v = U(A(U(a1, b2), U(b1, a2)));
+
+    boolean intersect = intersectionTwoSegments(a1, b1, a2, b2) != null;
+    vec v = new vec();
+
+    /* The two axes are the same when the two circles are disjoint. */
+    if (option == 0) {
+      vec u1 = U(a1, b2), u2 = U(b1, a2);
+      if (!intersect) v = U(A(u1, u2));
+      else v = U(A(u1, u2.rev()));
+    } else {
+      vec u1 = U(a1, a2), u2 = U(b1, b2);
+      if (!intersect) v = U(A(u1, u2));
+      else v = U(A(u1, u2.rev()));
+    }
+
+    {  // debug
+      // println("axis =", v);
+    }
 
     {
       stroke(red);
