@@ -328,7 +328,7 @@ void showTriangles(ArrayList<Triangle> triangles, pt[] points) {
  */
 void showTriangleNormal(pt a, pt b, pt c, float d, float r) {
   vec n = normalOfTriangle(a, b, c);
-  pt m = P(a, b, c);
+  pt m = P(a, b, c);  // centroid, not center of circumcircle
   arrow(m, V(d, n), r);
 }
 

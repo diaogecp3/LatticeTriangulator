@@ -7,9 +7,10 @@
 
 import java.util.List;
 
-
+boolean debugLattice = false;
 boolean showLattice = true;
 boolean showSteadyLattice = false;
+
 
 /*
  * General lattice, which is basiclly a graph with each vertex being a ball.
@@ -19,6 +20,17 @@ class Lattice {
   int nBeams;
   Ball[] balls;
   int[][] beams;  // each beam is a pair of indices
+
+  class DebugGapInfo {
+    ArrayList<Integer> gapStarts = new ArrayList<Integer>();
+    ArrayList<Integer> gapSizes = new ArrayList<Integer>();
+    DebugGapInfo() {}
+    void reset() {
+      gapStarts.clear();
+      gapSizes.clear();
+    }
+  }
+  DebugGapInfo dGapInfo = new DebugGapInfo();
 
   Lattice() {}
 
@@ -77,10 +89,12 @@ class Lattice {
     queue.add(0);
     int k = 0;
     boolean[] visited = new boolean[nBalls];  // all false
+    if (debugLattice) dGapInfo.reset();
     while (queue.size() > 0) {
       // if (k == 4) break;
 
       int ballID = queue.poll();
+      // println("ballID =", ballID);
       if (visited[ballID]) continue;
       visited[ballID] = true;
 
@@ -142,7 +156,10 @@ class Lattice {
             hub.save("data/hub_unnamed");
             return triMesh;
           }
-
+          if (debugLattice) {
+            dGapInfo.gapStarts.add(triMesh.nt);
+            dGapInfo.gapSizes.add(tris.size());
+          }
           if (showGapMesh) triMesh.augmentWithoutShift(tris);
           beamToLoop.remove(uv);
         } else {  // if the i-th beam is not initialized, initialize it
@@ -193,6 +210,35 @@ class Lattice {
   }
 }
 
+void showHubGapMesh(TriangleMesh mesh, ArrayList<Integer> gapStarts, ArrayList<Integer> gapSizes, color cHub, color cGap, boolean useStroke) {
+  ArrayList<pt> positions = mesh.positions;
+  ArrayList<Triangle> triangles = mesh.triangles;
+  int i = 0;
+  int j = 0;
+  if (useStroke) stroke(0);
+  beginShape(TRIANGLES);
+  while (i < mesh.nt) {
+    if (j < gapStarts.size() && i == gapStarts.get(j)) {
+      fill(cGap);
+      int end = gapStarts.get(j) + gapSizes.get(j);
+      while (i < end) {
+        vertex(positions.get(triangles.get(i).a));
+        vertex(positions.get(triangles.get(i).b));
+        vertex(positions.get(triangles.get(i).c));
+        i++;
+      }
+      j++;
+    } else {
+      fill(cHub);
+      vertex(positions.get(triangles.get(i).a));
+      vertex(positions.get(triangles.get(i).b));
+      vertex(positions.get(triangles.get(i).c));
+      i++;
+    }
+  }
+  endShape();
+  if (useStroke) noStroke();
+}
 
 /*
  * Steady lattice, which is defined by a base ball cluster, a set of beams, and similarities.
@@ -395,8 +441,8 @@ class SteadyLattice {
     return ball;
   }
 
-  public vec unitJointCenterCentroid() {
-    vec c = V(0,0,0);
+  public pt unitJointCenterCentroid() {
+    pt c = P(0,0,0);
     for (Ball joint : unitJoints)
       c.add(joint.c);
     return c.div(unitJoints.size());

@@ -54,6 +54,7 @@ void keyPressed() {
       debugIncCH = !debugIncCH;
       debugApolloniusDiagram = !debugApolloniusDiagram;
     }
+    if (test == 24) debugLattice = !debugLattice;
   }
   if (key == '1') {
     gNumFaces = 1;

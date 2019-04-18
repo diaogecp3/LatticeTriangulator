@@ -3,7 +3,7 @@
  ******************************************************************************/
 
 
-int numTests = 10;
+int gNumTests = 100000;
 int numBackup3RT = 0;
 int numPointsPerTest = 64;
 boolean saveFailures = false;
@@ -15,6 +15,7 @@ boolean showCoarseCorridor = false;
 boolean showSpheres = false;
 
 boolean showStereoProjection = false;
+boolean showUpArrow = true;
 
 class DebugInfoConvexity {
   pt[] points;
@@ -92,7 +93,11 @@ boolean passQualityTest(ArrayList<Triangle> triangles, pt[] G, int nv) {
 }
 
 
-/* Multiple-tests functions below. */
+
+/******************************************************************************
+ * Multiple-tests functions below.
+ ******************************************************************************/
+
 
 
 /*
@@ -128,7 +133,7 @@ void ringSetTriangulationTests(int n, int nr, int np, float attenuation) {
   int method = 0;
   for (int i = 0; i < n; ++i) {
     RingSet ringSet = new RingSet(gSphereCenter, gSphereRadius, nr, np);
-    ringSet.init();
+    // ringSet.init();
     ringSet.generatePoints(attenuation);
     long st = System.nanoTime();
     ringSet.generateTriangleMesh(method);
@@ -160,7 +165,7 @@ void threeRingTriangleTests(int n, int np, float attenuation) {
   float[] times = new float[n];
   for (int i = 0; i < n; ++i) {
     RingSet ringSet = new RingSet(gSphereCenter, gSphereRadius, 3, np);
-    ringSet.init();
+    // ringSet.init();
     ringSet.generatePoints(attenuation);
     ringSet.refConvexHull = new TriangleMesh(ringSet.centers);
     ringSet.refConvexHull.addTriangle(new Triangle(0, 1, 2));
@@ -216,7 +221,7 @@ void supPlaneThreeCirclesTests(int n, float attenuation) {
   float[] times = new float[n];
   for (int i = 0; i < n; ++i) {
     RingSet ringSet = new RingSet(gSphereCenter, gSphereRadius, 3, 3);
-    ringSet.init();
+    // ringSet.init();
     ringSet.generatePoints(attenuation);
     long st = System.nanoTime();
     ringSet.oneSupPlaneThreeCircles(0, 1, 2);  // closed-form solution
@@ -234,8 +239,8 @@ void exactCHAllCirclesTests(int n, int nRings) {
   int m = 0;  // number of examples that don't satisfy F = 2V - 4
   for (int i = 0; i < n; ++i) {
     RingSet ringSet = new RingSet(gSphereCenter, gSphereRadius, nRings, 3);
-    ringSet.init();
-    ringSet.generatePoints(1.0);
+    // ringSet.init();
+    // ringSet.generatePoints(1.0);
     long st = System.nanoTime();
     ringSet.generateExTrisNaive();
     long ed = System.nanoTime();
@@ -267,8 +272,8 @@ void incrementalConvexHullTests(int n, int m) {
   for (int i = 0; i < m; ++i) {
     if (i % 10 == 0) println("i = ", i);
     RingSet ringSet = new RingSet(gSphereCenter, gSphereRadius * 10, n, 3);
-    ringSet.init();
-    ringSet.generatePoints(1.0);
+    // ringSet.init();
+    // ringSet.generatePoints(1.0);
     boolean[] success = new boolean[1];
     success[0] = true;
     long st = System.nanoTime();
@@ -303,10 +308,146 @@ void incrementalConvexHullTests() {
   }
 }
 
+private float errorPointOnCone(pt p, pt apex, vec axis, float alpha) {
+  vec ap = V(apex, p);
+  float z = dot(ap, axis);
+  float r = N(ap, axis).norm();
+  return abs(r - z * tan(alpha));
+}
+
+/*
+ * (u, a) defines a cone, and (v, b) defines another cone. u and v are unit
+ * vectors. a and b are half-angles of cones. a or b can be bigger than PI/2.
+ */
+private float errorConeTangentToCone(vec u, float a, vec v, float b) {
+  return abs(dot(u, v) - cos(a + b));
+}
 
 
+/*
+ * Compare the two approaches to find the supporting plane of three given circles.
+ * The first approach: directly works in 3D space, Ashish's method.
+ * The second approach: stereographic projection, 2D Apollonius problem, inverse
+ * of stereographic projection.
+ * n is the number of tests. In each test, a valid set of circles will be randomly
+ * generate and serves as input to the two approaches.
+ * Average running time and accuracy of each approach are reported.
+ */
+void compareSupPlaneApproachTests(int n, String filename) {
+  float avgTime0 = 0.0, avgTime1 = 0.0, diffAvgTime = 0.0;
+  float avgError0 = 0.0, avgError1 = 0.0, diffAvgError = 0.0;
+  String[] lines = new String[2 * n + 4];
+  int validCounts = n;
+  for (int i = 0; i < n; ++i) {
+    RingSet rs = new RingSet(gSphereCenter, gSphereRadius, 3);
+    int[] ringIDs = new int[] {0, 1, 2};
+    float[] alphas = new float[3];
+    alphas[0] = asinClamp(rs.radii[ringIDs[0]] / rs.sphereRadius);
+    alphas[1] = asinClamp(rs.radii[ringIDs[1]] / rs.sphereRadius);
+    alphas[2] = asinClamp(rs.radii[ringIDs[2]] / rs.sphereRadius);
+    vec[] normals = new vec[] {rs.normals[ringIDs[0]], rs.normals[ringIDs[1]],
+                               rs.normals[ringIDs[2]]};
 
-/* Single-test functions below. */
+    {
+      // println("alphas =", alphas[0], ", ", alphas[1], ", ", alphas[2]);
+      // println("normals =", normals[0], ", ", normals[1], ", ", normals[2]);
+    }
+
+    float time0 = 0.0, time1 = 0.0, timeDiff = 0.0;
+    float error0 = 0.0, error1 = 0.0, errorDiff = 0.0;
+    boolean valid0 = true, valid1 = true;
+    {
+      // compute time
+      long startTime = System.nanoTime();
+      pt[] ps = rs.twoSupPlanesThreeCircles(ringIDs[0], ringIDs[1], ringIDs[2], null, null, true);
+      long endTime = System.nanoTime();
+      time0 = (endTime - startTime) / 1000000.0;
+
+      if (ps == null) {
+        valid0 = false;
+      } else {  // compute error
+        for (int j = 0; j < 3; ++j) error0 += errorPointOnCone(ps[j], rs.sphereCenter, normals[j], alphas[j]);
+        Circle ap = circumcircleOfTriangle(ps[0], ps[1], ps[2]);
+        float alpha = asinClamp(ap.r / rs.sphereRadius);
+        if (dot(ap.n, V(rs.sphereCenter, ap.c)) < 0) alpha = PI - alpha;
+        for (int j = 0; j < 3; ++j) error0 += errorConeTangentToCone(ap.n, alpha, normals[j], alphas[j]);
+      }
+    }
+    {
+      long startTime = System.nanoTime();
+      int f = rs.getMaxCircleID();  // the ID of the infinity circle
+      pt northPole = rs.contacts[f];
+      StereoProjector sp = new StereoProjector(rs.sphereCenter, rs.sphereRadius, StereoType.CUSTOM_NORTH_POLE_SOUTH_PLANE);
+      sp.setNorthPole(northPole);
+      pt[] ps = rs.oneSupPlaneThreeCirclesStereoApollonius(ringIDs[0], ringIDs[1], ringIDs[2], sp, f);
+      long endTime = System.nanoTime();
+      time1 = (endTime - startTime) / 1000000.0;
+
+      if (ps == null) {
+        valid1 = false;
+      } else {  // compute error
+        for (int j = 0; j < 3; ++j) error1 += errorPointOnCone(ps[j], rs.sphereCenter, normals[j], alphas[j]);
+        Circle ap = circumcircleOfTriangle(ps[0], ps[1], ps[2]);
+        float alpha = asinClamp(ap.r / rs.sphereRadius);
+        if (dot(ap.n, V(rs.sphereCenter, ap.c)) < 0) alpha = PI - alpha;
+        for (int j = 0; j < 3; ++j) error1 += errorConeTangentToCone(ap.n, alpha, normals[j], alphas[j]);
+      }
+    }
+    {  // compare two errors
+      if (valid0 && valid1 && error1 > error0 * 100) {  // if the second approach produces very high error w.r.t. the first approach
+        rs.save("data/tmp/rs_high_error_" + str(i));
+      }
+    }
+    String timeLine, errorLine;
+    if (valid0 && valid1) {
+      timeDiff = time0 - time1;
+      timeLine = str(time0) + ", " + str(time1) + ", " + str(timeDiff);
+      errorDiff = error0 - error1;
+      errorLine = str(error0) + ", " + str(error1) + ", " + str(errorDiff);
+      // println("time line:", timeLine);
+      // println("error line:", errorLine);
+      avgTime0 += time0;
+      avgTime1 += time1;
+      avgError0 += error0;
+      avgError1 += error1;
+    } else {
+      if (valid0) {
+        timeLine = str(time0) + ", INVALID, INVALID";
+        errorLine = str(error0) + ", INVALID, INVALID";
+      } else if (valid1) {
+        timeLine = "INVALID, " + str(time1) + ", INVALID";
+        errorLine = "INVALID, " + str(error1) + ", INVALID";
+      } else {
+        timeLine = "INVALID, INVALID, INVALID";
+        errorLine = "INVALID, INVALID, INVALID";
+      }
+      validCounts -= 1;  // decrease valid counts
+    }
+    lines[2 * i] = timeLine;
+    lines[2 * i + 1] = errorLine;
+  }
+  avgTime0 /= validCounts;
+  avgTime1 /= validCounts;
+  avgError0 /= validCounts;
+  avgError1 /= validCounts;
+  diffAvgTime = avgTime0 - avgTime1;
+  diffAvgError = avgError0 - avgError1;
+  String timeStatLine = str(avgTime0) + ", " + str(avgTime1) + ", " + str(diffAvgTime);
+  println("avg time and diff:", timeStatLine);
+  String errorStatLine = str(avgError0) + ", " + str(avgError1) + ", " + str(diffAvgError);
+  println("avg error and diff:", errorStatLine);
+  lines[2 * n] = timeStatLine;
+  lines[2 * n + 1] = errorStatLine;
+  lines[2 * n + 2] = "valid counts: " + str(validCounts);
+  lines[2 * n + 3] = "total counts: " + str(n);
+  if (filename != null) saveStrings(filename + "_" + str(n), lines);
+}
+
+
+/******************************************************************************
+ * Single-test functions below.
+ ******************************************************************************/
+
 
 
 void convexHullTest() {
@@ -1263,8 +1404,8 @@ void twoEllipticConesTest() {
 
   gRingSet = new RingSet(gSphereCenter, gSphereRadius, gPoints.G, 4);
 
-  if (showEllipticCone1) gRingSet.showEllipticCone(0, 1, 0);
-  if (showEllipticCone2) gRingSet.showEllipticCone(0, 1, 1);
+  if (showEllipticCone1) gRingSet.showEllipticCone(0, 1, 0, red, color(green, 200));
+  if (showEllipticCone2) gRingSet.showEllipticCone(0, 1, 1, red, color(blue, 200));
 
   if (showDiskSet) {
     fill(red, 200);
@@ -1340,7 +1481,11 @@ void latticeTest() {
   long endTime = System.nanoTime();
   timeTM = (endTime - startTime) / 1000000.0;
 
-  if (showTriMesh) gTriangleMesh.show(cyan, true);
+  // if (showTriMesh) gTriangleMesh.show(cyan, true);
+  if (showTriMesh) {
+    showHubGapMesh(gTriangleMesh, gLattice.dGapInfo.gapStarts, gLattice.dGapInfo.gapSizes, magenta, navy, true);
+  }
+
 }
 
 void convexGapTest() {
@@ -1601,53 +1746,159 @@ void intersectionTwoSpheresTest() {
 
 
 void stereoProjectionTest() {
-  if (gPoints.nv < 4) return;
+  // if (gPoints.nv < 4) return;
+  // gRingSet = new RingSet(gSphereCenter, gSphereRadius, gPoints.G, gPoints.nv - gPoints.nv % 2);
 
-  gRingSet = new RingSet(gSphereCenter, gSphereRadius, gPoints.G, 4);
+  // if (showUpArrow) {
+  //   fill(green);
+  //   arrow(gRingSet.sphereCenter, V(0, 0, gRingSet.sphereRadius), 5);
+  // }
+
+  // compute cones of circles of the ring set
+  int[] ringIDs = new int[] {0, 1, 2};
+  float[] alphas = new float[3];
+  alphas[0] = asinClamp(gRingSet.radii[ringIDs[0]] / gRingSet.sphereRadius);
+  alphas[1] = asinClamp(gRingSet.radii[ringIDs[1]] / gRingSet.sphereRadius);
+  alphas[2] = asinClamp(gRingSet.radii[ringIDs[2]] / gRingSet.sphereRadius);
+  vec[] normals = new vec[] {gRingSet.normals[ringIDs[0]],
+                             gRingSet.normals[ringIDs[1]],
+                             gRingSet.normals[ringIDs[2]]};
+
+  println("alphas =", alphas[0], ", ", alphas[1], ", ", alphas[2]);
+  println("normals =", normals[0], normals[1], normals[2]);
 
   if (showStereoProjection) {
-    // pt northPoleWorld = P(gRingSet.sphereCenter, gRingSet.sphereRadius, V(0, 0, 1));
-    // StereoProjector sp = new StereoProjector(gRingSet.sphereCenter, gRingSet.sphereRadius, StereoType.NORTH_POLE_SOUTH_PLANE);
-    pt northPole = gRingSet.contacts[0];
+    int f = gRingSet.getMaxCircleID();
+    pt northPole = gRingSet.contacts[f];
     StereoProjector sp = new StereoProjector(gRingSet.sphereCenter, gRingSet.sphereRadius, StereoType.CUSTOM_NORTH_POLE_SOUTH_PLANE);
     if (sp.sType == StereoType.CUSTOM_NORTH_POLE_SOUTH_PLANE) {
       sp.setNorthPole(northPole);
     }
 
-    pt pNorthPole = sp.project(northPole);  // should be south pole
-    Circle cir0 = gRingSet.getCircle(0);
-    Circle cir1 = gRingSet.getCircle(1);
+    Circle cir0 = gRingSet.getCircle(ringIDs[0]);
+    Circle cir1 = gRingSet.getCircle(ringIDs[1]);
+    Circle cir2 = gRingSet.getCircle(ringIDs[2]);
     Circle pCir0 = sp.project(cir0);
     Circle pCir1 = sp.project(cir1);
+    Circle pCir2 = sp.project(cir2);
 
-    strokeWeight(3);
-    stroke(red);
-    cir0.show();
-    pCir0.show();
-    stroke(blue);
-    cir1.show();
-    pCir1.show();
-    noStroke();
-    strokeWeight(1);
+    {
+      // check projection
+      // strokeWeight(3);
+      // stroke(red);
+      // cir0.show();
+      // pCir0.show();
+      // stroke(blue);
+      // cir1.show();
+      // pCir1.show();
+      // noStroke();
+      // strokeWeight(1);
+
+      // check inversion of a point
+      // pt c1 = gRingSet.contacts[1];  // the center of the second spherical cap
+      // pt pc1 = sp.project(c1);
+      // pt d1 = sp.inverse(pc1);
+      // if (!samePt(c1, d1)) {
+      //   fill(cyan);
+      //   showBall(c1, 3);
+      //   fill(magenta);
+      //   showBall(d1, 3);
+      //   println("c1 =", c1, "d1 =", d1);
+      //   println("diff of c1 and d1 =", V(c1, d1));  // diff is big
+      // }
+
+      // check inversion of a circle
+      // Circle invCir1 = sp.inverse(pCir1);
+      // strokeWeight(3);
+      // stroke(pink);
+      // invCir1.show();
+      // noStroke();
+      // strokeWeight(1);
+      // println("cir1.c =", cir1.c, "invCir1.c =", invCir1.c);
+    }
+
+    Circle2 qCir0 = sp.to2D(pCir0);
+    Circle2 qCir1 = sp.to2D(pCir1);
+    Circle2 qCir2 = sp.to2D(pCir2);
+    // Circle2[] qCirx = constructApolloniuCircles(qCir0, qCir1, qCir2, -1, 1, 1);
+    // Circle pCirx0 = sp.to3D(qCirx[0]);
+    // Circle cirx0 = sp.inverse(qCirx[0]);
+    // Circle pCirx1 = sp.to3D(qCirx[1]);
+    // Circle cirx1 = sp.inverse(qCirx[1]);
+
+    {  // show circles
+      strokeWeight(3);
+      stroke(red);
+      cir0.show();
+      pCir0.show();
+      stroke(green);
+      cir1.show();
+      pCir1.show();
+      stroke(snow);
+      cir2.show();
+      pCir2.show();
+
+      // stroke(blue);
+      // cirx0.show();
+      // pCirx0.show();
+      // cirx1.show();
+      // pCirx1.show();
+      noStroke();
+      strokeWeight(1);
+    }
+
+    pt[] ps = gRingSet.oneSupPlaneThreeCirclesStereoApollonius(ringIDs[0], ringIDs[1], ringIDs[2], sp, f);
+
+    println("ps =", ps[0], ps[1], ps[2]);
+
+    {  // show points of tangency
+      fill(lime);
+      showBall(ps[0], 3);
+      showBall(ps[1], 3);
+      showBall(ps[2], 3);
+    }
+
+    Circle cirx = circumcircleOfTriangle(ps[0], ps[1], ps[2]);
+    {
+      stroke(blue);
+      strokeWeight(3);
+      cirx.show();
+      strokeWeight(1);
+      noStroke();
+      fill(navy);
+      showTriangle(ps[0], ps[1], ps[2]);
+      fill(cyan);
+      showTriangleNormal(ps[0], ps[1], ps[2], 50, 1);
+      // fill(magenta);
+      // showBall(cirx.c, 5);
+    }
+
+    {  // compute error
+      float errorOnCone = 0, errorTangency = 0;
+      for (int j = 0; j < 3; ++j) errorOnCone += errorPointOnCone(ps[j], gRingSet.sphereCenter, normals[j], alphas[j]);
+      println("error on cone: ", errorOnCone);
+      float alpha = asinClamp(cirx.r / gRingSet.sphereRadius);
+      if (dot(cirx.n, V(gRingSet.sphereCenter, cirx.c)) < 0) alpha = PI - alpha;
+      for (int j = 0; j < 3; ++j) errorTangency += errorConeTangentToCone(cirx.n, alpha, normals[j], alphas[j]);
+      println("error tangency =", errorTangency);
+    }
 
     fill(orange);
-    // pt p = P(gRingSet.sphereCenter, gRingSet.sphereRadius, V(0, 0, -1));
-    // showPlane(p, V(0, 0, 1), 10 * gRingSet.sphereRadius);
     vec southPlaneNormal = U(sp.center, sp.northPole);
-    pt southPole = P(sp.center, -1.0, V(sp.center, sp.northPole));
+    pt southPole = P(sp.center, -1.001, V(sp.center, sp.northPole));
     showPlane(southPole, southPlaneNormal, 10 * gRingSet.sphereRadius);
 
-    fill(cyan);
-    showBall(northPole, 3);
-    showBall(pCir0.c, 3);
-    showBall(pCir1.c, 3);
+    // fill(cyan);
+    // showBall(northPole, 3);
+    // showBall(pCir0.c, 3);
+    // showBall(pCir1.c, 3);
 
-    hint(DISABLE_DEPTH_TEST);
-    stroke(blue);
-    showSegment(northPole, pCir0.c);
-    showSegment(northPole, pCir1.c);
-    noStroke();
-    hint(ENABLE_DEPTH_TEST);
+    // hint(DISABLE_DEPTH_TEST);
+    // stroke(blue);
+    // showSegment(northPole, pCir0.c);
+    // showSegment(northPole, pCir1.c);
+    // noStroke();
+    // hint(ENABLE_DEPTH_TEST);
   }
 }
 
@@ -1655,15 +1906,18 @@ void steadyLatticeTest() {
   assert gSteadyLattice != null;
   if (showSteadyLattice) gSteadyLattice.show();
 
-  gRanges = gSteadyLattice.getCubeRange(gCubeCenter, gCubeHalfLength);
+  // use user-specified ranges
+  // gRanges = gSteadyLattice.getCubeRange(gCubeCenter, gCubeHalfLength);
 
   ArrayList<Ball> balls = new ArrayList<Ball>();
   ArrayList<Edge> beams = new ArrayList<Edge>();
   gSteadyLattice.traverse(gRanges, balls, beams);
 
+  // println("balls.size() =", balls.size());
   gLattice = new Lattice(balls, beams);
+
   ArrayList<Integer>[] adjLists = gLattice.adjacencyLists();
   gTriangleMesh = gLattice.triangulate(adjLists);
 
-  if (showTriMesh) gTriangleMesh.show(cyan, false);
+  if (showTriMesh) gTriangleMesh.show(gray, true);
 }

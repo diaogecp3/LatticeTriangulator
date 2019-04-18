@@ -3,6 +3,7 @@ data/tmp/*
 data/*_unnamed
 pictures/*
 playground.pde
+results/*
 
 applet
 application.linux-arm64

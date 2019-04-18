@@ -309,7 +309,7 @@ class ConvexGap {
 
       // println("Cannot find first triangle! Let's normalize the gap!");
       pt c = this.center();
-      for (float k = 10.0; k < 10001.0; k *= 10.0) {
+      for (float k = 10.0; k < 1001.0; k *= 10.0) {
         ConvexGap gap = this.normalize(c, k, true);
         gap.setNormalized(true);
         ArrayList<Triangle> tris = gap.gapHull();

@@ -1009,7 +1009,19 @@ class RingSet {
   RingSet(pt c, float r) {
     this.sphereCenter = c;
     this.sphereRadius = r;
+    this.nRings = 3;
+    this.nPointsPerRing = 3;
     sameRadius = false;
+    init();
+  }
+
+  RingSet(pt c, float r, int nc) {
+    this.sphereCenter = c;
+    this.sphereRadius = r;
+    this.nRings = nc;
+    this.nPointsPerRing = 3;
+    sameRadius = false;
+    init();
   }
 
   RingSet(pt c, float r, int nc, int np) {
@@ -1018,6 +1030,7 @@ class RingSet {
     this.nRings = nc;
     this.nPointsPerRing = np;
     sameRadius = false;
+    init();
   }
 
   RingSet(pt c, float r, int nc, int np, float rMax) {
@@ -1028,8 +1041,10 @@ class RingSet {
     sameRadius = true;
     radii = new float[1];
     radii[0] = rMax;
+    init();
   }
 
+  /* Construct a ring set from point-pairs. */
   RingSet(pt c, float r, pt[] ps, int nv) {  // the ring set may not be valid
     this.sphereCenter = c;
     this.sphereRadius = r;
@@ -1060,6 +1075,7 @@ class RingSet {
     }
   }
 
+  /* Construct a ring set from circles. */
   RingSet(pt c, float r, Circle[] circles, int nc, int np) {
     this.sphereCenter = c;
     this.sphereRadius = r;
@@ -1082,14 +1098,6 @@ class RingSet {
     }
   }
 
-  void setNumPointsPerRing(int np) {
-    nPointsPerRing = np;
-  }
-
-  ArrayList<Integer>[] getSwingLists() {
-    return swingLists;
-  }
-
   private void generateXYAxes() {
     xAxes = new vec[nRings];
     yAxes = new vec[nRings];
@@ -1099,7 +1107,21 @@ class RingSet {
     }
   }
 
-  void init() {
+  void generatePoints(float attenuation) {
+    centers = new pt[nRings];
+    if (!sameRadius) {
+      float[] curRadii = new float[nRings];
+      for (int i = 0; i < nRings; ++i) curRadii[i] = radii[i] * attenuation;
+      points = generatePointsForCircles(contacts, curRadii, sphereCenter, sphereRadius, xAxes, nRings,
+                                        nPointsPerRing, centers);
+    } else {
+      float curRadius = radii[0] * attenuation;
+      points = generatePointsForCircles(contacts, curRadius, sphereCenter, sphereRadius, xAxes, nRings,
+                                        nPointsPerRing, centers);
+    }
+  }
+
+  private void init() {
     normals = new vec[nRings];
     if (!sameRadius) {
       radii = new float[nRings];
@@ -1108,6 +1130,15 @@ class RingSet {
       contacts = generateContacts(sphereCenter, sphereRadius, nRings, radii[0], normals);
     }
     generateXYAxes();
+    generatePoints(1.0);
+  }
+
+  void setNumPointsPerRing(int np) {
+    nPointsPerRing = np;
+  }
+
+  ArrayList<Integer>[] getSwingLists() {
+    return swingLists;
   }
 
   Circle getCircle(int i) {
@@ -1151,20 +1182,6 @@ class RingSet {
 
   private pt getPointFromGlobalID(int id) {
     return points[id / nPointsPerRing][id % nPointsPerRing];
-  }
-
-  void generatePoints(float attenuation) {
-    centers = new pt[nRings];
-    if (!sameRadius) {
-      float[] curRadii = new float[nRings];
-      for (int i = 0; i < nRings; ++i) curRadii[i] = radii[i] * attenuation;
-      points = generatePointsForCircles(contacts, curRadii, sphereCenter, sphereRadius, xAxes, nRings,
-                                        nPointsPerRing, centers);
-    } else {
-      float curRadius = radii[0] * attenuation;
-      points = generatePointsForCircles(contacts, curRadius, sphereCenter, sphereRadius, xAxes, nRings,
-                                        nPointsPerRing, centers);
-    }
   }
 
   int getMaxCircleID() {
@@ -1823,7 +1840,7 @@ class RingSet {
    * An array of 6 points will be returned. The first 3 points correspond to
    * orientation (i, j, k) while the last 3 points correspond to orientation
    * (i, k, j). If oneSolution is true, then the first 3 points are correct while
-   * the last 3 points may be wrong.
+   * the last 3 points may be wrong since they will be ignored.
    * normalsEx and halfAnglesEx are output. They define the two supporting
    * triangles.
    */
@@ -2003,6 +2020,77 @@ class RingSet {
     }
 
     return pointsTangency;
+  }
+
+  /* f is the index of the spherical cap that will be mapped to infinity. */
+  pt[] oneSupPlaneThreeCirclesStereoApollonius(int i, int j, int k, StereoProjector sp, int f) {
+    Circle cir0 = getCircle(i);
+    Circle cir1 = getCircle(j);
+    Circle cir2 = getCircle(k);
+
+    Circle pCir0 = sp.project(cir0);
+    Circle pCir1 = sp.project(cir1);
+    Circle pCir2 = sp.project(cir2);
+
+    Circle2 qCir0 = sp.to2D(pCir0);
+    Circle2 qCir1 = sp.to2D(pCir1);
+    Circle2 qCir2 = sp.to2D(pCir2);
+
+    int s0 = i != f ? 1 : -1;
+    int s1 = j != f ? 1 : -1;
+    int s2 = k != f ? 1 : -1;
+    Circle2[] aps = constructApolloniuCircles(qCir0, qCir1, qCir2, s0, s1, s2);
+    if (aps == null) return null;
+
+    /* Compute the three points of contact for each Apollonius circle. */
+    pt2[] qs = new pt2[6];
+    int idx = 0;
+    for (Circle2 ap : aps) {
+      // option 1 to compute the 3 contact points
+      // qs[idx++] = P(ap.center, s0 * ap.radius, U(ap.center, qCir0.center));
+      // qs[idx++] = P(ap.center, s1 * ap.radius, U(ap.center, qCir1.center));
+      // qs[idx++] = P(ap.center, s2 * ap.radius, U(ap.center, qCir2.center));
+
+      // option 2 to compute the 3 contact points
+      qs[idx++] = P(qCir0.center, qCir0.radius, U(qCir0.center, ap.center));
+      qs[idx++] = P(qCir1.center, qCir1.radius, U(qCir1.center, ap.center));
+      qs[idx++] = P(qCir2.center, qCir2.radius, U(qCir2.center, ap.center));
+    }
+
+    {  // debug
+      // fill(snow);
+      // showBall(sp.to3D(aps[0].center), 10);
+      // showBall(sp.to3D(aps[1].center), 10);
+      // fill(chocolate);
+      // showBall(sp.to3D(qCir0.center), 10);
+      // showBall(sp.to3D(qCir1.center), 10);
+      // showBall(sp.to3D(qCir2.center), 10);
+    }
+
+    boolean pickFirst = !cw(qs[0], qs[1], qs[2]);
+    pt[] ps = new pt[3];
+    if (pickFirst) {  // pick the first Apollonius circle
+      {
+        // fill(cyan);
+        // showBall(sp.to3D(qs[0]), 10);
+        // showBall(sp.to3D(qs[1]), 10);
+        // showBall(sp.to3D(qs[2]), 10);
+      }
+      ps[0] = sp.inverse(qs[0]);
+      ps[1] = sp.inverse(qs[1]);
+      ps[2] = sp.inverse(qs[2]);
+    } else {  // pick the second Apollonius circle
+      {
+        // fill(navy);
+        // showBall(sp.to3D(qs[3]), 10);
+        // showBall(sp.to3D(qs[4]), 10);
+        // showBall(sp.to3D(qs[5]), 10);
+      }
+      ps[0] = sp.inverse(qs[3]);
+      ps[1] = sp.inverse(qs[4]);
+      ps[2] = sp.inverse(qs[5]);
+    }
+    return ps;
   }
 
   /*
@@ -3225,7 +3313,7 @@ class RingSet {
   /*
    * Show the elliptic cone defined by circle c0 and circle c1.
    */
-  void showEllipticCone(int c0, int c1, int option) {
+  void showEllipticCone(int c0, int c1, int option, color cAxis, color cCone) {
     pt pc0 = centers[c0];
     pt pc1 = centers[c1];
     float r0 = radii[c0];
@@ -3263,20 +3351,32 @@ class RingSet {
     }
 
     {  // debug
-      // println("axis =", v);
+      println("axis =", v);
+      vec vv = new vec();
+      if (option == 0) {
+        vec uu1 = U(a1, a2), uu2 = U(b1, b2);
+        if (!intersect) vv = U(A(uu1, uu2));
+        else vv = U(A(uu1, uu2.rev()));
+      } else {
+        vec uu1 = U(a1, b2), uu2 = U(b1, a2);
+        if (!intersect) vv = U(A(uu1, uu2));
+        else vv = U(A(uu1, uu2.rev()));
+      }
+      println("the other axis =", vv);
+      println("dot =", dot(v, vv));
     }
 
     {
-      stroke(red);
-      showLine(f, v);
-      noStroke();
+      // stroke(cAxis);
+      // showLine(f, v);
+      // noStroke();
     }
 
     {
-      fill(blue, 220);
+      fill(cCone);
       showObliqueCone(f, pc0, n0, r0);
-      fill(green, 150);
-      showObliqueCone(f, pc1, n1, r1);
+      // showObliqueCone(f, pc1, n1, r1);
+      // showBall(f, 4);
     }
 
     {

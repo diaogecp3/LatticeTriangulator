@@ -158,6 +158,43 @@ class Ball {
   }
 }
 
+class pt2 {
+  float x, y;
+  pt2() {
+    x = y = 0.0;
+  }
+  pt2(float x, float y) {
+    this.x = x;
+    this.y = y;
+  }
+  pt2 c() {
+    return new pt2(x, y);
+  }
+  pt2 set(pt2 p) {
+    x = p.x;
+    y = p.y;
+    return this;
+  }
+  pt2 set(float x, float y) {
+    this.x = x;
+    this.y = y;
+    return this;
+  }
+  pt2 add(pt2 p) { x += p.x; y += p.y; return this; }
+  pt2 add(float px, float py) { x += px; y += py; return this; }
+  pt2 sub(pt2 p) { x -= p.x; y -= p.y; return this; }
+  pt2 sub(float px, float py) { x -= px; y -= py; return this; }
+  pt2 mul(float s) { x *= s; y *= s; return this; }
+  pt2 mul(float sx, float sy) { x *= sx; y *= sy; return this; }
+  float norm() {
+    return sqrt(x * x + y * y);
+  }
+
+  String toString() {
+    return "(" + x + ", " + y + ")";
+  }
+}
+
 class vec2 {
   float x, y;
   vec2() {
@@ -193,6 +230,27 @@ class vec2 {
   String toString() {
     return "(" + x + ", " + y + ")";
   }
+}
+
+vec2 V(pt2 a, pt2 b) {
+  return new vec2(b.x-a.x, b.y-a.y);
+}
+
+vec2 U(pt2 a, pt2 b) {
+  vec2 v = V(a, b);
+  float norm = v.norm();
+  return new vec2(v.x / norm, v.y / norm);
+}
+
+pt2 P(pt2 p, float s, vec2 v) {
+  return new pt2(p.x + s * v.x, p.y + s * v.y);
+}
+
+/* True if (a, b, c) is clockwise. */
+boolean cw(pt2 a, pt2 b, pt2 c) {
+  vec2 ab = V(a, b);
+  vec2 ac = V(a, c);
+  return ab.x * ac.y - ab.y * ac.x > 0;
 }
 
 vec2 V(float a, float b) {

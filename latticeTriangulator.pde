@@ -51,6 +51,7 @@ import processing.pdf.*;
  * 103: many supporting-plane-of-three-circles tests
  * 104: many exact-convex-hull-all-circles tests
  * 105: many incremental-convex-hull tests
+ * 106: many sup-plane-two-approaches (3D, 2D + projection) tests
  * ...
  * 200: one circle-plane-intersection test
  * 201: one hub-line-intersection test
@@ -58,7 +59,7 @@ import processing.pdf.*;
  * 203: one intersection-between-two-planes test
  * 204: one intersection-between-two-spheres test
  */
-int test = 27;
+int test = 106;
 
 boolean showSphere = true;
 boolean showCenterOfSphere = false;
@@ -88,6 +89,8 @@ int gNumTriangles = -1;
 float timeTM = 0.0;  // time for generating a triangle mesh
 float timeSD = 0.0;  // time for subdivision
 
+
+
 void setup() {
   face0 = loadImage("data/Yaohong.jpg");  // load Yaohong's image
   face1 = loadImage("data/Jarek.jpg");  // load Jarek's image
@@ -96,6 +99,7 @@ void setup() {
   noSmooth();  // LEAVE HERE FOR 3D PICK TO WORK!!!
 
   if (test >= 100 && test < 200) {
+    randomSeed(0);
     noLoop();
     debugCH = false;
     debug3RT = false;
@@ -258,22 +262,25 @@ void draw() {
 
     /* Multiple tests. */
     case 100:  // many convex-hull tests
-      convexHullTests(numTests, numPointsPerTest);
+      convexHullTests(gNumTests, numPointsPerTest);
       break;
     case 101:  // many ring-set-triangulation tests
-      ringSetTriangulationTests(numTests, gNumRings, gNumPointsPerRing, gAttenuation);
+      ringSetTriangulationTests(gNumTests, gNumRings, gNumPointsPerRing, gAttenuation);
       break;
     case 102:  // many three-ring-triangle tests
-      threeRingTriangleTests(numTests, gNumPointsPerRing, gAttenuation);
+      threeRingTriangleTests(gNumTests, gNumPointsPerRing, gAttenuation);
       break;
     case 103:  // many supporting-plane-of-three-circles tests
-      supPlaneThreeCirclesTests(numTests, gAttenuation);
+      supPlaneThreeCirclesTests(gNumTests, gAttenuation);
       break;
     case 104:
-      exactCHAllCirclesTests(numTests, gNumRings);
+      exactCHAllCirclesTests(gNumTests, gNumRings);
       break;
     case 105:
       incrementalConvexHullTests();
+      break;
+    case 106:
+      compareSupPlaneApproachTests(gNumTests, gSupPlaneTestsStatFile);
       break;
 
     /* Basic tests. */

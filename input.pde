@@ -6,7 +6,7 @@
 
 /* Input methods for differnt objects. */
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly, 2: from ring set
-int inputMethodRingSet = 1;  // 0: read from file, 1: generate randomly
+int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
 int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
 int inputMethodTriangleMesh = 1;  // 0: read from file, 1: nothing happens
@@ -15,14 +15,19 @@ int inputMethodGap = 0;  // 0: read from file
 int inputMethodSteadyLattice = 1;  // 0: read from file, 1: generate manually
 
 /* File paths for different objects. */
-String gPointSetPath = "data/point_set/ps_stereo_3";
-String gRingSetPath = "data/ring_set/rs_0";
+String gPointSetPath = "data/point_set/ps_stereo_4";
+// String gRingSetPath = "data/ring_set/rs_0";
+String gRingSetPath = "data/tmp/rs_high_error_0";
 String gHubPath = "data/hub/hub_5";
 String gEdgeCirclePath = "data/edge_circle/ec_0";
 String gTriangleMeshPath = "data/triangle_mesh/tm_0";
 String gLatticePath = "data/lattice/lattice_4";
 String gGapPath = "data/gap/gap_5";
 String gSteadyLatticePath = "data/lattice/steady_lattice_0";
+
+/* File paths for results. */
+String gSupPlaneTestsStatFile = "results/stats_supporting_plane_three_circles/stat_0";
+
 
 /* Global variables related to gPoints. */
 pts gPoints;  // the global points
@@ -32,7 +37,7 @@ float gAttenuationMin = 0.05;
 float gAttenuationDelta = 0.05;
 float gAttenuation = 1.0;
 int gNumRings = 5;
-int gNumPointsPerRing = 10;
+int gNumPointsPerRing = 3;
 RingSet gRingSet;  // the global ring set
 
 /* Global variables related to gHub. */
@@ -298,28 +303,41 @@ Hub generateHub(pt c, float r0, float r1, int n) {
 }
 
 /* Manully design a steady lattice. */
-SteadyLattice generateSteadyLattice() {
-  int size = 9;
-  float fsize = float(size);
-
+SteadyLattice generateSteadyLattice(int opt) {
   SteadyLattice lattice = new SteadyLattice();
 
-  lattice.setG(MakeScaling(50.0/size, P(0,0,0)));
+  switch (opt) {
+    case 0:
+      {
+        int size = 9;
+        float fsize = float(size);
+        lattice.setG(MakeScaling(50.0/size, P(0,0,0)));
+        lattice.setU(size, MakeTranslation(V( 1, 0, 0 )));
+        lattice.setV(size, MakeTranslation(V( 0, 1, 0 )));
+        lattice.setW(size, MakeTranslation(V( 0, 0, 1 )));
+        // lattice.setU(size, MakeTranslation(V( 1, 0, 0 )));
+        // lattice.setV(size, MakeRotation(PI/6/size, V( 0, 1, 0 ), P(fsize*3,0,fsize/2.0)));
+        // lattice.setW(size, MakeSwirl(PI/6/size, V( 0, 1, 0 ), P(fsize/2.0,fsize*2,fsize/2.0), pow(.994, 99.0/size)));
+        int a = lattice.addJoint(P(0,0,0), .2);
+        lattice.addBeam(a, a, I(1,0,0));
+        lattice.addBeam(a, a, I(0,1,0));
+        lattice.addBeam(a, a, I(0,0,1));
+      }
+      break;
 
-  lattice.setU(size, MakeTranslation(V( 1, 0, 0 )));
-  lattice.setV(size, MakeTranslation(V( 0, 1, 0 )));
-  lattice.setW(size, MakeTranslation(V( 0, 0, 1 )));
-
-  // lattice.setU(size, MakeTranslation(V( 1, 0, 0 )));
-  // lattice.setV(size, MakeRotation(PI/6/size, V( 0, 1, 0 ), P(fsize*3,0,fsize/2.0)));
-  // lattice.setW(size, MakeSwirl(PI/6/size, V( 0, 1, 0 ), P(fsize/2.0,fsize*2,fsize/2.0), pow(.994, 99.0/size)));
-
-  int a = lattice.addJoint(P(0,0,0), .2);
-
-  lattice.addBeam(a, a, I(1,0,0));
-  lattice.addBeam(a, a, I(0,1,0));
-  lattice.addBeam(a, a, I(0,0,1));
-
+    case 1:  // the model in the convex hull paper
+      {
+        lattice.setG(MakeScaling(.25, P(0,0,0)));
+        lattice.setU(1, new SwirlTransform());
+        lattice.setV(15, MakeRotation(TWO_PI/16, V( 1, 0, 0 ), P(0,0,0)));
+        lattice.setW(8, MakeSwirl(-TWO_PI/32, V(1,0,0), P(90,0,0), .9));
+        lattice.restrictInBounds(true, false, true);
+        int a = lattice.addJoint(P(0, 20, 0), 1.005);
+        lattice.addBeam(a, a, I(0, 1, 0));
+        lattice.addBeam(a, a, I(0, 0, 1));
+      }
+      break;
+  }
   return lattice;
 }
 
@@ -363,7 +381,6 @@ void initScene() {
       break;
     case 1:  // generate randomly
       gRingSet = new RingSet(gSphereCenter, gSphereRadius, gNumRings, gNumPointsPerRing);
-      gRingSet.init();
       break;
     default:
       println("Please use a valid input method for ring set");
@@ -466,7 +483,7 @@ void initScene() {
     case 0:
       break;
     case 1:
-      gSteadyLattice = generateSteadyLattice();
+      gSteadyLattice = generateSteadyLattice(1);
       break;
     default:
   }
@@ -476,4 +493,3 @@ void initScene() {
   gRanges[1] = new MinMaxI(0, uvw.j);
   gRanges[2] = new MinMaxI(0, uvw.k);
 }
-
