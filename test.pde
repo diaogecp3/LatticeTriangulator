@@ -1201,7 +1201,7 @@ void interactiveHubTest() {
       // if (subdivisionTimes > 0) {
       //   gTriangleMesh = gTriQuadMesh.toTriangleMesh();
       //   gTriangleMesh.setupVertexNormals();
-      //   gTriangleMesh.showVertexNormals(magenta);
+      //   // gTriangleMesh.showVertexNormals(magenta);
       // }
       // if (projectOnHub) {
       //   gTriangleMesh.projectOnHub(gHub, projectMethod);  // projectMethod 0: radially ray shooting on exact boundary, 2: sphere tracing on blended boundary

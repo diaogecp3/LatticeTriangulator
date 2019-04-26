@@ -74,6 +74,13 @@ Keys:
 - 'i': Insert a ball.
 
 ### Tessellation of a hub
+A hub object is created from a set of spheres, including an inner sphere and
+some outer spheres. Each outer sphere is created using two points *A* and *B*,
+where *A* defines its center, and distance from *A* to *B* defines its radius.
+
+Currently, we don't support the case where the beams of a hub are almost "on the
+same side".
+
 In `latticeTriangulator.pde`, specify the test number:
 ```
 test = 20;
@@ -83,10 +90,6 @@ In `input.pde`, specify the input method and input file for the point set, e.g.,
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly
 String gPointSetPath = "data/point_set/ps_hub_tessellation";
 ```
-
-A hub object is created from a set of spheres, including an inner sphere and
-some outer spheres. Each outer sphere is created using two points *A* and *B*,
-where *A* defines its center, and distance from *A* to *B* defines its radius.
 
 #### Option 1: convert every quad into 2 triangles
 In `test.pde`:
