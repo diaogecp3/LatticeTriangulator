@@ -96,10 +96,8 @@ gUseTriQuadMesh = false;
 
 The following pictures show: (a) a junction is approximated by a convex hull and beams are also approximated by convex hulls, (b) refine the mesh in (a) and project new vertices to hub, (c) each beam is approximated by a regular polygonal cylinder and there is a strip of triangles filling the gap between a beam and the junction, (d) refine the mesh in (c) and project new vertices to hub.
 
-<img src="./pictures/junction_beam.png" width="200">
-<img src="./pictures/junction_beam_project.png" width="200">
-<img src="./pictures/junction_gap_beam.png" width="200">
-<img src="./pictures/junction_gap_beam_project.png" width="200">
+<img src="./pictures/junction_beam.png" width="200"> <img src="./pictures/junction_beam_project.png" width="200">
+<img src="./pictures/junction_gap_beam.png" width="200"> <img src="./pictures/junction_gap_beam_project.png" width="200">
 
 Keys:
 - 'H': Show / hide the hub.
@@ -131,8 +129,7 @@ gTriQuadMesh.projectOnHub(gHub, ProjectType.RAY);
 
 The following pictures show: (a) subdivide each quad using DIAMOND scheme and push vertices on circles, (b) project new vertices on hub
 
-<img src="./pictures/tq_junction_beam.png" width="200">
-<img src="./pictures/tq_junction_beam_project.png" width="200">
+<img src="./pictures/tq_junction_beam.png" width="200"> <img src="./pictures/tq_junction_beam_project.png" width="200">
 
 Keys:
 - 'H': Show / hide the hub.
