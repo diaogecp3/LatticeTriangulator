@@ -971,3 +971,57 @@ float signedDistToBallCappedCone(pt Q, pt A, float a, pt B, float b) {
 float signedDistToBallCappedCone(pt Q, Ball A, Ball B) {
   return signedDistToBallCappedCone(Q, A.c, A.r, B.c, B.r);
 }
+
+
+/*
+ * The angle of a point p around the center of a circle. (x, y) is the x-axis
+ * and y-axis of the plane that contains the circle.
+ */
+float angleAroundCircleCenter(pt p, Circle circle, vec x, vec y) {
+  vec vp = V(circle.c, p);
+  float angle = acosClamp(dot(vp, x) / vp.norm());
+  if (dot(vp, y) < 0) angle = TWO_PI - angle;
+  return angle;
+}
+
+
+/*
+ * Assume that polygon bounded by the border is convex, and the circle center is
+ * inside the border.
+ */
+ArrayList<pt> sortBorderLoop(Circle circle, ArrayList<pt> border) {
+  if (border.size() <= 2) return border;
+
+  /* Sort by angles. */
+  vec x = constructNormal(circle.n);
+  vec y = N(circle.n, x);
+  ArrayList<pt> newBorder = new ArrayList<pt>();
+  ArrayList<Float> angles = new ArrayList<Float>();
+
+  {  // push the first vertex into the new border
+    newBorder.add(border.get(0));
+    angles.add(angleAroundCircleCenter(border.get(0), circle, x, y));
+  }
+
+  for (int i = 1; i < border.size(); ++i) {
+    pt p = border.get(i);
+    float a = angleAroundCircleCenter(p, circle, x, y);
+    {
+      int n = angles.size();
+      int lo = 0, hi = n - 1, mid;
+      while (lo <= hi) {  // binary search
+        mid = (lo + hi) / 2;
+        if (angles.get(mid) > a) hi = mid - 1;
+        else lo = mid + 1;
+      }
+      angles.add(lo, a);
+      newBorder.add(lo, p);
+    }
+  }
+  return newBorder;
+}
+
+vec reflect(vec v, vec n) {
+  float d = dot(v, n);
+  return A(v, -2*d, n);
+}

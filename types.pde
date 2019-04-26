@@ -63,6 +63,16 @@ class Triangle {
   }
 }
 
+class Quad {
+  int a, b, c, d;
+  Quad(int a, int b, int c, int d) {
+    this.a = a;
+    this.b = b;
+    this.c = c;
+    this.d = d;
+  }
+}
+
 class Edge {
   int a, b;  // index of vertex
   Edge(int a, int b) {

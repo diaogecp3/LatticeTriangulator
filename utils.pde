@@ -22,6 +22,12 @@ float average(float[] a, int n, int start, int end) {
   return sum / (end - start);
 }
 
+float average(IntList a) {
+  float sum = 0.0;
+  for (int x : a) sum += x;
+  return sum / a.size();
+}
+
 /*
  * Compute accuracy for range [start, end) of array a. If array valids is not
  * null, only the valid values (indicated by array valids) of array a will be
@@ -472,7 +478,7 @@ void showCircumcircleOfTriangle(pt pa, pt pb, pt pc, pt center, vec normal, Floa
  * Show the oblique cone with apex p, and a circular base (c, n, r).
  */
 void showObliqueCone(pt p, pt c, vec n, float r) {
-  int nSamples = 120;
+  int nSamples = 150;
   float a = 0;
   float da = TWO_PI / nSamples;
   vec vi = constructNormal(n);

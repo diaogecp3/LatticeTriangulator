@@ -180,6 +180,37 @@ class TruncatedCone {
     }
   }
 
+  Float furthestIntersectionWithRay(pt o, vec d) {
+    assert cone != null;
+    float[] ts = cone.intersectLine(o, d);
+    if (ts == null) return null;
+
+    pt p0 = ts[0] > 0 ? P(o, ts[0], d) : null;
+    pt p1 = ts[1] > 0 ? P(o, ts[1], d) : null;
+
+    boolean valid0 = false;
+    float lowHeight = min(h0, h1);
+    float highHeight = max(h0, h1);
+    if (p0 != null) {
+      float d0 = dot(V(cone.apex, p0), cone.axis);
+      valid0 = (d0 >= lowHeight && d0 <= highHeight);
+    }
+
+    boolean valid1 = false;
+    if (p1 != null) {
+      float d1 = dot(V(cone.apex, p1), cone.axis);
+      valid1 = (d1 >= lowHeight && d1 <= highHeight);
+    }
+
+    if (valid0) {
+      if (valid1 && ts[1] > ts[0]) return new Float(ts[1]);
+      else return new Float(ts[0]);
+    } else {
+      if (valid1) return new Float(ts[1]);
+      else return null;
+    }
+  }
+
   void show(int numSamples, boolean showStroke) {
     generateSamples(numSamples, null);
     int n = samples.length / 2;
@@ -284,6 +315,7 @@ class ConvexGap {
   private ArrayList<Triangle> gapHull() {
     int nv0 = points0.size();
     int nv1 = points1.size();
+    // println(nv0, nv1);
     assert nv0 >= 3 && nv1 >= 3;
 
     ArrayList<Triangle> triangles = new ArrayList<Triangle>();
@@ -453,6 +485,7 @@ class ConvexGap {
   }
 
   void save(String file) {
+    if (points0 == null || points1 == null) return;
     println("saving convex gap:", file);
     String[] lines = new String[points0.size() + points1.size() + 2];
     int i = 0;
@@ -509,6 +542,8 @@ class Hub {
   int numEdgesRegularPolygon = -1;  // the number of edges of a beam cross section
   vec[] xDirections = null;  // each beam has an I vector to generate samples
   float gapDistance = 0.0;  // how much each tCone should be lifted/chopped
+
+  RingSet ringSet;
 
   Hub() {}
 
@@ -757,7 +792,7 @@ class Hub {
    */
   float blendedDistanceFrom(pt p) {
     float d = 0;
-    float k = 0.2;  // shouldn't be too large
+    float k = 0.185;  // shouldn't be too large, good values: 0.2,
     for (int i = 0; i < nNeighbors; ++i) {
       float t = exp(-k * roundConeDist(p, ball.c, ball.r, neighbors[i].c, neighbors[i].r));
       assert t > 0.0;
@@ -798,6 +833,24 @@ class Hub {
       if (ts != null) {
         if (ts[0] > 0 && ts[0] < t) t = ts[0];
         if (ts[1] > 0 && ts[1] < t) t = ts[1];
+      }
+    }
+
+    return t;
+  }
+
+  float furthestIntersectionWithRay(pt o, vec d) {
+    float t = -1;
+    for (int i = 0; i < nNeighbors; ++i) {
+      Float tmp = tCones[i].furthestIntersectionWithRay(o, d);
+      if (tmp != null && tmp > t) t = tmp;
+    }
+
+    {
+      float[] ts = ball.intersectLine(o, d);
+      if (ts != null) {
+        if (ts[0] > 0 && ts[0] > t) t = ts[0];
+        if (ts[1] > 0 && ts[1] > t) t = ts[1];
       }
     }
 
@@ -901,10 +954,16 @@ class Hub {
   BorderedTriangleMesh generateConvexHullMesh(int numEdges) {
     generateIntersectionCircles();
     RingSet rs = circlesToRingSet(numEdges);
+    ringSet = rs;
     if (rs.nRings >= 3) rs.generateExactCHIncremental(null);
     TriangleMesh tm = rs.generateConvexTriMesh();
     ArrayList<Integer>[] borders = rs.getSwingLists();  // each border is a loop of vertex IDs
     return new BorderedTriangleMesh(tm, borders);
+  }
+
+  BorderedTriQuadMesh generateConvexHullTQMesh() {
+    assert ringSet != null;  // please also make sure that ring set has already generated the convex hull
+    return ringSet.generateConvexTriQuadMesh();
   }
 
   /*
@@ -1001,7 +1060,7 @@ class Hub {
     ball.show();
     for (int i = 0; i < nNeighbors; ++i) {
       tCones[i].show(40, false);
-      neighbors[i].show();
+      // neighbors[i].show();
     }
     return;
   }

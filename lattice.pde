@@ -21,6 +21,8 @@ class Lattice {
   Ball[] balls;
   int[][] beams;  // each beam is a pair of indices
 
+
+  /* For debug. */
   class DebugGapInfo {
     ArrayList<Integer> gapStarts = new ArrayList<Integer>();
     ArrayList<Integer> gapSizes = new ArrayList<Integer>();
@@ -31,6 +33,8 @@ class Lattice {
     }
   }
   DebugGapInfo dGapInfo = new DebugGapInfo();
+  IntList nVertices = new IntList();  // nVertices[i] is the number of vertices of the convex hull of the i-th ball
+  ArrayList<BorderedTriQuadMesh> junctionMeshes = new ArrayList<BorderedTriQuadMesh>();  // each mesh is a triangle-quad mesh
 
   Lattice() {}
 
@@ -89,7 +93,12 @@ class Lattice {
     queue.add(0);
     int k = 0;
     boolean[] visited = new boolean[nBalls];  // all false
-    if (debugLattice) dGapInfo.reset();
+    if (debugLattice) {
+      dGapInfo.reset();
+      nVertices.clear();
+      junctionMeshes.clear();
+    }
+
     while (queue.size() > 0) {
       // if (k == 4) break;
 
@@ -102,6 +111,11 @@ class Lattice {
       // println("hub ID =", ballID);
       Hub hub = generateHub(ballID, adjList);
       BorderedTriangleMesh btm = hub.generateConvexHullMesh(gNumPointsPerRing);  // gNumPointsPerRing controls the resolution of each corridor
+
+      if (debugLattice) {
+        junctionMeshes.add(hub.generateConvexHullTQMesh());
+        nVertices.append(btm.triangleMesh.nv);
+      }
 
       int offset = triMesh.nv;
       btm.shiftVertexIDs(offset);
@@ -172,6 +186,7 @@ class Lattice {
     return triMesh;
   }
 
+
   void show() {
     fill(red);
     for (int i = 0; i < nBalls; ++i) balls[i].show();
@@ -210,7 +225,7 @@ class Lattice {
   }
 }
 
-void showHubGapMesh(TriangleMesh mesh, ArrayList<Integer> gapStarts, ArrayList<Integer> gapSizes, color cHub, color cGap, boolean useStroke) {
+void showHubGapMesh(TriangleMesh mesh, ArrayList<Integer> gapStarts, ArrayList<Integer> gapSizes, color cHub, color cGap, boolean useStroke, boolean ignoreJunction) {
   ArrayList<pt> positions = mesh.positions;
   ArrayList<Triangle> triangles = mesh.triangles;
   int i = 0;
@@ -229,10 +244,12 @@ void showHubGapMesh(TriangleMesh mesh, ArrayList<Integer> gapStarts, ArrayList<I
       }
       j++;
     } else {
-      fill(cHub);
-      vertex(positions.get(triangles.get(i).a));
-      vertex(positions.get(triangles.get(i).b));
-      vertex(positions.get(triangles.get(i).c));
+      if (!ignoreJunction) {
+        fill(cHub);
+        vertex(positions.get(triangles.get(i).a));
+        vertex(positions.get(triangles.get(i).b));
+        vertex(positions.get(triangles.get(i).c));
+      }
       i++;
     }
   }

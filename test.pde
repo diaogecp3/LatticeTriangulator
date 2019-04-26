@@ -17,6 +17,10 @@ boolean showSpheres = false;
 boolean showStereoProjection = false;
 boolean showUpArrow = true;
 
+boolean gCreateGap = false;
+boolean gUseTriQuadMesh = true;
+boolean gProjectOnCircleAfterSub = true;
+
 class DebugInfoConvexity {
   pt[] points;
   int a, b, c, d;
@@ -356,7 +360,7 @@ void compareSupPlaneApproachTests(int n, String filename) {
     float time0 = 0.0, time1 = 0.0, timeDiff = 0.0;
     float error0 = 0.0, error1 = 0.0, errorDiff = 0.0;
     boolean valid0 = true, valid1 = true;
-    {
+    {  // first method (3D)
       // compute time
       long startTime = System.nanoTime();
       pt[] ps = rs.twoSupPlanesThreeCircles(ringIDs[0], ringIDs[1], ringIDs[2], null, null, true);
@@ -373,7 +377,7 @@ void compareSupPlaneApproachTests(int n, String filename) {
         for (int j = 0; j < 3; ++j) error0 += errorConeTangentToCone(ap.n, alpha, normals[j], alphas[j]);
       }
     }
-    {
+    {  // second method (stereographic projection + 2D)
       long startTime = System.nanoTime();
       int f = rs.getMaxCircleID();  // the ID of the infinity circle
       pt northPole = rs.contacts[f];
@@ -394,7 +398,7 @@ void compareSupPlaneApproachTests(int n, String filename) {
       }
     }
     {  // compare two errors
-      if (valid0 && valid1 && error1 > error0 * 100) {  // if the second approach produces very high error w.r.t. the first approach
+      if (valid0 && valid1 && error1 > error0 * 10000) {  // if the second approach produces very high error w.r.t. the first approach
         rs.save("data/tmp/rs_high_error_" + str(i));
       }
     }
@@ -464,6 +468,7 @@ void convexHullTest() {
     stroke(0);
     gNumTriangles = triangles.size();
     showTriangles(triangles, gPoints.G);
+    noStroke();
   } else {
     gNumTriangles = -1;
   }
@@ -855,9 +860,9 @@ void interactiveIncCHTest() {
     gRingSet.showDebugIncCHInfo();
   }
 
-  if (showApolloniusDiagram) {
-    gRingSet.showApolloniusDiagram();
-  }
+  // if (showApolloniusDiagram) {
+  //   gRingSet.showApolloniusDiagram();
+  // }
 
   // if (debugApolloniusDiagram) {
   //   gRingSet.showADDebugInfo();
@@ -939,18 +944,33 @@ void interactiveIncCHTest() {
       pCircumcirs[i] = sp.project(cir);
     }
 
-    ArrayList<ArrayList<pt>> apolloniusEdges = new ArrayList();
-    for (RingSet.IncCorridor cor : gRingSet.incCorridors) {
-      apolloniusEdges.add(cor.allPointsAD());
-    }
+    // wrong
+    // ArrayList<ArrayList<pt>> apolloniusEdges = new ArrayList();
+    // for (RingSet.IncCorridor cor : gRingSet.incCorridors) {
+    //   apolloniusEdges.add(cor.allPointsAD());
+    // }
 
+    // ArrayList<ArrayList<pt>> pApolloniusEdges = new ArrayList();
+    // for (ArrayList<pt> edge : apolloniusEdges) {
+    //   ArrayList<pt> pEdge = new ArrayList<pt>();
+    //   for (pt p : edge) {
+    //     pEdge.add(sp.project(p));
+    //   }
+    //   pApolloniusEdges.add(pEdge);
+    // }
+
+    ArrayList<ArrayList<Circle>> apolloniusEdgeCircles = new ArrayList();
+    for (RingSet.IncCorridor cor : gRingSet.incCorridors) {
+      apolloniusEdgeCircles.add(cor.apolloniusCircles());
+    }
     ArrayList<ArrayList<pt>> pApolloniusEdges = new ArrayList();
-    for (ArrayList<pt> edge : apolloniusEdges) {
-      ArrayList<pt> pEdge = new ArrayList<pt>();
-      for (pt p : edge) {
-        pEdge.add(sp.project(p));
+    for (ArrayList<Circle> edgeCircles : apolloniusEdgeCircles) {
+      ArrayList<pt> edge = new ArrayList<pt>();
+      for (Circle cir : edgeCircles) {
+        Circle pCir = sp.project(cir);
+        edge.add(pCir.c);
       }
-      pApolloniusEdges.add(pEdge);
+      pApolloniusEdges.add(edge);
     }
 
     {
@@ -968,7 +988,6 @@ void interactiveIncCHTest() {
       }
       noStroke();
       strokeWeight(1);
-
       hint(ENABLE_DEPTH_TEST);
     }
 
@@ -976,7 +995,7 @@ void interactiveIncCHTest() {
       fill(orange, 100);
       // pt southPole = P(sp.center, V(0, 0, -sp.radius));
       // showPlane(southPole, V(0, 0, 1), 50 * sp.radius);
-      pt southPole = P(sp.center, -1.02, V(sp.center, sp.northPole));
+      pt southPole = P(sp.center, -1.3, V(sp.center, sp.northPole));
       showPlane(southPole, U(sp.center, sp.northPole), 50 * sp.radius);
     }
   }
@@ -1091,6 +1110,7 @@ void interactiveHubTest() {
 
   gHub.generateIntersectionCircles();
   gHub.liftCones(gGapWidth);
+
   if (showIntersectionCircles) {
     gHub.showIntersectionCircles();
   }
@@ -1098,55 +1118,122 @@ void interactiveHubTest() {
   gRingSet = gHub.circlesToRingSet(gNumPointsPerRing);
   gHub.generateBeamSamples(gNumPointsPerRing, gRingSet.xAxes);
 
-  gBeamMesh = gHub.generateBeamMesh();
-  if (showLiftedCones) {
-    // gBeamMesh.show(cyan, showTriangleStrokes);
-    gHub.showLiftedCones(cyan, 255);
-  }
-
+  /* Generate convex hull. */
+  gRingSet.generateExactCHIncremental(null);
   if (showDiskSet) {
+    fill(red);
     gRingSet.showDisks(null);
   }
-
-  gRingSet.generateExactCHIncremental(null);
-
   if (showTriangleFaces) {
     fill(blue);
-    // fill(purple);
     gRingSet.showIncTriangles();
   }
-
   if (showCorridorFaces) {
     fill(green);
-    // fill(purple);
     gRingSet.showIncCorridors();
   }
 
-  gTriangleMesh = gRingSet.generateConvexTriMesh();
+  if (!gUseTriQuadMesh) {  // use a triangle mesh for the convex hull
+    gTriangleMesh = gRingSet.generateConvexTriMesh();
 
-  /* Generate gap mesh. */
-  gHub.initGaps(gRingSet.borders);
-  gGapMesh = gHub.generateGapMesh();
-  if (showGapMesh) {
-    gGapMesh.show(navy, showTriangleStrokes);
-  }
-  gTriangleMesh.augment(gGapMesh);  // merge convex hull mesh and gap mesh
+    if (gCreateGap) {
+      /* Generate beam mesh. */
+      gBeamMesh = gHub.generateBeamMesh();
+      if (showLiftedCones) {
+        // gBeamMesh.show(cyan, showTriangleStrokes);  // each beam is an n-sided polygon with small n
+        gHub.showLiftedCones(cyan, 255);  // each beam is an n-sided cylinder with very large n
+      }
 
-  gTriangleMesh.subdivide(subdivisionTimes);
-  if (projectOnHub) {
-    gTriangleMesh.projectOnHub(gHub, projectMethod);
-  }
+      /* Generate gap mesh. */
+      gHub.initGaps(gRingSet.borders);
+      gGapMesh = gHub.generateGapMesh();
+      if (showGapMesh) gGapMesh.show(orange, showTriangleStrokes);
+      // gTriangleMesh.augment(gGapMesh);  // merge convex hull mesh and gap mesh
+    } else {  // don'create a gap between each beam and the convex hull
+      int nNeighbors = gHub.nNeighbors;
+      // println("neighbors =", nNeighbors);
+      gGapMesh = new TriangleMesh();
+      for (int i = 0; i < nNeighbors; ++i) {
+        ArrayList<pt> innerLoop = gRingSet.borders[i];
+        ArrayList<pt> outerLoop = new ArrayList<pt>();
+        pt[] samples = gHub.liftedCones[i].samples;
+        assert samples != null;
+        int n = samples.length / 2;
+        for (int j = n; j < samples.length; ++j) outerLoop.add(samples[j]);
+        ConvexGap gap = new ConvexGap(innerLoop, outerLoop);  // a beam is actually a big gap
+        TriangleMesh tm = gap.toTriMesh();
+        gGapMesh.augmentWithShift(tm.positions, tm.triangles);
+        if (showGapMesh) gGapMesh.show(lightSalmon, showTriangleStrokes);
+      }
+    }
 
-  if (showTriMesh) {
-    gTriangleMesh.show(purple, showTriangleStrokes);
+    gTriangleMesh.subdivide(subdivisionTimes);
+    if (projectOnHub) {
+      gTriangleMesh.projectOnHub(gHub, projectMethod);
+    }
+
+    if (showTriMesh) {
+      gTriangleMesh.show(purple, showTriangleStrokes);
+    }
+  } else {  // use a triangle-quad mesh for the convex hull
+    /* Generate a triangle-quad mesh. */
+    gTriQuadMesh = gRingSet.generateConvexTriQuadMesh();
+    gTriQuadMesh.setColors(blue, green);  // set triangle and corridor colors
+
+    /* Subdivide the triangle-quad mesh. */
+    for (int i = 0; i < subdivisionTimes; ++i) {
+      gTriQuadMesh = gTriQuadMesh.subdivide(SubdivideTypeTriangle.LOOP, SubdivideTypeQuad.DIAMOND, gProjectOnCircleAfterSub);
+    }
+
+    /* Project the mesh, face-by-face, on the hub. */
+    {
+      if (projectOnHub) {
+        gTriQuadMesh.projectOnHub(gHub, ProjectType.RAY);
+      }
+      if (showTriMesh) {
+        gTriQuadMesh.show(cyan, lime, black, magenta, showTriangleStrokes);
+        // gTriQuadMesh.show(showTriangleStrokes);  // use this function if every face has a specific color
+      }
+    }
+
+    /* Convert the mesh to a triangle mesh and project it on the hub. */
+    {  // The following few lines may not work.
+      // if (subdivisionTimes > 0) {
+      //   gTriangleMesh = gTriQuadMesh.toTriangleMesh();
+      //   gTriangleMesh.setupVertexNormals();
+      //   gTriangleMesh.showVertexNormals(magenta);
+      // }
+      // if (projectOnHub) {
+      //   gTriangleMesh.projectOnHub(gHub, projectMethod);  // projectMethod 0: radially ray shooting on exact boundary, 2: sphere tracing on blended boundary
+      // }
+      // if (showTriMesh) {
+      //   gTriangleMesh.show(lime, showTriangleStrokes);
+      // }
+    }
+
+    /* Construct beams. */
+    int nNeighbors = gHub.nNeighbors;
+    gGapMesh = new TriangleMesh();
+    for (int i = 0; i < nNeighbors; ++i) {
+      ArrayList<pt> innerLoop = gTriQuadMesh.borders[i];
+      ArrayList<pt> outerLoop = new ArrayList<pt>();
+      pt[] samples = gHub.liftedCones[i].samples;
+      assert samples != null;
+      int n = samples.length / 2;
+      for (int j = n; j < samples.length; ++j) outerLoop.add(samples[j]);
+      ConvexGap gap = new ConvexGap(innerLoop, outerLoop);  // a beam is actually a big gap
+      TriangleMesh tm = gap.toTriMesh();
+      gGapMesh.augmentWithShift(tm.positions, tm.triangles);
+      if (showGapMesh) gGapMesh.show(lightSalmon, showTriangleStrokes);
+    }
   }
 
   if (showHub) {
-    gHub.show(lightSalmon, 130);
+    gHub.show(lightSalmon, 255);  // alpha: 130, 255
   }
 
   if (showBoundingSphere) {
-    gHub.showBoundingSphere(khaki, 100);
+    gHub.showBoundingSphere(khaki, 255);  // alpha: 100, 255
   }
 }
 
@@ -1404,8 +1491,8 @@ void twoEllipticConesTest() {
 
   gRingSet = new RingSet(gSphereCenter, gSphereRadius, gPoints.G, 4);
 
-  if (showEllipticCone1) gRingSet.showEllipticCone(0, 1, 0, red, color(green, 200));
-  if (showEllipticCone2) gRingSet.showEllipticCone(0, 1, 1, red, color(blue, 200));
+  if (showEllipticCone1) gRingSet.showEllipticCone(0, 1, 0, red, color(green));  // alpha: 200
+  if (showEllipticCone2) gRingSet.showEllipticCone(0, 1, 1, red, color(blue));  // alpha: 200
 
   if (showDiskSet) {
     fill(red, 200);
@@ -1481,11 +1568,22 @@ void latticeTest() {
   long endTime = System.nanoTime();
   timeTM = (endTime - startTime) / 1000000.0;
 
-  // if (showTriMesh) gTriangleMesh.show(cyan, true);
   if (showTriMesh) {
-    showHubGapMesh(gTriangleMesh, gLattice.dGapInfo.gapStarts, gLattice.dGapInfo.gapSizes, magenta, navy, true);
-  }
+    if (debugLattice) {
+      showHubGapMesh(gTriangleMesh, gLattice.dGapInfo.gapStarts, gLattice.dGapInfo.gapSizes, magenta, cyan, true, true);
 
+      ArrayList<BorderedTriQuadMesh> junctionMeshes = gLattice.junctionMeshes;
+      for (BorderedTriQuadMesh mesh : junctionMeshes) {
+        mesh.setColors(cyan, cyan);
+        mesh.show(true);
+      }
+
+      // float avgNumVertices = average(gLattice.nVertices);
+      // println("average number of vertices = ", avgNumVertices);
+    } else {
+      gTriangleMesh.show(cyan, true);
+    }
+  }
 }
 
 void convexGapTest() {
@@ -1746,8 +1844,13 @@ void intersectionTwoSpheresTest() {
 
 
 void stereoProjectionTest() {
-  // if (gPoints.nv < 4) return;
-  // gRingSet = new RingSet(gSphereCenter, gSphereRadius, gPoints.G, gPoints.nv - gPoints.nv % 2);
+  if (gPoints.nv < 4) return;
+  gRingSet = new RingSet(gSphereCenter, gSphereRadius, gPoints.G, gPoints.nv - gPoints.nv % 2);
+
+  if (showDiskSet) {
+    fill(red);
+    gRingSet.showDisks(null);
+  }
 
   // if (showUpArrow) {
   //   fill(green);
@@ -1763,13 +1866,14 @@ void stereoProjectionTest() {
   vec[] normals = new vec[] {gRingSet.normals[ringIDs[0]],
                              gRingSet.normals[ringIDs[1]],
                              gRingSet.normals[ringIDs[2]]};
-
-  println("alphas =", alphas[0], ", ", alphas[1], ", ", alphas[2]);
-  println("normals =", normals[0], normals[1], normals[2]);
+  // println("alphas =", alphas[0], ", ", alphas[1], ", ", alphas[2]);
+  // println("normals =", normals[0], normals[1], normals[2]);
 
   if (showStereoProjection) {
     int f = gRingSet.getMaxCircleID();
     pt northPole = gRingSet.contacts[f];
+    // pt northPole = gRingSet.contacts[0];
+    // pt northPole = P(gRingSet.sphereCenter, V(0, 0, gRingSet.sphereRadius));
     StereoProjector sp = new StereoProjector(gRingSet.sphereCenter, gRingSet.sphereRadius, StereoType.CUSTOM_NORTH_POLE_SOUTH_PLANE);
     if (sp.sType == StereoType.CUSTOM_NORTH_POLE_SOUTH_PLANE) {
       sp.setNorthPole(northPole);
@@ -1794,6 +1898,9 @@ void stereoProjectionTest() {
       // noStroke();
       // strokeWeight(1);
 
+      // fill(tomato);
+      // showBall(northPole, 3);
+
       // check inversion of a point
       // pt c1 = gRingSet.contacts[1];  // the center of the second spherical cap
       // pt pc1 = sp.project(c1);
@@ -1804,7 +1911,7 @@ void stereoProjectionTest() {
       //   fill(magenta);
       //   showBall(d1, 3);
       //   println("c1 =", c1, "d1 =", d1);
-      //   println("diff of c1 and d1 =", V(c1, d1));  // diff is big
+      //   println("diff of c1 and d1 =", V(c1, d1));
       // }
 
       // check inversion of a circle
@@ -1820,85 +1927,80 @@ void stereoProjectionTest() {
     Circle2 qCir0 = sp.to2D(pCir0);
     Circle2 qCir1 = sp.to2D(pCir1);
     Circle2 qCir2 = sp.to2D(pCir2);
-    // Circle2[] qCirx = constructApolloniuCircles(qCir0, qCir1, qCir2, -1, 1, 1);
-    // Circle pCirx0 = sp.to3D(qCirx[0]);
-    // Circle cirx0 = sp.inverse(qCirx[0]);
-    // Circle pCirx1 = sp.to3D(qCirx[1]);
-    // Circle cirx1 = sp.inverse(qCirx[1]);
+    Circle2[] qCirx = constructApolloniuCircles(qCir0, qCir1, qCir2, -1, 1, 1);
+    Circle pCirx0 = sp.to3D(qCirx[0]);
+    Circle cirx0 = sp.inverse(qCirx[0]);
+    Circle pCirx1 = sp.to3D(qCirx[1]);
+    Circle cirx1 = sp.inverse(qCirx[1]);
 
-    {  // show circles
-      strokeWeight(3);
-      stroke(red);
-      cir0.show();
-      pCir0.show();
-      stroke(green);
-      cir1.show();
-      pCir1.show();
-      stroke(snow);
-      cir2.show();
-      pCir2.show();
+    {  // show input circles and Apollonius circles (in 2D and on sphere)
+      // strokeWeight(3);
+      // stroke(red);
+      // cir0.show();
+      // pCir0.show();
+      // stroke(green);
+      // cir1.show();
+      // pCir1.show();
+      // stroke(snow);
+      // cir2.show();
+      // pCir2.show();
 
       // stroke(blue);
       // cirx0.show();
       // pCirx0.show();
       // cirx1.show();
       // pCirx1.show();
-      noStroke();
-      strokeWeight(1);
+      // noStroke();
+      // strokeWeight(1);
     }
 
-    pt[] ps = gRingSet.oneSupPlaneThreeCirclesStereoApollonius(ringIDs[0], ringIDs[1], ringIDs[2], sp, f);
+    {  // first method to compute the three contact points of the supporting plane
+      pt[] ps = gRingSet.oneSupPlaneThreeCirclesStereoApollonius(ringIDs[0], ringIDs[1], ringIDs[2], sp, f);
+      {  // show points of tangency
+        fill(lime);
+        showBall(ps[0], 3);
+        showBall(ps[1], 3);
+        showBall(ps[2], 3);
+      }
+      Circle cirx = circumcircleOfTriangle(ps[0], ps[1], ps[2]);
+      {  // show the Apollonius circle and the triangle
+        stroke(blue);
+        strokeWeight(3);
+        cirx.show();
+        strokeWeight(1);
+        noStroke();
+        // fill(navy);
+        // showTriangle(ps[0], ps[1], ps[2]);
+        // fill(cyan);
+        // showTriangleNormal(ps[0], ps[1], ps[2], 50, 1);
+      }
 
-    println("ps =", ps[0], ps[1], ps[2]);
-
-    {  // show points of tangency
-      fill(lime);
-      showBall(ps[0], 3);
-      showBall(ps[1], 3);
-      showBall(ps[2], 3);
-    }
-
-    Circle cirx = circumcircleOfTriangle(ps[0], ps[1], ps[2]);
-    {
-      stroke(blue);
-      strokeWeight(3);
-      cirx.show();
-      strokeWeight(1);
-      noStroke();
-      fill(navy);
-      showTriangle(ps[0], ps[1], ps[2]);
-      fill(cyan);
-      showTriangleNormal(ps[0], ps[1], ps[2], 50, 1);
-      // fill(magenta);
-      // showBall(cirx.c, 5);
-    }
-
-    {  // compute error
+      // compute error
       float errorOnCone = 0, errorTangency = 0;
       for (int j = 0; j < 3; ++j) errorOnCone += errorPointOnCone(ps[j], gRingSet.sphereCenter, normals[j], alphas[j]);
-      println("error on cone: ", errorOnCone);
+      println("2D Apollonius + stereographic projection: error on cone =", errorOnCone);
       float alpha = asinClamp(cirx.r / gRingSet.sphereRadius);
       if (dot(cirx.n, V(gRingSet.sphereCenter, cirx.c)) < 0) alpha = PI - alpha;
       for (int j = 0; j < 3; ++j) errorTangency += errorConeTangentToCone(cirx.n, alpha, normals[j], alphas[j]);
-      println("error tangency =", errorTangency);
+      println("2D Apollonius + stereographic projection: error tangency =", errorTangency);
+    }
+
+    {  // second method to compute the three contact points of the supporting plane
+      pt[] ps = gRingSet.twoSupPlanesThreeCircles(ringIDs[0], ringIDs[1], ringIDs[2], null, null, true);
+      Circle cirx = circumcircleOfTriangle(ps[0], ps[1], ps[2]);
+      float errorOnCone = 0, errorTangency = 0;
+      for (int j = 0; j < 3; ++j) errorOnCone += errorPointOnCone(ps[j], gRingSet.sphereCenter, normals[j], alphas[j]);
+      println("3D Apollonius: error on cone =", errorOnCone);
+      float alpha = asinClamp(cirx.r / gRingSet.sphereRadius);
+      if (dot(cirx.n, V(gRingSet.sphereCenter, cirx.c)) < 0) alpha = PI - alpha;
+      for (int j = 0; j < 3; ++j) errorTangency += errorConeTangentToCone(cirx.n, alpha, normals[j], alphas[j]);
+      println("3D Apollonius: error tangency =", errorTangency);
     }
 
     fill(orange);
     vec southPlaneNormal = U(sp.center, sp.northPole);
     pt southPole = P(sp.center, -1.001, V(sp.center, sp.northPole));
     showPlane(southPole, southPlaneNormal, 10 * gRingSet.sphereRadius);
-
-    // fill(cyan);
-    // showBall(northPole, 3);
-    // showBall(pCir0.c, 3);
-    // showBall(pCir1.c, 3);
-
-    // hint(DISABLE_DEPTH_TEST);
-    // stroke(blue);
-    // showSegment(northPole, pCir0.c);
-    // showSegment(northPole, pCir1.c);
-    // noStroke();
-    // hint(ENABLE_DEPTH_TEST);
   }
 }
 
@@ -1907,7 +2009,7 @@ void steadyLatticeTest() {
   if (showSteadyLattice) gSteadyLattice.show();
 
   // use user-specified ranges
-  // gRanges = gSteadyLattice.getCubeRange(gCubeCenter, gCubeHalfLength);
+  gRanges = gSteadyLattice.getCubeRange(gCubeCenter, gCubeHalfLength);
 
   ArrayList<Ball> balls = new ArrayList<Ball>();
   ArrayList<Edge> beams = new ArrayList<Edge>();
@@ -1918,6 +2020,5 @@ void steadyLatticeTest() {
 
   ArrayList<Integer>[] adjLists = gLattice.adjacencyLists();
   gTriangleMesh = gLattice.triangulate(adjLists);
-
-  if (showTriMesh) gTriangleMesh.show(gray, true);
+  if (showTriMesh) gTriangleMesh.show(cyan, true);
 }

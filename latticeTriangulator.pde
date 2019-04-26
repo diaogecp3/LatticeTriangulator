@@ -59,7 +59,7 @@ import processing.pdf.*;
  * 203: one intersection-between-two-planes test
  * 204: one intersection-between-two-spheres test
  */
-int test = 106;
+int test = 20;
 
 boolean showSphere = true;
 boolean showCenterOfSphere = false;
@@ -81,7 +81,7 @@ pt gFocus = new pt(0.0, 0.0, 0.0);  // focus point: the camera is looking at it 
 pt gPick = new pt(0.0, 0.0, 0.0);
 
 float gSphereRadius = 100;  // default: 100
-pt gSphereCenter = new pt(0.0, 0.0, 0.0);
+pt gSphereCenter = new pt(0.0, 0.0, 0.0);  // default: (0, 0, 0)
 
 Camera gCamera = new Camera(500, -0.06 * TWO_PI, -0.04 * TWO_PI);
 

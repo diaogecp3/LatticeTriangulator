@@ -13,6 +13,31 @@ pt stereoProjectNorthPoleSouthPlane(pt c, float r, pt p) {
   return q;
 }
 
+/* Stereographic projection of q w.r.t. sphere (c, r). */
+pt inverseStereoProjectNorthPoleSouthPlane(pt c, float r, pt q) {
+  // println("center =", c);
+  float x = q.x - c.x;
+  float y = q.y - c.y;
+
+  float x2 = x * x;
+  float y2 = y * y;
+  float fr2 = 4 * r * r;
+  float d = x2 + y2 + fr2;
+
+  float px = fr2 * x / d;
+  float py = fr2 * y / d;
+  float pz = (x2 + y2 - fr2) * r / d;
+
+  {
+    // float k1 = px / q.x;
+    // float k2 = py / q.y;
+    // float k3 = (r - pz) / (2 * r);
+    // println("k1, k2, k3 =", k1, k2, k3);
+  }
+
+  return new pt(px + c.x, py + c.y, pz + c.z);
+}
+
 class StereoProjector {
   pt center;
   float radius;
@@ -51,19 +76,27 @@ class StereoProjector {
     if (sType == StereoType.NORTH_POLE_SOUTH_PLANE) {
       return stereoProjectNorthPoleSouthPlane(center, radius, p);
     } else if (sType == StereoType.CUSTOM_NORTH_POLE_SOUTH_PLANE) {
-      pt a = p.c().rot(rotAngle, rotAxis);  // same effect as rotating frame
+      pt a = p.c().rot(rotAngle, rotAxis, center);  // same effect as rotating frame
       pt b = stereoProjectNorthPoleSouthPlane(center, radius, a);
-      return b.rot(-rotAngle, rotAxis);  // same effect as rotating frame
+      return b.rot(-rotAngle, rotAxis, center);  // same effect as rotating frame
     } else println("invalid stereo type!");
     return null;
   }
 
-  /* This inversion may not work quite well. */
   pt inverse(pt q) {
-    vec d = V(northPole, q);
-    pt[] ps = intersectionLineSphere(northPole, d, center, radius);
-    if (d(ps[0], northPole) < 0.001) return ps[1];
-    else return ps[0];
+    // vec d = V(northPole, q);
+    // pt[] ps = intersectionLineSphere(northPole, d, center, radius);  // not efficient!
+    // if (d(ps[0], northPole) < 0.001) return ps[1];
+    // else return ps[0];
+
+    if (sType == StereoType.NORTH_POLE_SOUTH_PLANE) {
+      return inverseStereoProjectNorthPoleSouthPlane(center, radius, q);
+    } else if (sType == StereoType.CUSTOM_NORTH_POLE_SOUTH_PLANE) {
+      pt b = q.c().rot(rotAngle, rotAxis, center);
+      pt a = inverseStereoProjectNorthPoleSouthPlane(center, radius, b);
+      return a.rot(-rotAngle, rotAxis, center);
+    } else println("invalid stereo type!");
+    return null;
   }
 
   pt inverse(pt2 q) {
@@ -168,7 +201,11 @@ class Circle2 {
   }
 }
 
-// si are +/- 1 (s1 = +1 means C1 is outside of Apollonius circle
+/*
+ * Compute the two Apollonius circles of three given circles.
+ * si are +/- 1 (s1 = +1 means C1 is outside of an Apollonius circle)
+ * See https://rasmusfonseca.github.io/implementations/apollonius.html
+ */
 Circle2[] constructApolloniuCircles(Circle2 C1, Circle2 C2, Circle2 C3, int s1, int s2, int s3) {
   float x1 = C1.center.x;
   float y1 = C1.center.y;

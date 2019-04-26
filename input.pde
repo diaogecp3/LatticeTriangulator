@@ -7,26 +7,26 @@
 /* Input methods for differnt objects. */
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly, 2: from ring set
 int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
-int inputMethodHub = 0;  // 0: read from file, 1: generate randomly
+int inputMethodHub = 1;  // 0: read from file, 1: generate randomly
 int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
 int inputMethodTriangleMesh = 1;  // 0: read from file, 1: nothing happens
 int inputMethodLattice = 0;  // 0: read from file, 1: generate manually
-int inputMethodGap = 0;  // 0: read from file
+int inputMethodGap = 1;  // 0: read from file
 int inputMethodSteadyLattice = 1;  // 0: read from file, 1: generate manually
+int inputMethodTriQuadMesh = 0;
 
 /* File paths for different objects. */
-String gPointSetPath = "data/point_set/ps_stereo_4";
-// String gRingSetPath = "data/ring_set/rs_0";
-String gRingSetPath = "data/tmp/rs_high_error_0";
+String gPointSetPath = "data/point_set/ps_hub_tessellation";
+String gRingSetPath = "data/ring_set/rs_convex_hull_samples_on_circles";
 String gHubPath = "data/hub/hub_5";
 String gEdgeCirclePath = "data/edge_circle/ec_0";
 String gTriangleMeshPath = "data/triangle_mesh/tm_0";
-String gLatticePath = "data/lattice/lattice_4";
+String gLatticePath = "data/lattice/lattice";
 String gGapPath = "data/gap/gap_5";
-String gSteadyLatticePath = "data/lattice/steady_lattice_0";
+String gSteadyLatticePath = "data/lattice/lattice";
 
 /* File paths for results. */
-String gSupPlaneTestsStatFile = "results/stats_supporting_plane_three_circles/stat_0";
+String gSupPlaneTestsStatFile = "results/stats_supporting_plane_three_circles/stat_2";
 
 
 /* Global variables related to gPoints. */
@@ -37,7 +37,7 @@ float gAttenuationMin = 0.05;
 float gAttenuationDelta = 0.05;
 float gAttenuation = 1.0;
 int gNumRings = 5;
-int gNumPointsPerRing = 3;
+int gNumPointsPerRing = 6;
 RingSet gRingSet;  // the global ring set
 
 /* Global variables related to gHub. */
@@ -49,6 +49,9 @@ Hub gHub;  // the global hub
 TriangleMesh gTriangleMesh;  // the global triangle mesh
 TriangleMesh gBeamMesh;  // the global triangle mesh for lifted beams
 TriangleMesh gGapMesh;  // the global triangle mesh for gaps
+
+/* Global variables related to gTriQuadMesh. */
+BorderedTriQuadMesh gTriQuadMesh;
 
 /* Global variables related to gEdgeCircle. */
 EdgeCircle gEdgeCircle;  // the global edge circle
@@ -220,7 +223,7 @@ pt[] generateContactsAndRadii(pt center,                             // in
       pt p = generateOnePointOnSphere(center, radius);
       vec normal = U(center, p);
       float r = random(1, radius * 0.9);
-      float alpha = asinClamp(r/radius);  // [0, PI/2]
+      float alpha = asinClamp(r / radius);  // [0, PI/2]
       boolean isValid = true;
       for (int j = 0; j < i; ++j) {
         float theta = acosClamp(dot(normal, normals[j]));  // [0, PI]
@@ -483,7 +486,7 @@ void initScene() {
     case 0:
       break;
     case 1:
-      gSteadyLattice = generateSteadyLattice(1);
+      gSteadyLattice = generateSteadyLattice(0);
       break;
     default:
   }

@@ -16,7 +16,7 @@ void keyPressed() {
     // P.deletePicked();
     gPoints.deletePickedPair();
     if (test == 14) debugIncCHIter = max(3, min(debugIncCHIter, gPoints.nv / 2));
-    if (test == 25) gCubeHalfLength = max(gCubeHalfLength - 1, 0);
+    if (test == 25) gCubeHalfLength = max(gCubeHalfLength - 1, 1);
   }
   if (key == 'i') {
     if (test != 25) gPoints.addPt(gPick);  // append the new vertex gPick in P
@@ -39,7 +39,9 @@ void keyPressed() {
     if (gGap != null) gGap.save("data/gap_unnamed");
   }
   if (key == 'l') {
-    if (gCamera != null) gCamera.load("data/point_set/cam_37");
+    if (gCamera != null) {
+      gCamera.load("data/camera/cam_hub_tessellation");
+    }
   }
   if (key == '>') showFrame = !showFrame;
 
@@ -88,7 +90,9 @@ void keyPressed() {
   if (key == '9') {
     if (test == 26 || test == 27) showAuxPlane = !showAuxPlane;
     if (test == 24 || test == 25) showFocus = !showFocus;
+    if (test == 20) gCreateGap = !gCreateGap;
   }
+
 
   /* Keys: increase/decrease operators. */
   if (key == '+') {
@@ -133,6 +137,9 @@ void keyPressed() {
   }
 
   /* Keys: lowercase letters. */
+  if (key == 'p') {
+    gProjectOnCircleAfterSub = !gProjectOnCircleAfterSub;
+  }
   if (key == 'o') {
     showSphere = !showSphere;
   }
@@ -294,22 +301,26 @@ void displayDebugText() {
 
   if (test == 14) {
     scribeHeader("valid ring set? " + (validRS ? "yes" : "no"), 3);
+    scribeHeader("Number of samples per circle: " + gNumPointsPerRing, 4);
   }
 
   if (test == 19 || test == 20) {
+    scribeHeader("number of sides of each beam = " + gNumPointsPerRing, 5);
     scribeHeader("subdivision times = " + subdivisionTimes, 6);
   }
 
   if (test == 20) {
-    switch (projectMethod) {
-      case 1:
-        scribeHeader("Project method: shooting lines", 7);
-        break;
-      case 2:
-        scribeHeader("Project method: sphere tracing to blended hub", 7);
-        break;
-      default:
-        scribeHeader("Project method: shooting rays", 7);
+    if (gUseTriQuadMesh == false){
+      switch (projectMethod) {
+        case 1:
+          scribeHeader("Project method: shooting lines", 7);
+          break;
+        case 2:
+          scribeHeader("Project method: sphere tracing to blended hub", 7);
+          break;
+        default:
+          scribeHeader("Project method: shooting rays", 7);
+      }
     }
   }
 

@@ -4,6 +4,14 @@ data/*_unnamed
 pictures/*
 playground.pde
 results/*
+data/point_set/tmp/*
+data/ring_set/tmp/*
+data/triangle_mesh/tmp/*
+data/hub/tmp/*
+data/gap/tmp/*
+data/camera/tmp/*
+data/edge_circle/tmp/*
+data/lattice/tmp/*
 
 applet
 application.linux-arm64

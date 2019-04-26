@@ -26,7 +26,7 @@ int idxIncTri = 0;  // the ID of the interested triangle (used in debug)
 
 boolean showRingSet = true;
 boolean showCircleSet = false;
-boolean showDiskSet = false;
+boolean showDiskSet = true;
 boolean showCones = false;
 boolean showPolygons = false;
 boolean showEllipticCone1 = false;
@@ -37,7 +37,7 @@ int debugIncCHIter = 3;
 int debugIncCHBoundarySize = 2;
 boolean debugIncCHNewView = false;
 boolean debugIncCHCor = false;
-boolean showCorridorFaces = false;
+boolean showCorridorFaces = true;
 boolean showTriangleFaces = true;
 boolean showCorridorStrokes = true;
 boolean showTriangleStrokes = true;
@@ -365,7 +365,7 @@ class RingSet {
     float delta = TWO_PI / 20;  // the sampling density on an arc, default = TWO_PI / 20
     ArrayList<pt> samples;  // samples.size = 2 * (numSegments - 1), where numSegments = int(angle of bigger arc / dAngle)
 
-    ArrayList<pt> psAD;  // points on the corresponding Apollonius diagram edge
+    ArrayList<pt> psAD;  // points on the corresponding Apollonius diagram edge, including the two Apollonius vertices at two ends
 
     IncCorridor() {}
     IncCorridor(IncVertex v0, IncVertex v1, IncVertex v2, IncVertex v3) {
@@ -393,7 +393,7 @@ class RingSet {
 
       generateSamples(delta);
       // if (showApolloniusDiagram) generatePointsAD();
-      // generatePointsAD();
+      generatePointsAD();
     }
 
     /*
@@ -446,7 +446,10 @@ class RingSet {
     }
 
     private void generateSamples(float delta) {
-      if (isCollapsed) return;
+      if (isCollapsed) {
+        samples = new ArrayList<pt>();
+        return;
+      }
       int left = vertices[3].rid;  // left ring
       int right = vertices[0].rid;  // right ring
       pt c0 = centers[left], c1 = centers[right];
@@ -805,12 +808,13 @@ class RingSet {
       vec yLeft = yAxes[ridLeft];
 
       /* Generate a point on DA if there is no adjacent triangle of DA. */
-      if (edges[1].getAdjFace() == null) {
+      if (edges[1].getAdjFace() == null) {  // this will be executed every time since the corridor is adjacent to no faces when it is constructed
         pt p = generateADPoint(vertices[3].position, vertices[0].position, cLeft,
                                rLeft, xLeft, yLeft);
         psAD.add(p);
       }
 
+      // println("In generatePointsAD(), samples.size() =", samples.size());
       for (int i = 0; i < n; i += 2) {
         pt pa = samples.get(i);
         pt pb = samples.get(i+1);
@@ -819,7 +823,7 @@ class RingSet {
       }
 
       /* Generate a point on CB if there is no adjacent triangle of CB. */
-      if (edges[0].getAdjFace() == null) {
+      if (edges[0].getAdjFace() == null) {  // this will be executed every time since the corridor is adjacent to no faces when it is constructed
         pt p = generateADPoint(vertices[2].position, vertices[1].position, cLeft,
                                rLeft, xLeft, yLeft);
         psAD.add(p);
@@ -852,15 +856,59 @@ class RingSet {
       }
     }
 
-    /* Return all Apollonius points on the corresponding Apollonius edge. */
+    /*
+     * Return all Apollonius points on the corresponding Apollonius edge
+     * (including the two Apollonius vertices at two ends).
+     */
     ArrayList<pt> allPointsAD() {
       IncTriangle t0 = (IncTriangle)edges[1].getAdjFace();
       IncTriangle t1 = (IncTriangle)edges[0].getAdjFace();
+      // println("t0 =", t0, "t1 =", t1);
       ArrayList<pt> points = new ArrayList<pt>();
       if (t0 != null) points.add(t0.pAD);
       points.addAll(psAD);
       if (t1 != null) points.add(t1.pAD);
       return points;
+    }
+
+    /* The plane passing through p and having unit normal n cuts the sphere at a circle. */
+    private Circle apolloniusCircle(pt p, vec n) {
+      vec v = V(sphereCenter, p);
+      float d = dot(v, n);
+      pt c = P(sphereCenter, d, n);
+      float r = sqrt(sphereRadius * sphereRadius - d * d);
+      return new Circle(c, n, r);
+    }
+
+    /* Return all sampled Apollonius circles on the corresponding Apollonius edge. */
+    ArrayList<Circle> apolloniusCircles() {
+      ArrayList<Circle> apCircles = new ArrayList<Circle>();
+      assert psAD != null;
+      ArrayList<pt> oneEndPoints = new ArrayList<pt>();
+      // println("samples.size() =", samples.size());
+      if (psAD.size() != int(samples.size() / 2)) {
+        psAD.remove(0);
+        psAD.remove(psAD.size() - 1);
+      }
+      for (int i = 0; i < samples.size(); i += 2) oneEndPoints.add(samples.get(i));
+      // println("psAD.size() =", psAD.size(), "oneEndPoints.size() =", oneEndPoints.size());
+      assert psAD.size() == oneEndPoints.size();
+
+      IncTriangle t0 = (IncTriangle)edges[1].getAdjFace();
+      if (t0 != null) apCircles.add(t0.getCircumcircle());
+
+      int n = oneEndPoints.size();
+      for (int i = 0; i < n; ++i) {
+        pt p = oneEndPoints.get(i);
+        pt q = psAD.get(i);
+        vec u = U(sphereCenter, q);
+        apCircles.add(apolloniusCircle(p, u));
+      }
+
+      IncTriangle t1 = (IncTriangle)edges[0].getAdjFace();
+      if (t1 != null) apCircles.add(t1.getCircumcircle());
+
+      return apCircles;
     }
 
     /*
@@ -3118,6 +3166,51 @@ class RingSet {
     return tm;
   }
 
+  BorderedTriQuadMesh generateConvexTriQuadMesh() {
+    ArrayList<TriangleSub> trisSub = new ArrayList<TriangleSub>();
+    ArrayList<QuadSub> quadsSub = new ArrayList<QuadSub>();
+
+    ArrayList<pt>[] borders = new ArrayList[nRings];
+    for (int i = 0; i < nRings; ++i) borders[i] = new ArrayList<pt>();
+
+    if (incTriangles != null) {
+      for (IncTriangle tri : incTriangles) {
+        IncVertex va = tri.vertices[0];
+        IncVertex vb = tri.vertices[1];
+        IncVertex vc = tri.vertices[2];
+        VertexSub ua = new VertexSub(va.position, va.rid, null);
+        VertexSub ub = new VertexSub(vb.position, vb.rid, null);
+        VertexSub uc = new VertexSub(vc.position, vc.rid, null);
+        trisSub.add(new TriangleSub(ua, ub, uc, blue));
+        borders[va.rid].add(va.position);
+        borders[vb.rid].add(vb.position);
+        borders[vc.rid].add(vc.position);
+      }
+    }
+    if (incCorridors != null) {
+      for (IncCorridor cor : incCorridors) {
+        IncVertex va = cor.vertices[0];
+        IncVertex vb = cor.vertices[1];
+        IncVertex vc = cor.vertices[2];
+        IncVertex vd = cor.vertices[3];
+        VertexSub ua = new VertexSub(va.position, va.rid, null);
+        VertexSub ub = new VertexSub(vb.position, vb.rid, null);
+        VertexSub uc = new VertexSub(vc.position, vc.rid, null);
+        VertexSub ud = new VertexSub(vd.position, vd.rid, null);
+        // println("va.rid =", va.rid, "vb.rid =", vb.rid);
+        quadsSub.add(new QuadSub(ua, ub, uc, ud, green));
+      }
+    }
+
+    Circle[] circles = new Circle[nRings];
+    for (int i = 0; i < nRings; ++i) {
+      circles[i] = getCircle(i);
+      borders[i] = sortBorderLoop(circles[i], borders[i]);
+    }
+
+    return new BorderedTriQuadMesh(trisSub, quadsSub, circles, borders);
+  }
+
   void translate(vec v) {
     sphereCenter.add(v);
     if (contacts != null) {
@@ -3134,6 +3227,7 @@ class RingSet {
   }
 
   void show() {
+    noStroke();
     fill(orange);
     for (int i = 0; i < nRings; ++i) {
       showBall(centers[i], 1);
@@ -3351,19 +3445,19 @@ class RingSet {
     }
 
     {  // debug
-      println("axis =", v);
-      vec vv = new vec();
-      if (option == 0) {
-        vec uu1 = U(a1, a2), uu2 = U(b1, b2);
-        if (!intersect) vv = U(A(uu1, uu2));
-        else vv = U(A(uu1, uu2.rev()));
-      } else {
-        vec uu1 = U(a1, b2), uu2 = U(b1, a2);
-        if (!intersect) vv = U(A(uu1, uu2));
-        else vv = U(A(uu1, uu2.rev()));
-      }
-      println("the other axis =", vv);
-      println("dot =", dot(v, vv));
+      // println("axis =", v);
+      // vec vv = new vec();
+      // if (option == 0) {
+      //   vec uu1 = U(a1, a2), uu2 = U(b1, b2);
+      //   if (!intersect) vv = U(A(uu1, uu2));
+      //   else vv = U(A(uu1, uu2.rev()));
+      // } else {
+      //   vec uu1 = U(a1, b2), uu2 = U(b1, a2);
+      //   if (!intersect) vv = U(A(uu1, uu2));
+      //   else vv = U(A(uu1, uu2.rev()));
+      // }
+      // println("the other axis =", vv);
+      // println("dot =", dot(v, vv));
     }
 
     {
