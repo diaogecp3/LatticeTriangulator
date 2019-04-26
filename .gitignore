@@ -1,7 +1,8 @@
 .DS_Store
 data/tmp/*
 data/*_unnamed
-pictures/*
+# pictures/*
+pictures/tmp/*
 playground.pde
 results/*
 data/point_set/tmp/*
