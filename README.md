@@ -151,6 +151,7 @@ int inputMethodLattice = 0;  // 0: read from file, 1: generate manually
 String gLatticePath = "data/lattice/lattice";
 ```
 The following picture shows (a) the original lattice and inflating spheres; (b) the triangle mesh approximating the above lattice; (c) the triangle-quad mesh approximating the above lattice; (d) the refined mesh (one level of subdivision and projection on the exact surface).
+
 <img src="./pictures/lattice_spheres.png" width="200">
 <img src="./pictures/lattice_triangle_mesh.png" width="200">
 <img src="./pictures/lattice_ACHoCC.png" width="200">
@@ -185,6 +186,7 @@ Note that this test may not be robust for any steady lattice.
 
 The following picture shows (a) the selected portion of a steady lattice; (b)
 the ACHoCC approximation of the selected portion; (c) the refined approximation of the selected portion.
+
 <img src="./pictures/steady_lattice.png" width="200">
 <img src="./pictures/steady_lattice_ACHoCC.png" width="200">
 <img src="./pictures/steady_lattice_refinement.png" width="200">

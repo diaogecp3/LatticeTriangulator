@@ -59,7 +59,7 @@ import processing.pdf.*;
  * 203: one intersection-between-two-planes test
  * 204: one intersection-between-two-spheres test
  */
-int test = 25;
+int test = 20;
 
 boolean gShowSphere = true;
 boolean gShowCenterOfSphere = false;

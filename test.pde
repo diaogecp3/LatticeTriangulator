@@ -1179,9 +1179,9 @@ void interactiveHubTest() {
   }
 
   boolean containHubCenter = gRingSet.pointInCrudestConvexHull(gHub.ball.c);
-  if (containHubCenter) fill(red, 200);
-  else fill(black, 200);
-  showBall(gHub.ball.c, 3);
+  // if (containHubCenter) fill(red, 200);
+  // else fill(black, 200);
+  // showBall(gHub.ball.c, 3);
 
 
   if (!gUseTriQuadMesh) {  // use a triangle mesh for the convex hull
@@ -1239,7 +1239,7 @@ void interactiveHubTest() {
       gTriQuadMesh = gTriQuadMesh.subdivide(SubdivideTypeTriangle.LOOP, SubdivideTypeQuad.DIAMOND, gProjectOnCircleAfterSub);
     }
 
-    /* Project the mesh, face-by-face, on the hub. */
+    /* Project the mesh on the hub. */
     ProjectType projType = null;
     if (gMethodProjection == 1) projType = ProjectType.RAY;
     else if (gMethodProjection == 2) projType = ProjectType.SPHERE_TRACING;
@@ -1257,32 +1257,14 @@ void interactiveHubTest() {
       gTriangleMesh.projectOnHub(gHub, projType);
     }
 
-    // if (gShowTriMesh) {
-    //   // gTriQuadMesh.show(cyan, lime, black, magenta, gShowTriangleStrokes);
-    //   gTriQuadMesh.setColors(cyan, lime);
-    //   gTriQuadMesh.show(gShowTriangleStrokes);  // use this function if every face has a specific color
-    // }
-
     if (gShowTriMesh) {
       if (gSubdivisonTimes > 0 && projType != null) {
-        gTriangleMesh.show(tomato, gShowTriangleStrokes);
+        gTriangleMesh.show(cyan, gShowTriangleStrokes);
       } else {
-        gTriQuadMesh.setColors(cyan, lime);
+        if (gSubdivisonTimes == 0) gTriQuadMesh.setColors(blue, green);
+        else gTriQuadMesh.setColors(cyan, green);
         gTriQuadMesh.show(gShowTriangleStrokes);
       }
-    }
-
-    /* Convert the mesh to a triangle mesh and project it on the hub. */
-    {  // The following few lines may not work.
-      // if (gSubdivisonTimes > 0) {
-      //   gTriangleMesh = gTriQuadMesh.toTriangleMesh();
-      //   gTriangleMesh.setupVertexNormals();
-      //   // gTriangleMesh.showVertexNormals(magenta);
-      // }
-      // gTriangleMesh.projectOnHub(gHub, projType);
-      // if (gShowTriMesh) {
-      //   gTriangleMesh.show(lime, gShowTriangleStrokes);
-      // }
     }
 
     /* Construct beams. */
@@ -1303,7 +1285,7 @@ void interactiveHubTest() {
   }
 
   if (gShowHub) {
-    gHub.show(lightSalmon, 130);  // alpha: 130, 255
+    gHub.show(lightSalmon, 255);  // alpha: 130, 255
   }
 
   if (gShowBoundingSphere) {
