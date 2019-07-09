@@ -2,13 +2,13 @@
  * Hub (a ball and tangential cones).
  ******************************************************************************/
 
-boolean showHub = true;
-boolean showBoundingSphere = false;  // the bounding sphere of a hub
-boolean showIntersectionCircles = false;  // the intersection circles between the bounding sphere and cones
-boolean showLiftedCones = false;
-boolean showGapMesh = true;
+boolean gShowHub = true;
+boolean gShowBoundingSphere = false;  // the bounding sphere of a hub
+boolean gShowIntersectionCircles = false;  // the intersection circles between the bounding sphere and cones
+boolean gShowLiftedCones = false;
+boolean gShowGapMesh = true;
 
-float gGapWidth = 10;
+final float gGapWidth = 10;
 
 class Cone {
   pt apex;  // apex
@@ -211,6 +211,13 @@ class TruncatedCone {
     }
   }
 
+  /*
+   * Show the cone as a cylinder of quads.
+   *
+   * Parameters:
+   * numSamples: the number of quads.
+   * showStroke: whether the stroke is shown.
+   */
   void show(int numSamples, boolean showStroke) {
     generateSamples(numSamples, null);
     int n = samples.length / 2;
@@ -247,275 +254,6 @@ TruncatedCone truncatedConeOfTwoBalls(Ball b0, Ball b1) {
   return new TruncatedCone(c0, r0, c1, r1);
 }
 
-class ConvexGap {
-  ArrayList<pt> points0;  // points on the inner loop
-  ArrayList<pt> points1;  // points on the outer loop, orientation same as inner loop
-
-  boolean normalized = false;  // true if this object is a normalized version of another one
-
-  ConvexGap() {}
-
-  ConvexGap(ArrayList<pt> points0, ArrayList<pt> points1) {
-    this.points0 = points0;
-    this.points1 = points1;
-  }
-
-  private ArrayList<pt> positionList() {
-    ArrayList<pt> posList = new ArrayList<pt>();
-    posList.addAll(points0);
-    posList.addAll(points1);
-    return posList;
-  }
-
-  void removeDuplicatePoints(int idx) {
-    ArrayList<pt> points = idx == 0 ? points0 : points1;
-    if (points == null) return;
-    int i = 1;
-    while (i < points.size()) {
-      if (samePt(points.get(i), points.get(i-1))) {
-        points.remove(i);
-      } else i++;
-    }
-    if (samePt(points.get(i-1), points.get(0))) {
-      points.remove(i-1);
-    }
-  }
-
-  /*
-   * Make the convex gap center at (0, 0, 0) and have appropriate scale.
-   * c is the center of this object, s is the "target" scale.
-   * If rawS is true, then the object is scaled by s.
-   * If rawS is false, then the object is scaled to s.
-   */
-  ConvexGap normalize(pt c, float s, boolean rawS) {
-    if (c == null) c = this.center();
-    vec t = V(c).rev();
-    ArrayList<pt> ps0 = new ArrayList<pt>();
-    ArrayList<pt> ps1 = new ArrayList<pt>();
-    for (pt p : points0) ps0.add(P(p, t));
-    for (pt p : points1) ps1.add(P(p, t));
-
-    if (rawS == false) {
-      float r = 0.0;
-      for (pt p : ps0) r += sqrt(dot(p, p));
-      for (pt p : ps1) r += sqrt(dot(p, p));
-      r /= (ps0.size() + ps1.size());
-      s /= r;
-    }
-
-    for (pt p : ps0) p.mul(s);
-    for (pt p : ps1) p.mul(s);
-    return new ConvexGap(ps0, ps1);
-  }
-
-  void setNormalized(boolean n) {
-    normalized = n;
-  }
-
-  private ArrayList<Triangle> gapHull() {
-    int nv0 = points0.size();
-    int nv1 = points1.size();
-    // println(nv0, nv1);
-    assert nv0 >= 3 && nv1 >= 3;
-
-    ArrayList<Triangle> triangles = new ArrayList<Triangle>();
-
-    /* Find the first triangle. */
-    pt pa = points0.get(0);
-    pt pb = points0.get(1);
-    int j = 0;
-    int jLeft = nv1 - 1, jRight;
-    for (; j < nv1; ++j) {
-      jRight = (j + 1) % nv1;
-      vec vLeft = U(pa, points1.get(jLeft));
-      vec vRight = U(pa, points1.get(jRight));
-      vec n = U(N(pa, pb, points1.get(j)));
-      {
-        // println("n = ", n, "vLeft = ", vLeft, "vRight = ", vRight, "dot(n, vLeft) = ", dot(n, vLeft), "dot(n, vRight) = ", dot(n, vRight));
-      }
-      if (dot(n, vLeft) <= 0 && dot(n, vRight) <= 0) break;
-      jLeft = j;
-    }
-    if (j == nv1) {
-      if (normalized) return null;
-
-      // println("Cannot find first triangle! Let's normalize the gap!");
-      pt c = this.center();
-      for (float k = 10.0; k < 1001.0; k *= 10.0) {
-        ConvexGap gap = this.normalize(c, k, true);
-        gap.setNormalized(true);
-        ArrayList<Triangle> tris = gap.gapHull();
-        if (tris != null) return tris;
-      }
-
-      println("Still can't find first triangle after normalization!");
-      return null;
-    }
-    assert j < nv1;
-    triangles.add(new Triangle(0, 1, j + nv0));
-
-    {
-      // fill(red);
-      // showBall(points0.get(0), 3);
-      // fill(green);
-      // showBall(points0.get(1), 3);
-      // fill(blue);
-      // showBall(points1.get(j), 3);
-    }
-
-    /* Traverse the loops. */
-    int stop0 = 0;
-    int stop1 = j;
-    int i = 1;
-    int iNext = (i + 1) % nv0;
-    int jNext = (j + 1) % nv1;
-    int jCount = 0;
-    while (i != stop0 && jCount < nv1) {
-      pa = points1.get(j);
-      pb = points0.get(i);
-      pt pc = points0.get(iNext);
-
-      /* Check convexity. */
-      boolean valid = false;
-      {
-        vec n = N(pa, pb, pc);
-        vec vLeft = V(pa, points1.get((j + nv1 - 1) % nv1));
-        vec vRight = V(pa, points1.get(jNext));
-        // if (i == 1) {
-          // fill(navy);
-          // arrow(pa, vLeft, 5);
-          // fill(chocolate);
-          // arrow(pa, vRight, 5);
-          // for (pt p : points1) println("p =", p);
-          // println("pa =", pa, "points1.get(jNext) =", points1.get(jNext));
-          // println("j =", j, "jNext =", jNext);
-          // println("n =", n, "vLeft =", vLeft, "vRight =", vRight);
-          // println("dot(n, vLeft) =", dot(n, vLeft), "dot(n, vRight) =", dot(n, vRight));
-        // }
-        if (dot(n, vLeft) <= 0 && dot(n, vRight) <= 0) valid = true;
-      }
-
-      if (valid) {
-        triangles.add(new Triangle(j + nv0, i, iNext));
-        i = iNext;
-        iNext = (i + 1) % nv0;
-      } else {
-        triangles.add(new Triangle(j + nv0, i, jNext + nv0));
-        j = jNext;
-        jNext = (j + 1) % nv1;
-        jCount++;
-      }
-    }
-
-    while (i != stop0) {
-      triangles.add(new Triangle(j + nv0, i, iNext));
-      i = iNext;
-      iNext = (i + 1) % nv0;
-    }
-
-    while (j != stop1) {
-      triangles.add(new Triangle(j + nv0, i, jNext + nv0));
-      j = jNext;
-      jNext = (j + 1) % nv1;
-    }
-    return triangles;
-  }
-
-  private int toGlobalPID(int i, ArrayList<Integer> pIDs0, ArrayList<Integer> pIDs1) {
-    if (i < pIDs0.size()) return pIDs0.get(i);
-    else return pIDs1.get(i - pIDs0.size());
-  }
-
-  /* Map each local vertex ID to its global vertex ID. */
-  ArrayList<Triangle> gapHullGlobal(ArrayList<Integer> pIDs0, ArrayList<Integer> pIDs1) {
-    ArrayList<Triangle> tris = gapHull();
-    if (tris == null) return null;
-
-    {  // debug
-      // ArrayList<pt> ps = new ArrayList<pt>(points0);
-      // ps.addAll(points1);
-      // boolean pass = passConvexityTest(tris, ps);
-      // if (!pass) {
-      //   println("Gap hull fails convexity test!");
-      //   return null;
-      // }
-    }
-
-    for (Triangle t : tris) {
-      t.set(toGlobalPID(t.a, pIDs0, pIDs1), toGlobalPID(t.b, pIDs0, pIDs1), toGlobalPID(t.c, pIDs0, pIDs1));
-    }
-    return tris;
-  }
-
-  TriangleMesh toTriMesh() {
-    ArrayList<Triangle> triList = gapHull();
-    if (triList == null) return null;
-    ArrayList<pt> posList = positionList();
-    return new TriangleMesh(posList, triList);
-  }
-
-  void show() {
-    showOrientedLoop(points0);
-    showOrientedLoop(points1);
-  }
-
-  pt center() {
-    pt c = new pt();
-    for (pt p : points0) c.add(p);
-    for (pt p : points1) c.add(p);
-    c.div(points0.size() + points1.size());
-    return c;
-  }
-
-  float averageDistanceTo(pt c) {
-    float r = 0;
-    for (pt p : points0) r += d(p, c);
-    for (pt p : points1) r += d(p, c);
-    return r / (points0.size() + points1.size());
-  }
-
-  void translate(vec v) {
-    for (pt p : points0) p.set(P(p, v));
-    for (pt p : points1) p.set(P(p, v));
-  }
-
-  void scale(float s) {
-    for (pt p : points0) p.set(P(s, p));
-    for (pt p : points1) p.set(P(s, p));
-  }
-
-  void save(String file) {
-    if (points0 == null || points1 == null) return;
-    println("saving convex gap:", file);
-    String[] lines = new String[points0.size() + points1.size() + 2];
-    int i = 0;
-    lines[i++] = str(points0.size());
-    for (pt p : points0) lines[i++] = str(p.x) + "," + str(p.y) + "," + str(p.z);
-    lines[i++] = str(points1.size());
-    for (pt p : points1) lines[i++] = str(p.x) + "," + str(p.y) + "," + str(p.z);
-    saveStrings(file, lines);
-  }
-
-  void load(String file) {
-    println("loading convex gap:", file);
-    points0 = new ArrayList<pt>();
-    points1 = new ArrayList<pt>();
-    String[] lines = loadStrings(file);
-    int i = 0;
-    int nv0 = int(lines[i++]);
-    for (int j = 0; j < nv0; ++j) {
-      float[] tmp = float(split(lines[i++], ","));
-      points0.add(new pt(tmp[0], tmp[1], tmp[2]));
-    }
-    int nv1 = int(lines[i++]);
-    for (int j = 0; j < nv1; ++j) {
-      float[] tmp = float(split(lines[i++], ","));
-      points1.add(new pt(tmp[0], tmp[1], tmp[2]));
-    }
-  }
-}
-
-
 /*
  * Hub class.
  *
@@ -535,6 +273,7 @@ class Hub {
   Circle[] circles = null;  // intersection between tCones and the bounding sphere
   TruncatedCone[] liftedCones = null;  // truncated tCones
   ConvexGap[] gaps = null;  // a gap is created between a lifted cone and its corresponding hole of the convex hull
+  RingSet ringSet;  // the set of circles on the inflating sphere of the hub
 
   /* Parameters for hub triangulation. */
   boolean isHalved = false;  // whether each tCone is halved or not
@@ -542,8 +281,6 @@ class Hub {
   int numEdgesRegularPolygon = -1;  // the number of edges of a beam cross section
   vec[] xDirections = null;  // each beam has an I vector to generate samples
   float gapDistance = 0.0;  // how much each tCone should be lifted/chopped
-
-  RingSet ringSet;
 
   Hub() {}
 
@@ -689,6 +426,11 @@ class Hub {
     for (int i = 0; i < nNeighbors; ++i) {
       tCones[i].halve();
     }
+  }
+
+  Ball getBoundingSphere() {
+    assert maxIntersectDist > 0;
+    return new Ball(ball.c, maxIntersectDist);
   }
 
   private Circle intersectionCircleWithBoundingSphere(int i) {
@@ -951,13 +693,18 @@ class Hub {
     return gapMesh;
   }
 
+  RingSet generateRingSet(int numEdges) {
+    if (circles == null) generateIntersectionCircles();
+    ringSet = circlesToRingSet(numEdges);
+    return ringSet;
+  }
+
   BorderedTriangleMesh generateConvexHullMesh(int numEdges) {
     generateIntersectionCircles();
-    RingSet rs = circlesToRingSet(numEdges);
-    ringSet = rs;
-    if (rs.nRings >= 3) rs.generateExactCHIncremental(null);
-    TriangleMesh tm = rs.generateConvexTriMesh();
-    ArrayList<Integer>[] borders = rs.getSwingLists();  // each border is a loop of vertex IDs
+    ringSet = circlesToRingSet(numEdges);
+    if (ringSet.nRings >= 3) ringSet.generateExactCHIncremental(null);
+    TriangleMesh tm = ringSet.generateConvexTriMesh();
+    ArrayList<Integer>[] borders = ringSet.getSwingLists();  // each border is a loop of vertex IDs
     return new BorderedTriangleMesh(tm, borders);
   }
 

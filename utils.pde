@@ -6,6 +6,7 @@
 
 float gEpsilon = 0.000001;
 float gEpsilonBig = 0.0001;
+float gEpsilonLarge = 0.001;
 boolean exitDraw = false;
 
 /* Statistics functions below. */
@@ -418,7 +419,7 @@ void showOrientedLoop(ArrayList<pt> ps) {
   }
   center.div(ps.size());
   vec normal = U(N(ps.get(0), ps.get(1), ps.get(2)));
-  arrow(center, V(8, normal), 1);
+  // arrow(center, V(8, normal), 1);
 }
 
 /*
@@ -582,7 +583,7 @@ void showPolyArc(pt a, pt b, pt c, float r) {
  * Exception handler.
  */
 void exceptionHandler() {
-  gPoints.savePts("data/pts_unnamed");
+  gPoints.save("data/pts_unnamed");
   gRingSet.save("data/rs_unnamed");
   exitDraw = true;
 }
@@ -604,5 +605,22 @@ void removeDuplicates(ArrayList<pt> points, ArrayList<Integer> pids) {
   if (samePt(points.get(i-1), points.get(0))) {
     points.remove(i-1);
     pids.remove(i-1);
+  }
+}
+
+/*
+ * Keep only one point if multiple points are almost the same. Assume that points
+ * are in cyclic order.
+ */
+void removeDuplicates(ArrayList<pt> points) {
+  if (points == null || points.size() < 2) return;
+  int i = 1;
+  while (i < points.size()) {
+    if (samePt(points.get(i), points.get(i-1))) {
+      points.remove(i);
+    } else i++;
+  }
+  if (samePt(points.get(i-1), points.get(0))) {
+    points.remove(i-1);
   }
 }

@@ -61,6 +61,10 @@ class Triangle {
   public int hashCode() {
     return 31 * (31 * (31 + a) + b) + c;
   }
+
+  String toString() {
+    return a + ", " + b + ", " + c;
+  }
 }
 
 class Quad {
@@ -70,6 +74,10 @@ class Quad {
     this.b = b;
     this.c = c;
     this.d = d;
+  }
+
+  String toString() {
+    return a + ", " + b + ", " + c + ", " + d;
   }
 }
 

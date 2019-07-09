@@ -108,26 +108,20 @@ Keys:
 - 'O': Show / hide intersecting circles, each of which is the intersection between a beam and the inflating sphere. A convex hull of these circles is created.
 - 'S': Show / hide the strokes of triangles and corridors.
 - 'T': Show / hide the tessellated convex hull.
-- 'L': Show / hide lifted beams. Go to line 1142 in `test.pde` for more details.
+- 'L': Show / hide lifted beams.
 - 'G': Show / hide the gap mesh.
 - '[' / ']': Increase / decrease times of subdivision.
-- 'P': Project newly inserted vertices on hub.
-- '/' / '*': Change projection method. Go to line 442 in `mesh.pde` for more
-  details.
--'9': Create gap or not.
+- '/' / '*': Change projection method. Go to line 8 in `mesh.pde` for more details.
+- '9': Create gap or not.
 
 #### Option 2: keep quads, use specific subdivision skemes for quads
 In `test.pde`:
 ```
 gUseTriQuadMesh = true;
 ```
-Specify the subdivision skemes in line 1185 of `test.pde`:
+Specify the subdivision skemes in line 1239 of `test.pde`:
 ```
 gTriQuadMesh = gTriQuadMesh.subdivide(SubdivideTypeTriangle.LOOP, SubdivideTypeQuad.DIAMOND, gProjectOnCircleAfterSub);
-```
-Specify the projection method in line 1191 of `test.pde`:
-```
-gTriQuadMesh.projectOnHub(gHub, ProjectType.RAY);
 ```
 
 The following pictures show: (a) subdivide each quad using DIAMOND scheme and push vertices on circles, (b) project new vertices on hub
@@ -142,7 +136,7 @@ Keys:
 - 'T': Show / hide the tessellated convex hull.
 - 'G': Show / hide the beams.
 - '[' / ']': Increase / decrease times of subdivision.
-- 'P': Project newly inserted vertices on hub.
+- '/' / '*': Change projection method. Go to line 8 in `mesh.pde` for more details.
 - 'p': Push vertices to circles.
 
 
@@ -156,14 +150,21 @@ In `input.pde`, specify the input method and input file for the lattice, e.g.,
 int inputMethodLattice = 0;  // 0: read from file, 1: generate manually
 String gLatticePath = "data/lattice/lattice";
 ```
-The following picture shows the mesh approximating the above lattice.
-
-<img src="./pictures/lattice.png" width="200">
+The following picture shows (a) the original lattice and inflating spheres; (b) the triangle mesh approximating the above lattice; (c) the triangle-quad mesh approximating the above lattice; (d) the refined mesh (one level of subdivision and projection on the exact surface).
+<img src="./pictures/lattice_spheres.png" width="200">
+<img src="./pictures/lattice_triangle_mesh.png" width="200">
+<img src="./pictures/lattice_ACHoCC.png" width="200">
+<img src="./pictures/lattice_refinement.png" width="200">
 
 Keys:
-- 'T': Show / hide the mesh.
-- 'g': Show / hide the graph of the lattice.
+- 'g': Show / hide the original lattice.
+- 'B': Show / hide the inflating sphere.
+- 'T': Show / hide the triangle mesh. All faces have the same color.
+- 'Q': Show / hide the triangle-quad mesh. Junctions and beams are shown in different colors.
 - '+' / '-': Increase / decrease `gNumPointsPerRing`, and hence increase / decrease the resolution of corridors.
+- '[' / ']': Increase / decrease times of subdivision.
+- '/' / '*': Change projection method. Go to line 8 in `mesh.pde` for more details.
+- 'p': Push vertices to circles.
 
 ### Tessellation of a steady lattice
 In `latticeTriangulator.pde`, specify the test number:
@@ -174,20 +175,35 @@ In `input.pde`, specify the input method for the steady lattice, e.g.,
 ```
 int inputMethodSteadyLattice = 1;  // 1: generate manually
 ```
-Note that this test is not robust for any steady lattice. Please also make sure that `gNumPointsPerRing` is bigger than 3.
+Currently, a steady lattice can only be generated manually (i.e., using code).
+Please specify, in `input.pde`, which model to generate, e.g.,
+```
+int gSteadyOption = 3;
+```
 
-The following picture shows the mesh of the selected portion of the steady lattice.
+Note that this test may not be robust for any steady lattice.
 
+The following picture shows (a) the selected portion of a steady lattice; (b)
+the ACHoCC approximation of the selected portion; (c) the refined approximation of the selected portion.
 <img src="./pictures/steady_lattice.png" width="200">
+<img src="./pictures/steady_lattice_ACHoCC.png" width="200">
+<img src="./pictures/steady_lattice_refinement.png" width="200">
 
 Keys:
-- 'T': Show / hide the mesh.
+- 'g': Show / hide the original lattice.
+- 'B': Show / hide the inflating sphere.
+- 'T': Show / hide the triangle mesh. All faces have the same color.
+- 'Q': Show / hide the triangle-quad mesh. Junctions and beams are shown in different colors.
 - 'S': Show / hide the graph of the steady lattice.
+- 'N': Use full ranges or user-specified ranges.
 - 'D' / 'd': Increase / decrease the size of the selected cube.
 - 'I' / 'i': Increase / decrease the i-coordinate of the center of the selected cube.
 - 'J' / 'j': Increase / decrease the j-coordinate of the center of the selected cube.
 - 'K' / 'k': Increase / decrease the k-coordinate of the center of the selected cube.
 - '+' / '-': Increase / decrease `gNumPointsPerRing`, and hence increase / decrease the resolution of corridors.
+- '[' / ']': Increase / decrease times of subdivision.
+- '/' / '*': Change projection method. Go to line 8 in `mesh.pde` for more details.
+- 'p': Push vertices to circles.
 
 ### Stereographic projection and 2D Apollonius diagram
 In `latticeTriangulator.pde`, specify the test number:

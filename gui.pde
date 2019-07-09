@@ -2,6 +2,7 @@
  * Graphical user interface.
  ******************************************************************************/
 
+String warningMsg = "";
 
 void keyPressed() {
   if (key == '`') picking = true;
@@ -20,19 +21,20 @@ void keyPressed() {
   }
   if (key == 'i') {
     if (test != 25) gPoints.addPt(gPick);  // append the new vertex gPick in P
-    if (test == 25) gCubeCenter.i = max(gCubeCenter.i - 1, gCubeHalfLength);
+    if (test == 25) gCubeCenter.i = max(gCubeCenter.i - 1, 0);
   }
   if (key == 'j') {
-    if (test == 25) gCubeCenter.j = max(gCubeCenter.j - 1, gCubeHalfLength);
+    if (test == 25) gCubeCenter.j = max(gCubeCenter.j - 1, 0);
   }
   if (key == 'k') {
-    if (test == 25) gCubeCenter.k = max(gCubeCenter.k - 1, gCubeHalfLength);
+    if (test == 25) gCubeCenter.k = max(gCubeCenter.k - 1, 0);
   }
   if (key == 'w') {  // save data
-    if (gPoints != null) gPoints.savePts("data/pts_unnamed");
+    if (gPoints != null) gPoints.save("data/pts_unnamed");
     if (gRingSet != null) gRingSet.save("data/rs_unnamed");
-    // if (gHub != null) gHub.save("data/hub_unnamed");
-    if (gHub != null) gHub.saveAugFile("data/hub_aug_unnamed");
+    if (gHub != null) gHub.save("data/hub_unnamed");
+    // if (gHub != null) gHub.saveAugFile("data/hub_aug_unnamed");
+    if (gLattice != null) gLattice.save("data/lattice_unnamed");
     if (gEdgeCircle != null) gEdgeCircle.save("data/ec_unnamed");
     if (gTriangleMesh != null) gTriangleMesh.save("data/tm_unnamed");
     if (gCamera != null) gCamera.save("data/cam_unnamed");
@@ -56,40 +58,40 @@ void keyPressed() {
       debugIncCH = !debugIncCH;
       debugApolloniusDiagram = !debugApolloniusDiagram;
     }
-    if (test == 24) debugLattice = !debugLattice;
+    if (test == 24 || test == 25) debugLattice = !debugLattice;
   }
   if (key == '1') {
     gNumFaces = 1;
-    numSteps3RT = 1;
-    showDiskSet = !showDiskSet;
+    gNumSteps3RT = 1;
+    gShowDiskSet = !gShowDiskSet;
   }
   if (key == '2') {
-    show2RT = !show2RT;
-    fix3RT = show2RT;
+    gShow2RT = !gShow2RT;
+    gFix3RT = gShow2RT;
     if (test == 11) showFirstCone = !showFirstCone;
   }
   if (key == '3') {
-    show3RT = !show3RT;
+    gShow3RT = !gShow3RT;
     if (test == 11) showSecondCone = !showSecondCone;
   }
   if (key == '4') {
-    showCorridorFaces = !showCorridorFaces;
+    gShowCorridorFaces = !gShowCorridorFaces;
   }
   if (key == '5') {
-    showTriangleFaces = !showTriangleFaces;
+    gShowTriangleFaces = !gShowTriangleFaces;
   }
   if (key == '6') {
-    showPolygons = !showPolygons;
+    gShowPolygons = !gShowPolygons;
   }
   if (key == '7') {
-    simpleCorridor = !simpleCorridor;
+    gUseSimpleCorridor = !gUseSimpleCorridor;
   }
   if (key == '8') {
-    showArcSet = !showArcSet;
+    gShowArcSet = !gShowArcSet;
   }
   if (key == '9') {
-    if (test == 26 || test == 27) showAuxPlane = !showAuxPlane;
-    if (test == 24 || test == 25) showFocus = !showFocus;
+    if (test == 26 || test == 27) gShowAuxPlane = !gShowAuxPlane;
+    if (test == 23 || test == 24 || test == 25) showFocus = !showFocus;
     if (test == 20) gCreateGap = !gCreateGap;
   }
 
@@ -111,29 +113,29 @@ void keyPressed() {
       debugIncCHIter = max(debugIncCHIter - 1, 3);
     }
     if (test >= 15 && test <= 25) {
-      gNumPointsPerRing = max(gNumPointsPerRing - 1, 3);
+      gNumPointsPerRing = max(gNumPointsPerRing - 1, 2);
     }
     if (test == 1 && gNumFaces > 0) {
       gNumFaces--;
     }
   }
   if (key == '/') {
-    if (test == 16) idxIncCor++;
-    if (test == 20) projectMethod = (projectMethod + 1) % numProjectMethod;
+    if (test == 16) gIdxIncCorridor++;
+    if (test == 20 || test == 23 || test == 24 || test == 25) gMethodProjection = (gMethodProjection + 1) % gNumProjectMethods;
   }
   if (key == '*') {
-    if (test == 16) idxIncCor = max(0, idxIncCor - 1);
-    if (test == 20) projectMethod = (projectMethod + numProjectMethod - 1) % numProjectMethod;
+    if (test == 16) gIdxIncCorridor = max(0, gIdxIncCorridor - 1);
+    if (test == 20 || test == 23 || test == 24 || test == 25) gMethodProjection = (gMethodProjection + gNumProjectMethods - 1) % gNumProjectMethods;
   }
   if (key == '[') {
     if (test == 1 || test == 3) gAttenuation = min(1.0, gAttenuation + gAttenuationDelta);
-    if (test == 14) idxIncTri++;
-    if (test == 4 || test == 19 || test == 20) subdivisionTimes++;
+    if (test == 14) gIdxIncTriangle++;
+    if (test == 4 || test == 19 || test == 20 || test == 23 || test == 24 || test == 25) gSubdivisonTimes++;
   }
   if (key == ']') {
     if (test == 1 || test == 3) gAttenuation = max(gAttenuationMin, gAttenuation - gAttenuationDelta);
-    if (test == 14) idxIncTri = max(0, idxIncTri - 1);
-    if (test == 4 || test == 19 || test == 20) subdivisionTimes = max(0, subdivisionTimes - 1);
+    if (test == 14) gIdxIncTriangle = max(0, gIdxIncTriangle - 1);
+    if (test == 4 || test == 19 || test == 20 || test == 23 || test == 24 || test == 25) gSubdivisonTimes = max(0, gSubdivisonTimes - 1);
   }
 
   /* Keys: lowercase letters. */
@@ -141,16 +143,16 @@ void keyPressed() {
     gProjectOnCircleAfterSub = !gProjectOnCircleAfterSub;
   }
   if (key == 'o') {
-    showSphere = !showSphere;
+    gShowSphere = !gShowSphere;
   }
   if (key == 'h') {
-    generateCH = !generateCH;
+    gGenerateCH = !gGenerateCH;
   }
   if (key == 'r') {
     if (test == 14) debugIncCHCor = !debugIncCHCor;
     if (test == 1 || test == 3) {
-      regenerateCH = !regenerateCH;
-      if (regenerateCH == false) {
+      gRegenerateCH = !gRegenerateCH;
+      if (gRegenerateCH == false) {
         gRingSet.generatePoints(gAttenuationMin);  // shrink all rings
         if (test == 1) {
           debugCH = false;
@@ -169,16 +171,16 @@ void keyPressed() {
     if (test == 14) debugIncCHNewView = !debugIncCHNewView;
   }
   if (key == 'g') {
-    showRingSet = !showRingSet;
-    showPointSet = !showPointSet;
-    showCircleSet = !showCircleSet;
-    if (test == 24) showLattice = !showLattice;
+    gShowRingSet = !gShowRingSet;
+    gShowPointSet = !gShowPointSet;
+    gShowCircleSet = !gShowCircleSet;
+    if (test == 24 || test == 25) gShowLattice = !gShowLattice;
   }
   if (key == 'b') {
-    showBeams = !showBeams;
+    if (test == 19 || test == 24 || test == 25) gShowBeams = !gShowBeams;
   }
   if (key == 'f') {
-    fix3RT = !fix3RT;
+    gFix3RT = !gFix3RT;
   }
   if (key == 'm') {
     if (methodTM == 0) methodTM = 1;
@@ -189,64 +191,76 @@ void keyPressed() {
         gRingSet.twoRingTriangles = null;
       }
     }
+
+    if (test == 18 || test == 20 || test == 24 || test == 25) {
+      gMethodConvexGap = 1 - gMethodConvexGap;
+    }
   }
 
   /* Keys: uppercase letters. */
   if (key == 'C') {
-    showCenterOfSphere = !showCenterOfSphere;
+    gShowCenterOfSphere = !gShowCenterOfSphere;
   }
   if (key == 'A') {
-    showApolloniusDiagram = !showApolloniusDiagram;
+    gShowApolloniusDiagram = !gShowApolloniusDiagram;
   }
   if (key == 'T') {
-    showTriMesh = !showTriMesh;
+    gShowTriMesh = !gShowTriMesh;
+  }
+  if (key == 'Q') {
+    if (test == 20 || test == 24 || test == 25) {
+      gUseTriQuadMesh = !gUseTriQuadMesh;
+    }
   }
   if (key == 'B') {
-    showBoundingSphere = !showBoundingSphere;
+    gShowBoundingSphere = !gShowBoundingSphere;
   }
   if (key == 'O') {
-    showIntersectionCircles = !showIntersectionCircles;
+    gShowIntersectionCircles = !gShowIntersectionCircles;
   }
   if (key == 'H') {
-    showHub = !showHub;
+    gShowHub = !gShowHub;
+    if (test == 24 || test == 25) gShowCHoCCs = !gShowCHoCCs;
   }
   if (key == 'P') {
-    if (test == 2) projectOnSphere = !projectOnSphere;
+    if (test == 2) gProjectOnSphere = !gProjectOnSphere;
     if (test == 14 || test == 28) showStereoProjection = !showStereoProjection;
-    if (test == 20) projectOnHub = !projectOnHub;
   }
   if (key == 'L') {
-    if (test == 20) showLiftedCones = !showLiftedCones;
+    if (test == 20) gShowLiftedCones = !gShowLiftedCones;
   }
   if (key == 'G') {
-    showGapMesh = !showGapMesh;
+    gShowGapMesh = !gShowGapMesh;
   }
   if (key == 'S') {
-    showTriangleStrokes = !showTriangleStrokes;
-    showCorridorStrokes = !showCorridorStrokes;
-    if (test == 204) showSpheres = !showSpheres;
-    if (test == 25) showSteadyLattice = !showSteadyLattice;
+    gShowTriangleStrokes = !gShowTriangleStrokes;
+    gShowCorridorStrokes = !gShowCorridorStrokes;
+    if (test == 204) gShowTwoSpheres = !gShowTwoSpheres;
+    if (test == 25) gShowSteadyLattice = !gShowSteadyLattice;
   }
   if (key == 'K') {
-    showCones = !showCones;
+    gShowCones = !gShowCones;
   }
   if (key == 'I') {
-    if (test == 25) gCubeCenter.i = min(gCubeCenter.i + 1, gSteadyLattice.repetitionCountU() - 1 - gCubeHalfLength);
+    if (test == 25) gCubeCenter.i = min(gCubeCenter.i + 1, gSteadyLattice.repetitionCountU() - 1);
   }
   if (key == 'J') {
-    if (test == 25) gCubeCenter.j = min(gCubeCenter.j + 1, gSteadyLattice.repetitionCountV() - 1 - gCubeHalfLength);
+    if (test == 25) gCubeCenter.j = min(gCubeCenter.j + 1, gSteadyLattice.repetitionCountV() - 1);
   }
   if (key == 'K') {
-    if (test == 25) gCubeCenter.k = min(gCubeCenter.k + 1, gSteadyLattice.repetitionCountW() - 1 - gCubeHalfLength);
+    if (test == 25) gCubeCenter.k = min(gCubeCenter.k + 1, gSteadyLattice.repetitionCountW() - 1);
   }
   if (key == 'D') {
-    if (test == 25) gCubeHalfLength = min(gCubeHalfLength + 1, int((gSteadyLattice.minRepetitionCount() - 1) / 2));
+    if (test == 25) gCubeHalfLength = min(gCubeHalfLength + 1, gSteadyLattice.maxRepetitionCount() - 1);
   }
   if (key == 'e') {
-    showEllipticCone1 = !showEllipticCone1;
+    gShowEllipticCone1 = !gShowEllipticCone1;
   }
   if (key == 'E') {
-    showEllipticCone2 = !showEllipticCone2;
+    gShowEllipticCone2 = !gShowEllipticCone2;
+  }
+  if (key == 'N') {
+    gNavigateSteadyLattice = !gNavigateSteadyLattice;
   }
 
   change = true;
@@ -294,41 +308,89 @@ void mouseDragged() {
   }
 }
 
+private void displayProjectMethod(int line) {
+  switch (gMethodProjection) {
+    case 1:
+      scribeHeader("project to exact surface", line);
+      break;
+    case 2:
+      scribeHeader("project to blended surface", line);
+      break;
+    default:
+      scribeHeader("no projection", line);
+  }
+}
+
+private void displayGapMethod(int line) {
+  if (gMethodConvexGap == 0) {
+    scribeHeader("method 1: wants two negative dot products", line);
+  } else if (gMethodConvexGap == 1) {
+    scribeHeader("method 2: wants smaller pivot angle", line);
+  }
+}
+
 void displayDebugText() {
+  /* Display warning message at the top. */
+  if (warningMsg.length() > 0) scribeHeader("Warning: " + warningMsg, 1);
+
+  int line = 2;
   if (test == 2) {
-    scribeHeader("time for subdivision = " + timeSD + "ms", 6);
+    scribeHeader("time for subdivision = " + gTimeSubdivision + "ms", line++);
   }
 
   if (test == 14) {
-    scribeHeader("valid ring set? " + (validRS ? "yes" : "no"), 3);
-    scribeHeader("Number of samples per circle: " + gNumPointsPerRing, 4);
+    scribeHeader("valid ring set? " + (gRingSet.valid ? "yes" : "no"), line++);
+    scribeHeader("number of samples per circle = " + gNumPointsPerRing, line++);
   }
 
-  if (test == 19 || test == 20) {
-    scribeHeader("number of sides of each beam = " + gNumPointsPerRing, 5);
-    scribeHeader("subdivision times = " + subdivisionTimes, 6);
-  }
-
-  if (test == 20) {
-    if (gUseTriQuadMesh == false){
-      switch (projectMethod) {
-        case 1:
-          scribeHeader("Project method: shooting lines", 7);
-          break;
-        case 2:
-          scribeHeader("Project method: sphere tracing to blended hub", 7);
-          break;
-        default:
-          scribeHeader("Project method: shooting rays", 7);
-      }
+  if (test == 18) {
+    scribeHeader("nv0 = " + gGap.points0.size(), line++);
+    scribeHeader("nv1 = " + gGap.points1.size(), line++);
+    scribeHeader("number of triangles = " + gTriangleMesh.nt, line++);
+    if (gMethodConvexGap == 0) {
+      scribeHeader("method 1: wants two negative dot products", line++);
+    } else if (gMethodConvexGap == 1) {
+      scribeHeader("method 2: wants smaller pivot angle", line++);
     }
   }
 
+  if (test == 19 || test == 20) {
+    scribeHeader("number of sides of each beam = " + gNumPointsPerRing, line++);
+    scribeHeader("subdivision times = " + gSubdivisonTimes, line++);
+  }
+
+  if (test == 20 || test == 23) {
+    displayGapMethod(line++);
+    scribeHeader("push vertices on circles: " + (gProjectOnCircleAfterSub ? "yes" : "no"), line++);
+    displayProjectMethod(line++);
+  }
+
   if (test == 24) {
-    scribeHeader("number of balls = " + gLattice.nBalls, 2);
-    scribeHeader("number of beams = " + gLattice.nBeams, 3);
-    scribeHeader("corridor resolution = " + gNumPointsPerRing, 4);
-    scribeHeader("time for triangulation = " + timeTM + "ms", 5);
+    scribeHeader("debug? " + (debugLattice ? "yes" : "no"), line++);
+    scribeHeader("valid lattice? " + (gLattice.valid ? "yes" : "no"), line++);
+    scribeHeader("number of balls = " + gLattice.nBalls, line++);
+    scribeHeader("number of beams = " + gLattice.nBeams, line++);
+    scribeHeader("corridor resolution = " + gNumPointsPerRing, line++);
+    scribeHeader("time for triangulation = " + gTimeMeshing + "ms", line++);
+    scribeHeader("show beams = " + (gShowBeams ? "yes" : "no"), line++);
+    displayGapMethod(line++);
+    displayProjectMethod(line++);
+  }
+
+  if (test == 25) {
+    scribeHeader("debug? " + (debugLattice ? "yes" : "no"), line++);
+    scribeHeader("u, v, w = " + gSteadyLattice.repetitionCounts(), line++);
+    scribeHeader("cube center = " + gCubeCenter, line++);
+    scribeHeader("cube half length = " + gCubeHalfLength, line++);
+    scribeHeader("number of balls = " + gLattice.nBalls, line++);
+    scribeHeader("number of beams = " + gLattice.nBeams, line++);
+    scribeHeader("corridor resolution = " + gNumPointsPerRing, line++);
+    scribeHeader("time for triangulation = " + gTimeMeshing + "ms", line++);
+    scribeHeader("subdivision times = " + gSubdivisonTimes, line++);
+    scribeHeader("project on circles = " + (gProjectOnCircleAfterSub ? "yes" : "no"), line++);
+    scribeHeader("show beams = " + (gShowBeams ? "yes" : "no"), line++);
+    displayGapMethod(line++);
+    displayProjectMethod(line++);
   }
 }
 

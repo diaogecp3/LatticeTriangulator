@@ -2,12 +2,10 @@
  * Mesh.
  ******************************************************************************/
 
-boolean projectOnSphere = true;
-boolean projectOnHub = false;
-int subdivisionTimes = 0;  // subdivision times
-
-int projectMethod = 0;
-int numProjectMethod = 3;
+boolean gProjectOnSphere = true;
+int gSubdivisonTimes = 0;  // subdivision times
+int gMethodProjection = 0;
+int gNumProjectMethods = 3;  // 0: null 1: project on exact surface 2: project on blended surface
 
 int nextCorner(int cid) {
     return cid - (cid % 3) + (cid + 1) % 3;
@@ -18,12 +16,20 @@ int prevCorner(int cid) {
 }
 
 /*
+ * Mesh class.
+ */
+class Mesh {
+  void show(color colorMesh, boolean showStroke) {};
+}
+
+
+/*
  * TriangleMesh class.
  *
  * A triangle mesh is a set of triangles. Another data structures may used to
  * simplify processing, e.g. opposite corner table.
  */
-class TriangleMesh {
+class TriangleMesh extends Mesh {
   ArrayList<pt> positions;
   ArrayList<Triangle> triangles;
   int nv;
@@ -34,6 +40,7 @@ class TriangleMesh {
 
   IntList[] adjTriangles;  // adjacent triangles of each vertex
   vec[] vertexNormals;  // vertex normals
+  boolean containHubCenter = false;
 
   TriangleMesh() {
     positions = new ArrayList<pt>();
@@ -369,86 +376,57 @@ class TriangleMesh {
   }
 
   private void projectOnHubRay(Hub hub) {
-    // assert vertexNormals != null;
-    for (int i = 0; i < nv; ++i) {
-      pt o = positions.get(i);
-      if (hub.distanceFrom(o) < 0.0001) continue;
+    if (!containHubCenter) {
+      for (int i = 0; i < nv; ++i) {
+        pt p = positions.get(i);
+        projectPointOnExactHub(hub, p);
 
-      if (vertexNormals == null) {
-        vec d = U(o, hub.ball.c);  // from current vertex to the center of the hub
-        Float t = hub.closestIntersectionWithRay(o, d);
-        if (t != null) {
-          o.set(P(o, t, d));
-        }
-      } else {
-        vec d = U(o, hub.ball.c);
-        if (dot(d, vertexNormals[i]) < 0) {  // hub center cannot see vertex v
-          Float t = hub.closestIntersectionWithRay(o, d);
-          if (t != null) o.set(P(o, t, d));
-        } else {  // hub center can see vertex v
-          // println("hub center can see vertex v");
-          /* Redirect the ray direction. */
-          d.rev();
-          vec r = reflect(d, vertexNormals[i]);
-          r.normalize();
+        // if (hub.distanceFrom(p) < 0.0001) continue;
+        // if (vertexNormals == null) {
+        //   vec d = U(p, hub.ball.c);  // from current vertex to the center of the hub
+        //   Float t = hub.closestIntersectionWithRay(p, d);
+        //   if (t != null) {
+        //     p.add(t, d);
+        //   }
+        // } else {
+        //   vec d = U(p, hub.ball.c);
+        //   if (dot(d, vertexNormals[i]) < 0) {  // hub center cannot see vertex v
+        //     Float t = hub.closestIntersectionWithRay(p, d);
+        //     if (t != null) p.add(t, d);
+        //   } else {  // hub center can see vertex v
+        //     // println("hub center can see vertex v");
+        //     /* Redirect the ray direction. */
+        //     d.rev();
+        //     vec r = reflect(d, vertexNormals[i]);
+        //     r.normalize();
 
-          Float t = hub.furthestIntersectionWithRay(hub.ball.c, r);
-          {  // debug
-            // noStroke();
-            // fill(magenta);
-            // arrow(o, V(20, vertexNormals[i]), 1);
-          }
-          if (t != null) o.set(P(hub.ball.c, t, r));
-        }
+        //     Float t = hub.furthestIntersectionWithRay(hub.ball.c, r);
+        //     if (t != null) p.set(P(hub.ball.c, t, r));
+        //   }
+        // }
       }
-    }
-  }
-
-  private void projectOnHubLine(Hub hub) {
-    for (int i = 0; i < nv; ++i) {
-      pt o = positions.get(i);
-      // if (hub.distanceFrom(o) < 0.0001) continue;
-      vec d = U(hub.ball.c, o);
-      Float t = hub.closestIntersectionWithLine(o, d);
-      if (t != null) {
-        o.set(P(o, t, d));
+    } else {
+      for (int i = 0; i < nv; ++i) {
+        projectPointOnExactHubBiDir(hub, positions.get(i));
       }
     }
   }
 
   private void projectOnHubSphereTrace(Hub hub) {
-    int maxIter = 32;
-    for (int i = 0; i < nv; ++i) {
-      pt o = positions.get(i);
-      if (hub.distanceFrom(o) < 0.0001) continue;
-      vec d = U(o, hub.ball.c);  // from current vertex to the center of the hub
-
-      pt p = P(o);  // copy
-      for (int j = 0; j < maxIter; ++j) {
-        float dist = hub.blendedDistanceFrom(p);
-        if (dist < 0.0001) break;
-        if (Float.isInfinite(dist)) {
-          println("dist =", dist, "p =", p, "j =", j, "i =", i);
-          dist = 0.0;
-          break;
-        }
-        p.add(dist, d);
-      }
-
-      o.set(p);
+    for (pt p : positions) {
+      projectPointOnBlendedHub(hub, p);
     }
   }
 
-  void projectOnHub(Hub hub, int option) {
+  void projectOnHub(Hub hub, ProjectType option) {
+    if (option == null) return;
     switch (option) {
-      case 1:  // this option is bad, don't use
-        projectOnHubLine(hub);
+      case RAY:  // project radially on the exact hub
+        projectOnHubRay(hub);
         break;
-      case 2:  // project radially on blended hub
+      case SPHERE_TRACING:  // project radially on the blended hub
         projectOnHubSphereTrace(hub);
         break;
-      default:  // project radially on exact hub
-        projectOnHubRay(hub);
     }
   }
 
@@ -457,6 +435,7 @@ class TriangleMesh {
     return passConvexityTest(triangles, positions);
   }
 
+  @Override
   void show(color c, boolean useStroke) {
     fill(c, 255);
     if (useStroke) {
@@ -557,7 +536,7 @@ class TriangleMesh {
 /*
  * Triangle mesh with borders.
  */
-class BorderedTriangleMesh {
+class BorderedTriangleMesh extends Mesh {
   TriangleMesh triangleMesh;
   ArrayList<Integer>[] borders;
 

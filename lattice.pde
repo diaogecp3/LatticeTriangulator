@@ -8,9 +8,15 @@
 import java.util.List;
 
 boolean debugLattice = false;
-boolean showLattice = true;
-boolean showSteadyLattice = false;
 
+boolean gShowBeams = true;
+boolean gShowJunctions = true;
+boolean gShowCHoCCs = false;
+boolean gShowLattice = true;
+boolean gShowSteadyLattice = false;
+boolean gNavigateSteadyLattice = false;
+
+float gAvgVertexCount = 0.0;
 
 /*
  * General lattice, which is basiclly a graph with each vertex being a ball.
@@ -21,20 +27,26 @@ class Lattice {
   Ball[] balls;
   int[][] beams;  // each beam is a pair of indices
 
+  boolean valid = false;
+
+  /* Intermediate variables in lattice tessellation. */
+  ArrayList<Integer>[] adjLists = null;
+  Hub[] hubs = null;
 
   /* For debug. */
-  class DebugGapInfo {
-    ArrayList<Integer> gapStarts = new ArrayList<Integer>();
-    ArrayList<Integer> gapSizes = new ArrayList<Integer>();
-    DebugGapInfo() {}
+  class DebugBeamInfo {
+    ArrayList<Integer> beamStarts = new ArrayList<Integer>();
+    ArrayList<Integer> beamSizes = new ArrayList<Integer>();
+    DebugBeamInfo() {}
     void reset() {
-      gapStarts.clear();
-      gapSizes.clear();
+      beamStarts.clear();
+      beamSizes.clear();
     }
   }
-  DebugGapInfo dGapInfo = new DebugGapInfo();
-  IntList nVertices = new IntList();  // nVertices[i] is the number of vertices of the convex hull of the i-th ball
-  ArrayList<BorderedTriQuadMesh> junctionMeshes = new ArrayList<BorderedTriQuadMesh>();  // each mesh is a triangle-quad mesh
+  DebugBeamInfo dBeamInfo = new DebugBeamInfo();
+  IntList junctionVertexCounts = new IntList();  // junctionVertexCounts[i] is the vertex count of the i-th CHoCC
+  ArrayList<Mesh> junctionMeshes = null;
+  ArrayList<TriangleMesh> beamMeshes = null;
 
   Lattice() {}
 
@@ -43,6 +55,7 @@ class Lattice {
     this.beams = beams;
     nBalls = balls.length;
     nBeams = beams.length;
+    init();
   }
 
   Lattice(ArrayList<Ball> ballList, ArrayList<Edge> beamList) {
@@ -55,11 +68,12 @@ class Lattice {
       beams[i][0] = beamList.get(i).a;
       beams[i][1] = beamList.get(i).b;
     }
+    init();
   }
 
-  ArrayList<Integer>[] adjacencyLists() {
+  ArrayList<Integer>[] generateAdjLists() {
     if (beams == null) return null;
-    ArrayList<Integer>[] adjLists = new ArrayList[nBalls];
+    if (adjLists == null) adjLists = new ArrayList[nBalls];
     for (int i = 0; i < nBalls; ++i) adjLists[i] = new ArrayList<Integer>();
     for (int i = 0; i < nBeams; ++i) {
       int a = beams[i][0];
@@ -67,6 +81,7 @@ class Lattice {
       adjLists[a].add(b);
       adjLists[b].add(a);
     }
+
     return adjLists;
   }
 
@@ -78,6 +93,56 @@ class Lattice {
     return new Hub(centerBall, outerBalls, nNeighbors);
   }
 
+  Hub[] generateHubs() {
+    assert adjLists != null;
+
+    if (hubs == null) hubs = new Hub[nBalls];
+    for (int i = 0; i < nBalls; ++i) {
+      hubs[i] = generateHub(i, adjLists[i]);
+    }
+    return hubs;
+  }
+
+  /*
+   * Check validity of the lattice.
+   */
+  boolean isValid() {
+    assert nBalls > 0 && nBeams > 0;
+    assert adjLists != null && hubs != null;
+
+    /* Check if each hub is valid. */
+    for (int i = 0; i < nBalls; ++i) {
+      if (hubs[i].valid == false) return false;
+    }
+
+    /* Check intersection of inflating spheres of two neighboring hubs. */
+    boolean[] visited = new boolean[nBalls];  // all false
+    for (int i = 0; i < nBalls; ++i) {
+      Ball b0 = hubs[i].getBoundingSphere();
+      ArrayList<Integer> adjList = adjLists[i];
+      for (Integer neighbor : adjList) {
+        int j = (int)neighbor;
+        if (visited[j]) continue;
+        Ball b1 = hubs[j].getBoundingSphere();
+        if (b0.intersectBall(b1)) {
+          warningMsg += "Two inflating spheres intersect; ";
+          return false;
+        }
+      }
+      visited[i] = true;
+    }
+    return true;
+  }
+
+  /*
+   * Initialize adjacency lists, hubs, and check validity of the lattice.
+   */
+  void init() {
+    generateAdjLists();
+    generateHubs();
+    valid = isValid();
+  }
+
   private ArrayList<pt> extractVertices(ArrayList<pt> positions, ArrayList<Integer> pIDs) {
     ArrayList<pt> ps = new ArrayList<pt>();
     for (Integer pID : pIDs) {
@@ -86,35 +151,41 @@ class Lattice {
     return ps;
   }
 
-  TriangleMesh triangulate(ArrayList<Integer>[] adjLists) {
+  /*
+   * Compute a triangle mesh that approximates the surface of the lattice.
+   */
+  TriangleMesh triangulate() {
+    assert adjLists != null && hubs != null;
     TriangleMesh triMesh = new TriangleMesh();
+
+    /*
+     * Need to store information about beams that are being explored.
+     * key: the two ball IDs of a beam
+     * value: the vertex IDs on the visited end of the beam
+     */
     HashMap<Edge, ArrayList<Integer>> beamToLoop = new HashMap<Edge, ArrayList<Integer>>();
+
     Queue<Integer> queue = new ArrayDeque<Integer>();
     queue.add(0);
-    int k = 0;
+    int k = 0;  // for counting how many hubs are processed
     boolean[] visited = new boolean[nBalls];  // all false
+
     if (debugLattice) {
-      dGapInfo.reset();
-      nVertices.clear();
-      junctionMeshes.clear();
+      dBeamInfo.reset();
+      junctionVertexCounts.clear();
     }
 
     while (queue.size() > 0) {
-      // if (k == 4) break;
-
       int ballID = queue.poll();
-      // println("ballID =", ballID);
       if (visited[ballID]) continue;
       visited[ballID] = true;
 
       ArrayList<Integer> adjList = adjLists[ballID];
-      // println("hub ID =", ballID);
-      Hub hub = generateHub(ballID, adjList);
+      Hub hub = hubs[ballID];
       BorderedTriangleMesh btm = hub.generateConvexHullMesh(gNumPointsPerRing);  // gNumPointsPerRing controls the resolution of each corridor
 
       if (debugLattice) {
-        junctionMeshes.add(hub.generateConvexHullTQMesh());
-        nVertices.append(btm.triangleMesh.nv);
+        junctionVertexCounts.append(btm.triangleMesh.nv);
       }
 
       int offset = triMesh.nv;
@@ -154,27 +225,24 @@ class Lattice {
           ArrayList<Triangle> tris = gap.gapHullGlobal(border, otherBorder);
 
           if (tris == null) {
-            // println("Fail!");
+            println("Failure in filling a gap! Please check the saved gap and hub files.");
             stroke(magenta);
             strokeWeight(3);
-            // fill(magenta, 100);
-            // showOrientedLoop(ps0);
-            // showOrientedLoop(ps1);
             showLoop(ps0);
             showLoop(ps1);
             strokeWeight(1);
             noStroke();
-
             gGap = gap;
             gGap.save("data/gap_unnamed");
             hub.save("data/hub_unnamed");
             return triMesh;
           }
           if (debugLattice) {
-            dGapInfo.gapStarts.add(triMesh.nt);
-            dGapInfo.gapSizes.add(tris.size());
+            dBeamInfo.beamStarts.add(triMesh.nt);
+            dBeamInfo.beamSizes.add(tris.size());
           }
-          if (showGapMesh) triMesh.augmentWithoutShift(tris);
+
+          triMesh.augmentWithoutShift(tris);
           beamToLoop.remove(uv);
         } else {  // if the i-th beam is not initialized, initialize it
           beamToLoop.put(uv, border);
@@ -186,21 +254,200 @@ class Lattice {
     return triMesh;
   }
 
+  /*
+   * Compute junction meshes and beam meshes that together approximate the
+   * surface of the lattice.
+   *
+   * Parameters:
+   * subdivisionTimes: subdivision levels
+   * projType: projection type
+   */
+  void tessellate(int subdivisionTimes, ProjectType projType) {
+    assert adjLists != null && hubs != null;
+    if (junctionMeshes == null) junctionMeshes = new ArrayList<Mesh>();
+    else junctionMeshes.clear();
+    if (beamMeshes == null) beamMeshes = new ArrayList<TriangleMesh>();
+    else beamMeshes.clear();
+
+    /*
+     * Need to store information about beams that are being explored.
+     * key: the two ball IDs of a beam
+     * value: the vertices on the visited end of the beam
+     */
+    HashMap<Edge, ArrayList<pt>> beamToLoop = new HashMap<Edge, ArrayList<pt>>();
+
+    Queue<Integer> queue = new ArrayDeque<Integer>();
+    queue.add(0);
+    boolean[] visited = new boolean[nBalls];  // all false
+
+    while (queue.size() > 0) {
+      int ballID = queue.poll();
+      if (visited[ballID]) continue;
+      visited[ballID] = true;
+
+      ArrayList<Integer> adjList = adjLists[ballID];
+      Hub hub = hubs[ballID];
+      if (hub.ringSet == null) hub.generateRingSet(gNumPointsPerRing);
+      hub.ringSet.generateExactCHIncremental(null);
+
+      /* Generate junction mesh. */
+      BorderedTriQuadMesh tqm = hub.ringSet.generateConvexTriQuadMesh();
+
+      /* Subdivide it and project some vertices onto corresponding circles. */
+      for (int i = 0; i < subdivisionTimes; ++i) {
+        tqm = tqm.subdivide(SubdivideTypeTriangle.LOOP, SubdivideTypeQuad.DIAMOND, gProjectOnCircleAfterSub);
+      }
+
+      /* Project onto the hub. */
+      if (subdivisionTimes > 0 && projType != null) {
+        // tqm.projectOnHub(hub, projType);
+        TriangleMesh tm = tqm.toTriangleMesh();
+        boolean containHubCenter = hub.ringSet.pointInCrudestConvexHull(hub.ball.c);
+        tm.containHubCenter = containHubCenter;
+        tm.projectOnHub(hub, projType);
+        junctionMeshes.add(tm);
+      } else {
+        junctionMeshes.add(tqm);
+      }
+
+      /* Push new balls into the queue and store the beams that need to be matched. */
+      ArrayList<pt>[] borders = tqm.borders;
+      assert borders.length == adjList.size();
+      for (int i = 0; i < adjList.size(); ++i) {
+        int bID = adjList.get(i);
+        if (visited[bID] == false) {
+          queue.add(bID);
+        }
+
+        int u = min(ballID, bID);
+        int v = max(ballID, bID);
+        Edge uv = new Edge(u, v);
+
+        ArrayList<pt> border = borders[i];
+        removeDuplicates(border);
+
+        if (beamToLoop.containsKey(uv)) {  // if the i-th beam is initialized, construct the whole beam and remove this beam from the hash map
+          ArrayList<pt> otherBorder = beamToLoop.get(uv);
+          Collections.reverse(otherBorder);
+
+          ConvexGap gap = new ConvexGap(border, otherBorder);
+          TriangleMesh tm = gap.toTriMesh();
+          if (tm == null) {
+            println("Failure in filling a gap! Please check the saved gap and hub files.");
+            gap.save("data/gap_unnamed");
+            hub.save("data/hub_unnamed");
+            return;
+          }
+          // if (!tm.isConvex()) {
+          //   println("The gap mesh isn't convex! Please check the saved gap and hub files.");
+          //   gap.save("data/gap_unnamed");
+          //   hub.save("data/hub_unnamed");
+          //   return;
+          // }
+
+          /* Store the beam mesh. */
+          beamMeshes.add(tm);
+
+          beamToLoop.remove(uv);
+        } else {  // if the i-th beam is not initialized, initialize it
+          beamToLoop.put(uv, border);
+        }
+      }
+    }
+  }
+
+  void showInflatingSpheres() {
+    assert hubs != null;
+    for (int i = 0; i < nBalls; ++i) {
+      Ball b = hubs[i].getBoundingSphere();
+      b.show();
+    }
+  }
+
+  /*
+   * Show all convex hulls of cospherical circles. Please make sure that all
+   * sets of circles and their corresponding convex hulls have been computed.
+   *
+   * Parameters:
+   * cTriangle: color for triangles
+   * cCorridor: color for corridors
+   * cBeam: color for beams
+   */
+  void showCHoCCs(color cTriangle, color cCorridor, color cBeam) {
+    assert hubs != null;
+    /* Show all junctions with each being a CHoCC. */
+    for (int i = 0; i < nBalls; ++i) {
+      Hub hub = hubs[i];
+      RingSet rs = hub.ringSet;
+      if (rs == null) continue;
+      fill(cTriangle);
+      rs.showIncTriangles();
+      fill(cCorridor);
+      rs.showIncCorridors();
+    }
+
+    /* Show all beams. */
+    fill(cBeam);
+    int numSamples = 12;
+    for (int i = 0; i < nBalls; ++i) {
+      ArrayList<Integer> adjList = adjLists[i];
+      Circle[] circles = hubs[i].circles;
+      for (int j = 0; j < adjList.size(); ++j) {
+        int k = adjList.get(j);
+        if (k < i) continue;
+        Circle c0 = circles[j];
+        int h = adjLists[k].indexOf((Integer)i);
+        Circle c1 = (hubs[k].circles)[h];
+
+        /* Construct a beam using circle c0 and c1. */
+        TruncatedCone cone = new TruncatedCone(c0.c, c0.r, c1.c, c1.r);
+        cone.show(numSamples, false);
+      }
+    }
+  }
+
+  void showJunctions(color cJunction, boolean showStroke) {
+    if (junctionMeshes == null || junctionMeshes.size() == 0) return;
+    for (Mesh junction : junctionMeshes) {
+      junction.show(cJunction, showStroke);
+    }
+  }
+
+  void showBeams(color cBeam, boolean showStroke) {
+    if (beamMeshes == null || beamMeshes.size() == 0) return;
+    for (TriangleMesh beam : beamMeshes) beam.show(cBeam, showStroke);
+  }
 
   void show() {
-    fill(red);
+    /* Show balls. */
     for (int i = 0; i < nBalls; ++i) balls[i].show();
-    stroke(green);
-    strokeWeight(3);
-    beginShape(LINES);
+
+    /* Show beams. */
+    int numSamples = 20;
     for (int i = 0; i < nBeams; ++i) {
       int[] b = beams[i];
-      vertex(balls[b[0]].c);
-      vertex(balls[b[1]].c);
+      TruncatedCone cone = truncatedConeOfTwoBalls(balls[b[0]], balls[b[1]]);
+      cone.show(numSamples, false);
     }
-    endShape();
-    strokeWeight(1);
-    noStroke();
+  }
+
+  void save(String file) {
+    println("saving lattice:", file);
+    String[] lines = new String[nBalls + nBeams + 2];
+    int i = 0;
+
+    lines[i++] = str(nBalls);
+    for (int j = 0; j < nBalls; ++j) {
+      lines[i++] = str(balls[j].c.x) + "," + str(balls[j].c.y) + "," +
+                   str(balls[j].c.z) + "," + str(balls[j].r);
+    }
+
+    lines[i++] = str(nBeams);
+    for (int j = 0; j < nBeams; ++j) {
+      lines[i++] = str(beams[j][0]) + "," + str(beams[j][1]);
+    }
+
+    saveStrings(file, lines);
   }
 
   void load(String file) {
@@ -222,30 +469,52 @@ class Lattice {
       beams[j][0] = tmp[0];
       beams[j][1] = tmp[1];
     }
+
+    init();
   }
 }
 
-void showHubGapMesh(TriangleMesh mesh, ArrayList<Integer> gapStarts, ArrayList<Integer> gapSizes, color cHub, color cGap, boolean useStroke, boolean ignoreJunction) {
+/*
+ * Use two colors to show respectively junctions and beams of a lattice mesh.
+ *
+ * Parameters:
+ * mesh: the triangle mesh that approximates a lattice, assuming that every
+ *       junction (or beam) is approximated by a subarray of triangles
+ * beamStarts: beamStarts[i] is the index of the first triangle of the i-th beam
+ * beamSizes: beamSizes[i] is the number of triangles of the i-th beam
+ * cJunction: color for each junction
+ * cBeam: color for each beam
+ * showJunctions: show junctions or not
+ * showBeams: show beams or not
+ * showStroke: show the stroke or not
+ */
+void showGraphMesh(TriangleMesh mesh, ArrayList<Integer> beamStarts,
+                   ArrayList<Integer> beamSizes, color cJunction, color cBeam,
+                   boolean showJunctions, boolean showBeams, boolean showStroke) {
   ArrayList<pt> positions = mesh.positions;
   ArrayList<Triangle> triangles = mesh.triangles;
   int i = 0;
   int j = 0;
-  if (useStroke) stroke(0);
+  if (showStroke) stroke(0);
   beginShape(TRIANGLES);
   while (i < mesh.nt) {
-    if (j < gapStarts.size() && i == gapStarts.get(j)) {
-      fill(cGap);
-      int end = gapStarts.get(j) + gapSizes.get(j);
-      while (i < end) {
-        vertex(positions.get(triangles.get(i).a));
-        vertex(positions.get(triangles.get(i).b));
-        vertex(positions.get(triangles.get(i).c));
-        i++;
+    if (j < beamStarts.size() && i == beamStarts.get(j)) {
+      if (showBeams) {  // show beam triangle mesh on demand
+        fill(cBeam);
+        int end = beamStarts.get(j) + beamSizes.get(j);
+        while (i < end) {
+          vertex(positions.get(triangles.get(i).a));
+          vertex(positions.get(triangles.get(i).b));
+          vertex(positions.get(triangles.get(i).c));
+          i++;
+        }
+      } else {
+        i = beamStarts.get(j) + beamSizes.get(j);
       }
       j++;
     } else {
-      if (!ignoreJunction) {
-        fill(cHub);
+      if (showJunctions) {  // show junction triangle mesh on demand
+        fill(cJunction);
         vertex(positions.get(triangles.get(i).a));
         vertex(positions.get(triangles.get(i).b));
         vertex(positions.get(triangles.get(i).c));
@@ -254,7 +523,7 @@ void showHubGapMesh(TriangleMesh mesh, ArrayList<Integer> gapStarts, ArrayList<I
     }
   }
   endShape();
-  if (useStroke) noStroke();
+  if (showStroke) noStroke();
 }
 
 /*
@@ -269,7 +538,7 @@ class SteadyLattice {
   private List<Ball> unitJoints;  // a unit joint is a ball in the base cluster
   private List<List<JointId>> nextJoints;  // adjacency lists
 
-  private boolean restrictInBoundsU, restrictInBoundsV, restrictInBoundsW;
+  // private boolean restrictInBoundsU, restrictInBoundsV, restrictInBoundsW;
 
   private boolean hasLinearTimeBIQ = false;
   private boolean hasConstantTimeBIQ = false;
@@ -281,9 +550,9 @@ class SteadyLattice {
     w = 0;  W = new SwirlTransform();
     unitJoints = new ArrayList<Ball>();
     nextJoints = new ArrayList<List<JointId>>();
-    restrictInBoundsU = true;
-    restrictInBoundsV = true;
-    restrictInBoundsW = true;
+    // restrictInBoundsU = true;
+    // restrictInBoundsV = true;
+    // restrictInBoundsW = true;
   }
 
   public SteadyLattice deepCopy() {
@@ -306,6 +575,10 @@ class SteadyLattice {
   public SteadyLattice setV(int pv, SwirlTransform pV) { v=pv; V=pV; return this; }
   public SteadyLattice setW(int pw, SwirlTransform pW) { w=pw; W=pW; return this; }
 
+  public SwirlTransform getU() { return U; }
+  public SwirlTransform getV() { return V; }
+  public SwirlTransform getW() { return W; }
+
   public int addJoint(Ball ball) {
     unitJoints.add(ball);
     nextJoints.add( new ArrayList<JointId>() );
@@ -315,47 +588,11 @@ class SteadyLattice {
 
   public void addBeam(int a, int b, Idx3 offset) { nextJoints.get(a).add( new JointId(b, offset) ); }
 
-  public SteadyLattice restrictInBounds(boolean inU, boolean inV, boolean inW) {
-    restrictInBoundsU = inU;
-    restrictInBoundsV = inV;
-    restrictInBoundsW = inW;
-    return this;
-  }
-
-  // public void updateBIQCostFlags() {
-  //   hasLinearTimeBIQ = true;
-  //   hasConstantTimeBIQ = true;
-  //   BeamIterator beamIterator = new BeamIterator(this, BeamType.BOTH, BeamDirection.OUT);
-  //   beamIterator.restrictBeamStartIndex(I(0, 0, 0), I(0, 0, 0));
-  //   if (beamIterator.init()) do {
-  //     if (hasConstantTimeBIQ && !transformsAreSeparableForBeam(W, V, U, beamIterator.currentStartBall(), beamIterator.currentEndBall()))
-  //       hasConstantTimeBIQ = false;
-  //     if (hasLinearTimeBIQ && !hasConstantTimeBIQ && !transformsAreSeparableForBeam(W, V, beamIterator.currentStartBall(), beamIterator.currentEndBall()))
-  //       hasLinearTimeBIQ = false;
-  //   } while (beamIterator.next());
-  // }
-
-  // public void inflate(int n) { inflate(n,n,n); }
-  // public void inflate(int nx, int ny, int nz) {
-  //   Frame3 G_frame = G.transformFrameNoCopy(new Frame3(), 1);
-  //   Frame3 U_frame = U.transformFrameNoCopy(new Frame3(), -nx);
-  //   Frame3 V_frame = V.transformFrameNoCopy(new Frame3(), -ny);
-  //   Frame3 W_frame = W.transformFrameNoCopy(new Frame3(), -nz);
-
-  //   Frame3 WinG = G_frame.toGlobalFrame(W_frame);
-  //   G = decomposeSwirlTransform(new Frame3(), WinG, 1);
-  //   G_frame = G.transformFrameNoCopy(new Frame3(), 1);
-
-  //   Frame3 VinG = G_frame.toGlobalFrame(V_frame);
-  //   G = decomposeSwirlTransform(new Frame3(), VinG, 1);
-  //   G_frame = G.transformFrameNoCopy(new Frame3(), 1);
-
-  //   Frame3 UinG = G_frame.toGlobalFrame(U_frame);
-  //   G = decomposeSwirlTransform(new Frame3(), UinG, 1);
-
-  //   u += 2*nx;
-  //   v += 2*ny;
-  //   w += 2*nz;
+  // public SteadyLattice restrictInBounds(boolean inU, boolean inV, boolean inW) {
+  //   restrictInBoundsU = inU;
+  //   restrictInBoundsV = inV;
+  //   restrictInBoundsW = inW;
+  //   return this;
   // }
 
   public Idx3 repetitionCounts() { return I(u,v,w); }
@@ -367,24 +604,14 @@ class SteadyLattice {
   public Ball getUnitJointBall(int i) { return unitJoints.get(i); }
   public List<JointId> getNextJoints(int i) { return nextJoints.get(i); }
 
-  public boolean restrictInBoundsU() { return restrictInBoundsU; }
-  public boolean restrictInBoundsV() { return restrictInBoundsV; }
-  public boolean restrictInBoundsW() { return restrictInBoundsW; }
+  // public boolean restrictInBoundsU() { return restrictInBoundsU; }
+  // public boolean restrictInBoundsV() { return restrictInBoundsV; }
+  // public boolean restrictInBoundsW() { return restrictInBoundsW; }
 
-  public boolean hasLinearTimeBIQ() { return hasLinearTimeBIQ; }
-  public boolean hasConstantTimeBIQ() { return hasConstantTimeBIQ; }
+  // public boolean hasLinearTimeBIQ() { return hasLinearTimeBIQ; }
+  // public boolean hasConstantTimeBIQ() { return hasConstantTimeBIQ; }
 
   public Ball getJointBall(int i, Idx3 index) { return ballAt(getUnitJointBall(i), index); }
-
-  // public AABB3 getAABB() {
-  //   AABB3 aabb = EmptyAABB3();
-  //   JointIterator joints = new JointIterator(this);
-  //   if (joints.init()) do {
-  //     Ball ball = joints.currentBall();
-  //     aabb.combine(ball.aabb());
-  //   } while (joints.next());
-  //   return aabb;
-  // }
 
   public pt pointAt(pt start, Idx3 index) {
     // Index is not restricted to be in lattice bounds.
@@ -469,8 +696,28 @@ class SteadyLattice {
     return min(u, min(v, w));
   }
 
+  public int maxRepetitionCount() {
+    return max(u, max(v, w));
+  }
+
   private int globalBallIdx(int b, int i, int j, int k) {
     return b + (i + j * u + k * u * v) * unitJoints.size();
+  }
+
+  public MinMaxI[] getCubeRange(Idx3 cubeCenter, int cubeHalfLength) {
+    MinMaxI[] ranges = new MinMaxI[3];
+    ranges[0] = new MinMaxI(max(cubeCenter.i - cubeHalfLength, 0), min(cubeCenter.i + cubeHalfLength + 1, u));
+    ranges[1] = new MinMaxI(max(cubeCenter.j - cubeHalfLength, 0), min(cubeCenter.j + cubeHalfLength + 1, v));
+    ranges[2] = new MinMaxI(max(cubeCenter.k - cubeHalfLength, 0), min(cubeCenter.k + cubeHalfLength + 1, w));
+    return ranges;
+  }
+
+  public MinMaxI[] getFullRange() {
+    MinMaxI[] ranges = new MinMaxI[3];
+    ranges[0] = new MinMaxI(0, u);
+    ranges[1] = new MinMaxI(0, v);
+    ranges[2] = new MinMaxI(0, w);
+    return ranges;
   }
 
   /*
@@ -525,77 +772,20 @@ class SteadyLattice {
     }
   }
 
-  public void show() {
+  public void show(MinMaxI[] ranges) {
     ArrayList<Ball> balls = new ArrayList<Ball>();
     ArrayList<Edge> beams = new ArrayList<Edge>();  // an edge is a pair of ball indices
-    /*
-    for (int k = 0; k < w; ++k) {
-      for (int j = 0; j < v; ++j) {
-        for (int i = 0; i < u; ++i) {
-          Idx3 offset = new Idx3(i, j, k);
-          for (Ball b : unitJoints) {
-            balls.add(ballAt(b, offset));
-          }
-        }
-      }
-    }
-    for (int k = 0; k < w; ++k) {
-      for (int j = 0; j < v; ++j) {
-        for (int i = 0; i < u; ++i) {  // current ball cloud ID is (i, j, k)
-          int bIdOffset = (i + j * u + k * u * v) * unitJoints.size();
-          for (int b = 0; b < nextJoints.size(); ++b) {  // look at each ball's adjacency list
-            int bId0 = b + bIdOffset;
-            List<JointId> adjList = nextJoints.get(b);
-            for (int a = 0; a < adjList.size(); ++a) {  // look at each neighbor of b
-              JointId jId = adjList.get(a);
-              Idx3 nextCloudId = jId.offset.c().add(i, j, k);
-              if (nextCloudId.i >= u || nextCloudId.j >= v || nextCloudId.k >= w) continue;
-              int bId1 = jId.unitId + (nextCloudId.i + nextCloudId.j * u + nextCloudId.k * u * v) * unitJoints.size();
-              beams.add(new Edge(bId0, bId1));
-            }
-          }
-        }
-      }
-    }
-    */
-    MinMaxI[] ranges = new MinMaxI[3];
-    // ranges[0] = new MinMaxI(max(gCubeCenter.i - gCubeHalfLength, 0), min(gCubeCenter.i + gCubeHalfLength + 1, u));
-    // ranges[1] = new MinMaxI(max(gCubeCenter.j - gCubeHalfLength, 0), min(gCubeCenter.j + gCubeHalfLength + 1, v));
-    // ranges[2] = new MinMaxI(max(gCubeCenter.k - gCubeHalfLength, 0), min(gCubeCenter.k + gCubeHalfLength + 1, w));
-    ranges[0] = new MinMaxI(0, u);
-    ranges[1] = new MinMaxI(0, v);
-    ranges[2] = new MinMaxI(0, w);
+
+    if (ranges == null) ranges = getFullRange();
     traverse(ranges, balls, beams);
-    // println("# balls =", balls.size());
-    // println("# beams =", beams.size());
 
     // fill(red);
     // for (Ball b : balls) b.show();
-
     stroke(green);
     for (Edge beam : beams) {
       showSegment(balls.get(beam.a).c, balls.get(beam.b).c);
     }
     noStroke();
-
-    // ArrayList<TruncatedCone> cones = new ArrayList<TruncatedCone>();
-    // for (Edge beam : beams) {
-    //   Ball a = balls.get(beam.a);
-    //   Ball b = balls.get(beam.b);
-    //   cones.add(truncatedConeOfTwoBalls(a, b));
-    // }
-    // fill(blue);
-    // for (TruncatedCone cone : cones) {
-    //   cone.show(6, false);
-    // }
-  }
-
-  public MinMaxI[] getCubeRange(Idx3 cubeCenter, int cubeHalfLength) {
-    MinMaxI[] ranges = new MinMaxI[3];
-    ranges[0] = new MinMaxI(max(cubeCenter.i - cubeHalfLength, 0), min(cubeCenter.i + cubeHalfLength + 1, u));
-    ranges[1] = new MinMaxI(max(cubeCenter.j - cubeHalfLength, 0), min(cubeCenter.j + cubeHalfLength + 1, v));
-    ranges[2] = new MinMaxI(max(cubeCenter.k - cubeHalfLength, 0), min(cubeCenter.k + cubeHalfLength + 1, w));
-    return ranges;
   }
 }
 
@@ -612,6 +802,7 @@ class JointId {
   public Idx3 offset() { return offset.c(); }
 }
 
+/*
 enum BeamType { LOCAL, GLOBAL, BOTH }
 enum BeamDirection { OUT, IN, BOTH }
 
@@ -834,3 +1025,4 @@ class JointIterator {
   public Idx3 currentIndex() { return idxIterator.current(); }
   public Ball currentBall() { return lattice.getJointBall(currentUnitId(), currentIndex()); }
 }
+*/

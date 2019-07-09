@@ -6,23 +6,22 @@
 
 /* Input methods for differnt objects. */
 int inputMethodPointSet = 0;  // 0: read from file, 1: generate randomly, 2: from ring set
-int inputMethodRingSet = 0;  // 0: read from file, 1: generate randomly
+int inputMethodRingSet = 1;  // 0: read from file, 1: generate randomly
 int inputMethodHub = 1;  // 0: read from file, 1: generate randomly
 int inputMethodEdgeCircle = 1;  // 0: read from file, 1: generate randomly
 int inputMethodTriangleMesh = 1;  // 0: read from file, 1: nothing happens
 int inputMethodLattice = 0;  // 0: read from file, 1: generate manually
-int inputMethodGap = 1;  // 0: read from file
-int inputMethodSteadyLattice = 1;  // 0: read from file, 1: generate manually
-int inputMethodTriQuadMesh = 0;
+int inputMethodGap = 1;  // 0: read from file, 1: nothing happens
+int inputMethodSteadyLattice = 1;  // 0: nothing happens, 1: generate manually
 
 /* File paths for different objects. */
 String gPointSetPath = "data/point_set/ps_hub_tessellation";
 String gRingSetPath = "data/ring_set/rs_convex_hull_samples_on_circles";
-String gHubPath = "data/hub/hub_5";
+String gHubPath = "data/hub/hub_9";
 String gEdgeCirclePath = "data/edge_circle/ec_0";
 String gTriangleMeshPath = "data/triangle_mesh/tm_0";
 String gLatticePath = "data/lattice/lattice";
-String gGapPath = "data/gap/gap_5";
+String gGapPath = "data/gap/gap_10";
 String gSteadyLatticePath = "data/lattice/lattice";
 
 /* File paths for results. */
@@ -37,7 +36,7 @@ float gAttenuationMin = 0.05;
 float gAttenuationDelta = 0.05;
 float gAttenuation = 1.0;
 int gNumRings = 5;
-int gNumPointsPerRing = 6;
+int gNumPointsPerRing = 4;
 RingSet gRingSet;  // the global ring set
 
 /* Global variables related to gHub. */
@@ -65,10 +64,25 @@ ConvexGap gGap;
 /* Global variables related to gSteadyLattice. */
 SteadyLattice gSteadyLattice;
 MinMaxI[] gRanges = new MinMaxI[3];  // [iMin, iMax], [jMin, jMax], [kMin, kMax]
-Idx3 gCubeCenter = new Idx3(2, 2, 2);
+Idx3 gCubeCenter = new Idx3(0, 0, 0);
 int gCubeHalfLength = 1;
 
+/*
+ * Choose which steady lattice model to use in Test 25.
+ * 0: a regular lattice
+ * 1: a rotated regular lattice
+ * 2: a swirl regular lattice
+ * 3: a swirl-rotation-translation lattice
+ * ...
+ * 10: the model in the convex hull paper (SPM 2019 submission 20)
+ */
+int gSteadyOption = 3;
 
+
+
+/*
+ * Randomly generate a point on the sphere with center c and radius r.
+ */
 pt generateOnePointOnSphere(pt c, float r) {
   float alpha = random(-HALF_PI, HALF_PI);
   float beta = random(0, TWO_PI);
@@ -78,6 +92,9 @@ pt generateOnePointOnSphere(pt c, float r) {
   return new pt(c.x + dx, c.y + dy, c.z + dz);
 }
 
+/*
+ * Randomly generate a point inside the sphere with center c and radius r.
+ */
 pt generateOnePointInsideSphere(pt c, float r) {
   pt p = new pt();
   float r2 = r * r;
@@ -92,6 +109,9 @@ pt generateOnePointInsideSphere(pt c, float r) {
   return p;
 }
 
+/*
+ * Randomly generate n points on the sphere with center c and radius r.
+ */
 pt[] generatePointsOnSphere(pt c, float r, int n) {
   pt[] points = new pt[n];
   for (int i = 0; i < n; ++i) {
@@ -113,117 +133,91 @@ pt[] generatePointsOnSphere(pt c, float r, int n) {
   return points;
 }
 
-void generatePointsOnSphere(pts P, pt c, float r, int n) {
-  P.empty();
+/*
+ * Randomly generate n points on the sphere with center c and radius r. Clear ps
+ * and store the n points in it.
+ */
+void generatePointsOnSphere(pts ps, pt c, float r, int n) {
+  ps.empty();
   pt[] points = generatePointsOnSphere(c, r, n);
   for (int i = 0; i < n; ++i) {
-    P.addPt(points[i]);
+    ps.addPt(points[i]);
   }
 }
 
+/*
+ * Sample points uniformly on a circle.
+ */
+private pt[] generatePointsForOneCircle(pt capCenter, float circleRadius,
+                                        pt sphereCenter, float sphereRadius,
+                                        vec xAxis, int n, pt circleCenter) {
+  pt[] points = new pt[n];
+  vec normal = U(sphereCenter, capCenter);
+  vec yAxis = N(normal, xAxis);  // the order matters
 
-pt[] generateContactsOnSphere(pt C, float R, int nc, float rMax) {
-  assert rMax < R;
-  pt[] points = new pt[nc];
-  Disk[] disks = new Disk[nc];
-  float distance = sqrt(R * R - rMax * rMax);
-  for (int i = 0; i < nc; ++i) {
-    while (true) {
-      pt p = generateOnePointOnSphere(C, R);
-      vec normal = U(C, p);
-      pt c = P(C, distance, normal);  // push p towards C
-      Disk disk = new Disk(c, normal, rMax);
-      boolean bad = false;
-      for (int j = 0; j < i; ++j) {
-        if (!emptyIntersectionTwoDisks(disk, disks[j])) {  // too expensive
-          bad = true;
-          break;
-        }
-      }
-      if (!bad) {
-        points[i] = p;
-        disks[i] = disk;
-        break;
-      }
-    }  // end while
-  }
-  return points;
-}
+  /* Only consider the circle that corresponds to a cone with its half-angle in [0, PI/2]. */
+  float d = sqrt(sphereRadius * sphereRadius - circleRadius * circleRadius);
+  circleCenter.set(P(sphereCenter, d, normal));
 
-
-// TODO: need to revisit
-pt[] generatePointsForOneCircle(pt p,                                // in
-                                float r,                             // in
-                                pt C,                                // in
-                                float R,                             // in
-                                vec initDir,                         // in
-                                int np,                              // in
-                                pt center) {                         // out
-  pt[] points = new pt[np];
-  vec normal = U(C, p);
-  vec v = I = initDir;
-  vec J = N(normal, I);  // the order matters! make sure cross(I, J) same as normal
-  center.set(P(C, sqrt(R * R - r * r), normal));  // correct?
-  float da = TWO_PI / np;
+  float da = TWO_PI / n;
   float a = 0;
-  for (int i = 0; i < np; ++i) {
-    points[i] = P(center, r, R(v, a, I, J));
+  for (int i = 0; i < n; ++i) {
+    points[i] = P(circleCenter, circleRadius, R(xAxis, a, xAxis, yAxis));
     a += da;
   }
   return points;
 }
 
-
-// a contact = the intersection point between the medial axis of a tube and the sphere
-// a center = the center of a circle
-pt[][] generatePointsForCircles(pt[] contacts,                       // in
-                                float r,                             // in
-                                pt C,                                // in
-                                float R,                             // in
-                                vec[] initDirs,                      // in
-                                int nc,                              // in
-                                int np,                              // in
-                                pt[] centers) {                      // out
+/*
+ * Sample np points uniformly on each of the nc circles which have the same
+ * radius.
+ * contact = the intersection between the sphere and the outward axis of a disk
+ * center = the center of a disk (under the sphere)
+ */
+pt[][] generatePointsForCircles(pt[] capCenters, float circleRadius,
+                                pt sphereCenter, float sphereRadius,
+                                vec[] xAxes, int nc, int np, pt[] circleCenters) {
   pt[][] points = new pt[nc][np];
   for (int i = 0; i < nc; ++i) {
-    centers[i] = new pt();
-    points[i] = generatePointsForOneCircle(contacts[i], r, C, R, initDirs[i],
-                                           np, centers[i]);
+    circleCenters[i] = new pt();
+    points[i] = generatePointsForOneCircle(capCenters[i], circleRadius,
+                                           sphereCenter, sphereRadius, xAxes[i],
+                                           np, circleCenters[i]);
   }
   return points;
 }
 
-pt[][] generatePointsForCircles(pt[] contacts,                       // in
-                                float[] radii,                       // in
-                                pt C,                                // in
-                                float R,                             // in
-                                vec[] initDirs,                      // in
-                                int nc,                              // in
-                                int np,                              // in
-                                pt[] centers) {                      // out
+/*
+ * Sample np points uniformly on each of the nc circles which may have different
+ * radii.
+ */
+pt[][] generatePointsForCircles(pt[] capCenters, float[] circleRadii,
+                                pt sphereCenter, float sphereRadius,
+                                vec[] xAxes, int nc, int np, pt[] circleCenters) {
   pt[][] points = new pt[nc][np];
   for (int i = 0; i < nc; ++i) {
-    centers[i] = new pt();
-    points[i] = generatePointsForOneCircle(contacts[i], radii[i], C, R,
-                                           initDirs[i], np, centers[i]);
+    circleCenters[i] = new pt();
+    points[i] = generatePointsForOneCircle(capCenters[i], circleRadii[i],
+                                           sphereCenter, sphereRadius,
+                                           xAxes[i], np, circleCenters[i]);
   }
   return points;
 }
 
-
-pt[] generateContactsAndRadii(pt center,                             // in
-                              float radius,                          // in
-                              int n,                                 // in
-                              float[] radii,                         // out
-                              vec[] normals) {                       // out
-  pt[] contacts = new pt[n];
+/*
+ * Randomly generate n cap centers and n radii for corresponding disks such that
+ * the n caps/disks are disjoint.
+ */
+pt[] generateCapCentersAndCircleRadii(pt sphereCenter, float sphereRadius, int n,
+                                      float[] circleRadii, vec[] normals) {
+  pt[] capCenters = new pt[n];
   float[] alphas = new float[n];
   for (int i = 0; i < n; ++i) {
     while (true) {
-      pt p = generateOnePointOnSphere(center, radius);
-      vec normal = U(center, p);
-      float r = random(1, radius * 0.9);
-      float alpha = asinClamp(r / radius);  // [0, PI/2]
+      pt p = generateOnePointOnSphere(sphereCenter, sphereRadius);
+      vec normal = U(sphereCenter, p);
+      float r = random(1, sphereRadius * 0.9);
+      float alpha = asinClamp(r / sphereRadius);  // [0, PI/2]
       boolean isValid = true;
       for (int j = 0; j < i; ++j) {
         float theta = acosClamp(dot(normal, normals[j]));  // [0, PI]
@@ -233,30 +227,30 @@ pt[] generateContactsAndRadii(pt center,                             // in
         }
       }
       if (isValid) {
-        contacts[i] = p;
+        capCenters[i] = p;
         normals[i] = normal;
         alphas[i] = alpha;
-        radii[i] = r;
+        circleRadii[i] = r;
         break;
       }
     }
   }
-  return contacts;
+  return capCenters;
 }
 
-
-pt[] generateContacts(pt center,                                     // in
-                      float radius,                                  // in
-                      int n,                                         // in
-                      float rMax,                                    // in
-                      vec[] normals) {                               // out
-  assert rMax > 0 && rMax < radius;
-  pt[] contacts = new pt[n];
-  float alpha = 2 * asinClamp(rMax/radius);
+/*
+ * Randomly generate n cap centers on a sphere such that the n corresponding
+ * disks, each with the same radius rMax, are disjoint.
+ */
+pt[] generateCapCenters(pt sphereCenter, float sphereRadius, int n, float rMax,
+                        vec[] normals) {
+  assert rMax > 0 && rMax < sphereRadius;
+  pt[] capCenters = new pt[n];
+  float alpha = 2 * asinClamp(rMax/sphereRadius);
   for (int i = 0; i < n; ++i) {
     while (true) {
-      pt p = generateOnePointOnSphere(center, radius);
-      vec normal = U(center, p);
+      pt p = generateOnePointOnSphere(sphereCenter, sphereRadius);
+      vec normal = U(sphereCenter, p);
       boolean isValid = true;
       for (int j = 0; j < i; ++j) {
         float theta = acosClamp(dot(normal, normals[j]));  // [0, PI]
@@ -266,15 +260,18 @@ pt[] generateContacts(pt center,                                     // in
         }
       }
       if (isValid) {
-        contacts[i] = p;
+        capCenters[i] = p;
         normals[i] = normal;
         break;
       }
     }
   }
-  return contacts;
+  return capCenters;
 }
 
+/*
+ * Randomly generate n balls with their centers on a sphere.
+ */
 Ball[] generateBallsOnSphere(pt c, float r, float rMax, int n) {
   Ball[] balls = new Ball[n];
   assert rMax >= 4.0;
@@ -299,42 +296,86 @@ Ball[] generateBallsOnSphere(pt c, float r, float rMax, int n) {
   return balls;
 }
 
+/*
+ * Randomly generate a hub.
+ */
 Hub generateHub(pt c, float r0, float r1, int n) {
   Ball ball = new Ball(c, r0);
   Ball[] neighbors = generateBallsOnSphere(c, r1, r1 - 1.3 * r0, n);
   return new Hub(ball, neighbors, n);
 }
 
-/* Manully design a steady lattice. */
-SteadyLattice generateSteadyLattice(int opt) {
+/*
+ * Manully design a steady lattice.
+ */
+SteadyLattice designSteadyLattice() {
   SteadyLattice lattice = new SteadyLattice();
 
-  switch (opt) {
-    case 0:
+  switch (gSteadyOption) {
+    case 0:   // a regular lattice
       {
-        int size = 9;
-        float fsize = float(size);
-        lattice.setG(MakeScaling(50.0/size, P(0,0,0)));
-        lattice.setU(size, MakeTranslation(V( 1, 0, 0 )));
-        lattice.setV(size, MakeTranslation(V( 0, 1, 0 )));
-        lattice.setW(size, MakeTranslation(V( 0, 0, 1 )));
-        // lattice.setU(size, MakeTranslation(V( 1, 0, 0 )));
-        // lattice.setV(size, MakeRotation(PI/6/size, V( 0, 1, 0 ), P(fsize*3,0,fsize/2.0)));
-        // lattice.setW(size, MakeSwirl(PI/6/size, V( 0, 1, 0 ), P(fsize/2.0,fsize*2,fsize/2.0), pow(.994, 99.0/size)));
-        int a = lattice.addJoint(P(0,0,0), .2);
-        lattice.addBeam(a, a, I(1,0,0));
-        lattice.addBeam(a, a, I(0,1,0));
-        lattice.addBeam(a, a, I(0,0,1));
+        int size = 5;  // u, v, w
+        float fsize = (float)size;
+        lattice.setG(MakeScaling(50.0 / fsize, P(0, 0, 0)));
+        lattice.setU(size, MakeTranslation(V(1, 0, 0)));
+        lattice.setV(size, MakeTranslation(V(0, 1, 0)));
+        lattice.setW(size, MakeTranslation(V(0, 0, 1)));
+        int a = lattice.addJoint(P(0,0,0), 0.2);
+        lattice.addBeam(a, a, I(1, 0, 0));
+        lattice.addBeam(a, a, I(0, 1, 0));
+        lattice.addBeam(a, a, I(0, 0, 1));
+      }
+      break;
+    case 1:  // a rotated regular lattice
+      {
+        int size = 5;
+        float fsize = (float)size;
+        lattice.setG(MakeScaling(50.0 / fsize, P(0, 0, 0)));
+        lattice.setU(size, MakeTranslation(V(1, 0, 0)));
+        lattice.setV(size, MakeRotation(HALF_PI / fsize, V(0, 0, 1), P(fsize*3, 0, fsize/2)));
+        lattice.setW(size, MakeTranslation(V(0, 0, 2)));
+        int a = lattice.addJoint(P(0, 0, 0), 0.2);
+        lattice.addBeam(a, a, I(1, 0, 0));
+        lattice.addBeam(a, a, I(0, 1, 0));
+        lattice.addBeam(a, a, I(0, 0, 1));
+      }
+      break;
+    case 2:  // a swirl regular lattice
+      {
+        int size = 6;  // default: 9
+        float fsize = (float)size;
+        lattice.setG(MakeScaling(50.0 / fsize, P(0, 0, 0)));
+        lattice.setU(size, MakeTranslation(V(1, 0, 0)));
+        lattice.setV(size, MakeSwirl(HALF_PI / fsize, V(0, 0, 1), P(fsize*3, 0, fsize/2), 0.95));
+        lattice.setW(size, MakeTranslation(V(0, 0, 2)));
+        int a = lattice.addJoint(P(0, 0, 0), 0.2);
+        lattice.addBeam(a, a, I(1, 0, 0));
+        lattice.addBeam(a, a, I(0, 1, 0));
+        lattice.addBeam(a, a, I(0, 0, 1));
+      }
+      break;
+    case 3:  // a swirl-rotation-translation lattice
+      {
+        int size = 7;  // default: 7
+        float fsize = (float)size;
+        lattice.setG(MakeScaling(50.0 / fsize, P(0, 0, 0)));
+        lattice.setU(size, MakeTranslation(V(1, 0, 0)));
+        lattice.setV(size, MakeRotation(PI/6/size, V(0, 1, 0), P(fsize*3, 0, fsize/2)));
+        lattice.setW(size, MakeSwirl(PI/6/size, V(0, 1, 0), P(fsize/2, fsize*2, fsize/2), pow(.994, 99.0/fsize)));
+        int a = lattice.addJoint(P(0, 0, 0), 0.2);
+        lattice.addBeam(a, a, I(1, 0, 0));
+        lattice.addBeam(a, a, I(0, 1, 0));
+        lattice.addBeam(a, a, I(0, 0, 1));
       }
       break;
 
-    case 1:  // the model in the convex hull paper
+    case 10:  // the model in the convex hull paper (SPM 2019 submission 20)
       {
-        lattice.setG(MakeScaling(.25, P(0,0,0)));
+        lattice.setG(MakeScaling(0.25, P(0, 0, 0)));
         lattice.setU(1, new SwirlTransform());
-        lattice.setV(15, MakeRotation(TWO_PI/16, V( 1, 0, 0 ), P(0,0,0)));
-        lattice.setW(8, MakeSwirl(-TWO_PI/32, V(1,0,0), P(90,0,0), .9));
-        lattice.restrictInBounds(true, false, true);
+        lattice.setV(15, MakeRotation(TWO_PI/16, V(1, 0, 0), P(0, 0, 0)));
+        lattice.setW(8, MakeSwirl(-TWO_PI/32, V(1, 0, 0), P(90, 0, 0), 0.9));
+        // lattice.restrictInBounds(true, false, true);  // not used in my code
         int a = lattice.addJoint(P(0, 20, 0), 1.005);
         lattice.addBeam(a, a, I(0, 1, 0));
         lattice.addBeam(a, a, I(0, 0, 1));
@@ -344,7 +385,10 @@ SteadyLattice generateSteadyLattice(int opt) {
   return lattice;
 }
 
-Lattice generateTetRobot() {
+/*
+ * Manually design a lattice.
+ */
+Lattice designLattice() {
   Ball[] balls = new Ball[7];
   int[][] beams = new int[6][2];
 
@@ -373,42 +417,39 @@ Lattice generateTetRobot() {
   return new Lattice(balls, beams);
 }
 
+/*
+ * Initialize all objects in the scene for all test cases.
+ */
 void initScene() {
   switch (inputMethodRingSet) {
     case 0:  // read from file
       gRingSet = new RingSet();
       gRingSet.load(gRingSetPath);
-      {
-        // gRingSet.translate(V(gRingSet.sphereCenter).rev());
-      }
       break;
     case 1:  // generate randomly
       gRingSet = new RingSet(gSphereCenter, gSphereRadius, gNumRings, gNumPointsPerRing);
       break;
     default:
       println("Please use a valid input method for ring set");
-      exit();
   }
-  if (!gRingSet.isValid()) {  // check validity of ring set
-    println("ring set not valid!");
-    exit();
+  if (gRingSet == null || !gRingSet.isValid()) {
+    println("No valid ring set!");
   }
 
   gPoints = new pts();
-  gPoints.declare();  // some points on a sphere
+  gPoints.declare();
   switch (inputMethodPointSet) {
     case 0:  // read from file
-      gPoints.loadPts(gPointSetPath);
+      gPoints.load(gPointSetPath);
       break;
     case 1:  // generate randomly
       generatePointsOnSphere(gPoints, gSphereCenter, gSphereRadius, 10);
       break;
     case 2:  // from ring set
-      gPoints = gRingSet.toPointSet();
+      if (gRingSet != null) gPoints = gRingSet.toPointSet();
       break;
     default:
       println("Please use a valid input method for point set");
-      exit();
   }
 
   switch (inputMethodHub) {
@@ -421,7 +462,6 @@ void initScene() {
       break;
     default:
       println("Please use a valid input method for hub");
-      exit();
   }
 
   gEdgeCircle = new EdgeCircle();
@@ -434,7 +474,6 @@ void initScene() {
       break;
     default:
       println("Please use a valid input method for edge-circle");
-      exit();
   }
 
   gTriangleMesh = new TriangleMesh();
@@ -442,11 +481,8 @@ void initScene() {
     case 0:
       gTriangleMesh.load(gTriangleMeshPath);
       break;
-    case 1:
-      break;
     default:
       println("Please use a valid input method for triangle mesh");
-      exit();
   }
 
   gLattice = new Lattice();
@@ -455,41 +491,32 @@ void initScene() {
       gLattice.load(gLatticePath);
       break;
     case 1:
-      gLattice = generateTetRobot();
+      gLattice = designLattice();
       break;
     default:
       println("Please use a valid input method for lattice");
-      exit();
   }
 
   gGap = new ConvexGap();
   switch (inputMethodGap) {
     case 0:
       gGap.load(gGapPath);
-      {
-        // pt c = gGap.center();
-        // gGap.translate(V(c).rev());
-        // gGap.scale(10.0);
-        // println("before, gGap.points0.size() =", gGap.points0.size(), "gGap.points1.size() =", gGap.points1.size());
-        // gGap.removeDuplicatePoints(0);
-        // gGap.removeDuplicatePoints(1);
-        // println("after, gGap.points0.size() =", gGap.points0.size(), "gGap.points1.size() =", gGap.points1.size());
-      }
+      // gGap.translate(V(gGap.center()).rev());
+      // gGap.scale(10.0);
       break;
     default:
-      // println("Please use a valid input method for gap");
-      // exit();
+      println("Please use a valid input method for gap");
   }
 
   gSteadyLattice = new SteadyLattice();
   switch (inputMethodSteadyLattice) {
-    case 0:
-      break;
     case 1:
-      gSteadyLattice = generateSteadyLattice(0);
+      gSteadyLattice = designSteadyLattice();
       break;
     default:
+      println("Please use a valid input method for steady lattice");
   }
+
   Idx3 uvw = gSteadyLattice.repetitionCounts();
   assert uvw != null;
   gRanges[0] = new MinMaxI(0, uvw.i);

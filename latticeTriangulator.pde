@@ -59,16 +59,16 @@ import processing.pdf.*;
  * 203: one intersection-between-two-planes test
  * 204: one intersection-between-two-spheres test
  */
-int test = 20;
+int test = 25;
 
-boolean showSphere = true;
-boolean showCenterOfSphere = false;
-boolean showArcSet = true;  // each circle is controlled by an arc on the sphere
-boolean showAuxPlane = false;
+boolean gShowSphere = true;
+boolean gShowCenterOfSphere = false;
+boolean gShowArcSet = true;  // each circle is controlled by an arc on the sphere
+boolean gShowAuxPlane = false;
 
-boolean generateCH = true;
-boolean regenerateCH = true;  // for ring set, test shrink/grow
-boolean showPointSet = true;
+boolean gGenerateCH = true;
+boolean gRegenerateCH = true;  // for ring set, test shrink/grow
+boolean gShowPointSet = true;
 
 boolean animating = true;
 boolean tracking = false;
@@ -86,8 +86,8 @@ pt gSphereCenter = new pt(0.0, 0.0, 0.0);  // default: (0, 0, 0)
 Camera gCamera = new Camera(500, -0.06 * TWO_PI, -0.04 * TWO_PI);
 
 int gNumTriangles = -1;
-float timeTM = 0.0;  // time for generating a triangle mesh
-float timeSD = 0.0;  // time for subdivision
+float gTimeMeshing = 0.0;  // time for generating a triangle mesh
+float gTimeSubdivision = 0.0;  // time for subdivision
 
 
 
@@ -108,7 +108,7 @@ void setup() {
 
   initScene();
 
-  if (regenerateCH == false) {
+  if (gRegenerateCH == false) {
     gAttenuation = gAttenuationMin;
     gRingSet.generatePoints(gAttenuation);  // shrink all rings
     if (test == 1) {
@@ -149,7 +149,7 @@ void draw() {
     showBall(gFocus, 10);
   }
 
-  if (showCenterOfSphere) {
+  if (gShowCenterOfSphere) {
     fill(black);
     showBall(gSphereCenter, 3); // show center of the sphere
   }
@@ -305,7 +305,7 @@ void draw() {
   }
 
   // Show the big yellow sphere
-  if (showSphere) {
+  if (gShowSphere) {
     noStroke();
     fill(yellow, 100);
     showBall(gSphereCenter, gSphereRadius);  // this should be before pick
@@ -317,7 +317,7 @@ void draw() {
     picking = false;
   }
 
-  if (showSphere && showArcSet) {
+  if (gShowSphere && gShowArcSet) {
     int nv = gPoints.nv - gPoints.nv % 2;
     if (test > 1) showArcs(gPoints.G, nv, gSphereCenter, gSphereRadius, 4, 3, 4);
     fill(red, 100);

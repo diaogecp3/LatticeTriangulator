@@ -219,6 +219,7 @@ SwirlTransform MakeSwirl(float rad, vec axisDirection, pt fixedPoint, float scal
 }
 
 
+/*
 //------------------------------------------------------------------------------
 // RangeFinder
 //------------------------------------------------------------------------------
@@ -460,3 +461,5 @@ MinMaxI[] rangeFinder(pt Q, float q, int repetitions, SwirlTransform transform, 
   return new MinMaxI[0];
 }
 MinMaxI[] rangeFinder(Ball Q, int repetitions, SwirlTransform transform, Ball A, Ball B) { return rangeFinder(Q.c, Q.r, repetitions, transform, A, B); }
+
+*/

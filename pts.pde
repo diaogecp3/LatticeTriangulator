@@ -94,21 +94,22 @@ class pts {  // class for manipulaitng and sisplaying polyloops
   pts moveAll(vec V) {for (int i=0; i<nv; i++) G[i].add(V); return this;};
   pt Picked() {return G[pv];}
 
-  void savePts(String fn) {
+  void save(String fn) {
     println("saving point set:", fn);
-    String [] inppts = new String [nv+1];
-    int s=0;
-    inppts[s++]=str(nv);
-    for (int i=0; i<nv; i++) {inppts[s++]=str(G[i].x)+","+str(G[i].y)+","+str(G[i].z);}
-    saveStrings(fn,inppts);
+    String[] inppts = new String [nv+1];
+    int s = 0;
+    inppts[s++] = str(nv);
+    for (int i = 0; i < nv; i++) {
+      inppts[s++] = str(G[i].x) + "," + str(G[i].y) + "," + str(G[i].z);
+    }
+    saveStrings(fn, inppts);
   };
 
-  void loadPts(String fn) {
-    print("loading: " + fn + " ");
-    String [] ss = loadStrings(fn);
+  void load(String fn) {
+    println("loading point set:", fn);
+    String[] ss = loadStrings(fn);
     int s = 0;
     nv = int(ss[s++]);
-    println("nv =", nv);
     for (int k = 0; k < nv; k++) {
       int i = k + s;
       float[] xyz = float(split(ss[i], ","));

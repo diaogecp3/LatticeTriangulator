@@ -7,7 +7,7 @@
  ******************************************************************************/
 
 
-int methodIterSP = 2;  // 0: basic, 1: heuristic normal, 2: heuristic plane
+int gMethodIterSP = 2;  // 0: basic, 1: heuristic normal, 2: heuristic plane
 
 class DebugIterSPInfo {  // debug info about iterative supporting plane of 3 circles
   int iter = 0;
@@ -607,8 +607,7 @@ pt[] supPlaneThreeCirclesIter(pt c0, float r0, vec n0, vec vi0, vec vj0,
   /* Initialize a triangle with each vertex from each circle. */
   pt p0, p1, p2;
   vec t0, t1, t2, n;
-  // println("methodIterSP = ", methodIterSP);
-  switch (methodIterSP) {
+  switch (gMethodIterSP) {
     case 1:
       vec tmpN1 = normalOfTriangle(c0, c1, c2);
       p0 = P(c0, r0, U(A(tmpN1, -dot(tmpN1, n0), n0)));
@@ -838,12 +837,12 @@ void exactCHThreeCircles(pt c0, float r0, vec n0, vec vi0, vec vj0,
     disk(c2, n2, r2);
   }
   assert points.size() == 6 * nSamples;
-  if (show3RT) {
+  if (gShow3RT) {
     fill(orange, 100);
     showTriangle(points.get(0), points.get(1), points.get(2));
     showTriangle(points.get(3), points.get(4), points.get(5));
   }
-  if (show2RT) {
+  if (gShow2RT) {
     fill(violet, 100);
     stroke(0);
     strokeWeight(2);
