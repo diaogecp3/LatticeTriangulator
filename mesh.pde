@@ -413,8 +413,14 @@ class TriangleMesh extends Mesh {
   }
 
   private void projectOnHubSphereTrace(Hub hub) {
-    for (pt p : positions) {
-      projectPointOnBlendedHub(hub, p);
+    if (!containHubCenter) {
+      for (pt p : positions) {
+        projectPointOnBlendedHub(hub, p);
+      }
+    } else {
+      for (pt p : positions) {
+        projectPointOnBlendedHubBiDir(hub, p);
+      }
     }
   }
 

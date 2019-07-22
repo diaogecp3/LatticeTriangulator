@@ -111,17 +111,39 @@ void projectPointOnExactHubBiDir(Hub hub, pt p) {
  * Project a point on the blended surface of a hub by shooting a ray. Because it
  * is difficult to compute the intersection between a point and the blended
  * surface, we use sphere tracing method to compute an approximation of the
- * intersection between a point and the blended surface. Note that only points
+ * intersection between a ray and the blended surface. Note that only points
  * outside the blended hub will be projected.
  */
 void projectPointOnBlendedHub(Hub hub, pt p) {
-  if (hub.distanceFrom(p) < 0.0001) return;  // skip if p is inside or on the hub
+  if (hub.blendedDistanceFrom(p) < 0.0001) return;  // skip if p is inside or on the blended hub
   vec d = U(p, hub.ball.c);
   pt q = P(p);  // make a copy
   for (int i = 0; i < gMaxIterSphereTracing; ++i) {
-    float dist = hub.blendedDistanceFrom(q);
-    if (Float.isInfinite(dist) || dist > gUpperBound || dist < 0.0001) break;
-    q.add(dist, d);
+    float t = hub.blendedDistanceFrom(q);
+    if (Float.isInfinite(t) || t > gUpperBound || t < 0.0001) break;
+    q.add(t, d);
+  }
+  p.set(q);
+}
+
+/*
+ * Project a point on the blended surface of a hub by shooting a ray. We use
+ * sphere tracing method to compute an approximation of the intersection between
+ * a ray and the blended surface. Note that both points inside and outside the
+ * blended hub will be projected. Please make sure the hub center is contained
+ * in the crudest convex hull of the hub. Warning: this function may not work
+ * well.
+ */
+void projectPointOnBlendedHubBiDir(Hub hub, pt p) {
+  float dist = hub.blendedDistanceFrom(p);
+  if (isZero(dist, 0.0001)) return;  // skip if p is on the blended hub
+  vec d = U(p, hub.ball.c);
+  if (dist < -0.0001) d.rev();  // flip the ray direction if p is inside the blended hub
+  pt q = P(p);
+  for (int i = 0; i < gMaxIterSphereTracing; ++i) {
+    float t = hub.blendedDistanceFrom(q);
+    if (Float.isInfinite(t) || t > gUpperBound || t < 0.0001) break;
+    q.add(t, d);
   }
   p.set(q);
 }

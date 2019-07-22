@@ -113,6 +113,7 @@ Keys:
 - '[' / ']': Increase / decrease times of subdivision.
 - '/' / '*': Change projection method. Go to line 8 in `mesh.pde` for more details.
 - '9': Create gap or not.
+- 'n': Insert a new circle when the hub center isn't contained in the crudest convex hull.
 
 #### Option 2: keep quads, use specific subdivision skemes for quads
 In `test.pde`:
@@ -138,7 +139,7 @@ Keys:
 - '[' / ']': Increase / decrease times of subdivision.
 - '/' / '*': Change projection method. Go to line 8 in `mesh.pde` for more details.
 - 'p': Push vertices to circles.
-
+- 'n': Insert a new circle when the hub center isn't contained in the crudest convex hull.
 
 ### Tessellation of a lattice
 In `latticeTriangulator.pde`, specify the test number:

@@ -169,6 +169,7 @@ void keyPressed() {
   }
   if (key == 'n') {
     if (test == 14) debugIncCHNewView = !debugIncCHNewView;
+    if (test == 20) gInsertInfCircle = !gInsertInfCircle;
   }
   if (key == 'g') {
     gShowRingSet = !gShowRingSet;
@@ -357,6 +358,7 @@ void displayDebugText() {
   if (test == 19 || test == 20) {
     scribeHeader("number of sides of each beam = " + gNumPointsPerRing, line++);
     scribeHeader("subdivision times = " + gSubdivisonTimes, line++);
+    scribeHeader("insert an inf circle: " + (gInsertInfCircle ? "yes" : "no"), line++);
   }
 
   if (test == 20 || test == 23) {

@@ -47,6 +47,7 @@ boolean debugApolloniusDiagram = false;
 boolean gShowTriMesh = false;  // the mesh generated from exact convex hull
 
 boolean gUseSimpleCorridor = false;
+boolean gInsertInfCircle = false;
 
 
 /*
@@ -206,6 +207,10 @@ class RingSet {
     }
     void showFace() {}
 
+    pt centroid() {
+      return null;
+    }
+
     /*
      * Find edges in the current face that are complemental to an edge e from an
      * adjacent face.
@@ -320,6 +325,11 @@ class RingSet {
       else noStroke();
       showTriangle(vertices[0].position, vertices[1].position, vertices[2].position);
       if (gShowTriangleStrokes) noStroke();  // restore state
+    }
+
+    @Override
+    pt centroid() {
+      return P(vertices[0].position, vertices[1].position, vertices[2].position);
     }
 
     void showCircumcircle() {
@@ -536,6 +546,12 @@ class RingSet {
     @Override
     void showFace() {
       show(delta);
+    }
+
+    @Override
+    pt centroid() {
+      return P(vertices[0].position, vertices[1].position, vertices[2].position,
+               vertices[3].position);
     }
 
     void show(float density) {
@@ -3192,6 +3208,73 @@ class RingSet {
       }
     }
     return true;
+  }
+
+  private IncFace findFirstVisibleFaceFromCenter() {
+    pt p = sphereCenter;
+    for (IncTriangle tri : incTriangles) {
+      pt a = tri.vertices[0].position;
+      pt b = tri.vertices[1].position;
+      pt c = tri.vertices[2].position;
+      vec n = U(N(a, b, c));
+      vec x = U(a, p);
+      if (dot(n, x) >= 0) return tri;
+    }
+
+    for (IncCorridor cor : incCorridors) {
+      if (cor.isCollapsed) continue;
+      pt a = cor.vertices[0].position;
+      pt b = cor.vertices[1].position;
+      pt c = cor.vertices[2].position;
+      if (samePt(a, b)) a = cor.vertices[3].position;
+      vec n = U(N(a, b, c));
+      vec x = U(a, p);
+      if (dot(n, x) >= 0) return cor;
+    }
+    return null;
+  }
+
+  RingSet insertInfinitesimalCircle() {
+    assert incTriangles != null && incCorridors != null;
+
+    IncFace face = findFirstVisibleFaceFromCenter();
+    if (face == null) return this;
+
+    {  // debug
+      //  fill(cyan);
+      //  if (face instanceof IncTriangle) {
+      //    beginShape(TRIANGLES);
+      //    vertex(face.vertices[0].position);
+      //    vertex(face.vertices[1].position);
+      //    vertex(face.vertices[2].position);
+      //    endShape();
+      //  } else {
+      //    beginShape(QUADS);
+      //    vertex(face.vertices[0].position);
+      //    vertex(face.vertices[1].position);
+      //    vertex(face.vertices[2].position);
+      //    vertex(face.vertices[3].position);
+      //    endShape();
+      //  }
+    }
+
+    pt c = face.centroid();
+    vec d = U(c, sphereCenter);  // normal of the new circle
+    float r = 0.001 * sphereRadius;  // radius of the new circle
+    float t = sqrt(sphereRadius * sphereRadius - r * r);
+    c = P(sphereCenter, t, d);  // center of the new circle
+
+    {
+      // fill(magenta);
+      // showBall(c, 10);
+    }
+
+    /* Construct a new RingSet that contains all old circles and the new circle. */
+    Circle[] circles = new Circle[nRings + 1];
+    for (int i = 0; i < nRings; ++i) circles[i] = getCircle(i);
+    circles[nRings] = new Circle(c, d, r);
+
+    return new RingSet(sphereCenter, sphereRadius, circles, nRings + 1, nPointsPerRing);
   }
 
   BorderedTriQuadMesh generateConvexTriQuadMesh() {

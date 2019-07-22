@@ -1165,6 +1165,21 @@ void interactiveHubTest() {
 
   /* Generate convex hull. */
   gRingSet.generateExactCHIncremental(null);
+  boolean containHubCenter = gRingSet.pointInCrudestConvexHull(gHub.ball.c);
+
+  if (gInsertInfCircle) {
+    if (containHubCenter == false) {
+      // println("insert a new circle!");
+      gRingSet = gRingSet.insertInfinitesimalCircle();
+      gRingSet.generateExactCHIncremental(null);
+
+      // stroke(black);
+      // Circle infCircle = gRingSet.getCircle(gRingSet.nRings - 1);
+      // infCircle.show();
+      // noStroke();
+    }
+  }
+
   if (gShowDiskSet) {
     fill(red);
     gRingSet.showDisks(null);
@@ -1177,12 +1192,6 @@ void interactiveHubTest() {
     fill(green);
     gRingSet.showIncCorridors();
   }
-
-  boolean containHubCenter = gRingSet.pointInCrudestConvexHull(gHub.ball.c);
-  // if (containHubCenter) fill(red, 200);
-  // else fill(black, 200);
-  // showBall(gHub.ball.c, 3);
-
 
   if (!gUseTriQuadMesh) {  // use a triangle mesh for the convex hull
     gTriangleMesh = gRingSet.generateConvexTriMesh();
