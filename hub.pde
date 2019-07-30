@@ -3,12 +3,15 @@
  ******************************************************************************/
 
 boolean gShowHub = true;
+boolean gShowExplodedView = false;
 boolean gShowBoundingSphere = false;  // the bounding sphere of a hub
 boolean gShowIntersectionCircles = false;  // the intersection circles between the bounding sphere and cones
 boolean gShowLiftedCones = false;
 boolean gShowGapMesh = true;
 
-final float gGapWidth = 10;
+final float gGapWidth = 10.0;
+
+final float gDeltaExplodedView = 10.0;
 
 class Cone {
   pt apex;  // apex
@@ -222,6 +225,7 @@ class TruncatedCone {
     generateSamples(numSamples, null);
     int n = samples.length / 2;
     if (showStroke) stroke(0);
+    else noStroke();
     beginShape(QUAD_STRIP);
     for (int i = 0; i < n; ++i) {
       vertex(samples[n + i]);
@@ -798,6 +802,26 @@ class Hub {
         liftedCones[i].show(n, true);
         // liftedCones[i].showDebugInfo();
       }
+    }
+  }
+
+  /*
+   * Show beams in exploded view. Make sure original cones and intersection
+   * circles have been computed.
+   */
+  void showBeamsExplodedView(float delta, int numSamples, boolean showStroke,
+                             color colorBeams, int alphaBeams) {
+    assert tCones != null && circles != null;
+    TruncatedCone[] beams = new TruncatedCone[nNeighbors];
+    for (int i = 0; i < nNeighbors; ++i) {
+      vec axis = tCones[i].normal;
+      pt c0 = P(circles[i].c, delta, axis);
+      pt c1 = P(tCones[i].c1, delta, axis);
+      beams[i] = new TruncatedCone(c0, circles[i].r, c1, tCones[i].r1);
+    }
+    fill(colorBeams, alphaBeams);
+    for (int i = 0; i < nNeighbors; ++i) {
+      beams[i].show(numSamples, showStroke);
     }
   }
 

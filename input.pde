@@ -15,7 +15,7 @@ int inputMethodGap = 1;  // 0: read from file, 1: nothing happens
 int inputMethodSteadyLattice = 1;  // 0: nothing happens, 1: generate manually
 
 /* File paths for different objects. */
-String gPointSetPath = "data/point_set/ps_hub_tessellation_4";
+String gPointSetPath = "data/point_set/ps_hub_tessellation";
 String gRingSetPath = "data/ring_set/rs_convex_hull_samples_on_circles";
 String gHubPath = "data/hub/hub_9";
 String gEdgeCirclePath = "data/edge_circle/ec_0";

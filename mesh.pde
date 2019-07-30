@@ -91,6 +91,10 @@ class TriangleMesh extends Mesh {
     for (int i = 0; i < nt; ++i) triangles.add(ts.get(i));
   }
 
+  void translate(vec dir) {
+    for (pt p : positions) p.add(dir);
+  }
+
   void augmentWithoutShift(ArrayList<Triangle> newTriangles) {
     if (newTriangles == null) return;
     triangles.addAll(newTriangles);

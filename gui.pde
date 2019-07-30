@@ -255,10 +255,11 @@ void keyPressed() {
     if (test == 25) gCubeHalfLength = min(gCubeHalfLength + 1, gSteadyLattice.maxRepetitionCount() - 1);
   }
   if (key == 'e') {
-    gShowEllipticCone1 = !gShowEllipticCone1;
+    if (test == 27) gShowEllipticCone1 = !gShowEllipticCone1;
   }
   if (key == 'E') {
-    gShowEllipticCone2 = !gShowEllipticCone2;
+    if (test == 27) gShowEllipticCone2 = !gShowEllipticCone2;
+    if (test == 20) gShowExplodedView = !gShowExplodedView;
   }
   if (key == 'N') {
     gNavigateSteadyLattice = !gNavigateSteadyLattice;

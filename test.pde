@@ -1173,10 +1173,6 @@ void interactiveHubTest() {
       gRingSet = gRingSet.insertInfinitesimalCircle();
       gRingSet.generateExactCHIncremental(null);
 
-      // stroke(black);
-      // Circle infCircle = gRingSet.getCircle(gRingSet.nRings - 1);
-      // infCircle.show();
-      // noStroke();
     }
   }
 
@@ -1288,13 +1284,23 @@ void interactiveHubTest() {
       for (int j = n; j < samples.length; ++j) outerLoop.add(samples[j]);
       ConvexGap gap = new ConvexGap(innerLoop, outerLoop);  // a beam is actually a big gap
       TriangleMesh tm = gap.toTriMesh();
+
+      if (gShowExplodedView) {
+        vec dir = V(gDeltaExplodedView, gHub.tCones[i].normal);
+        tm.translate(dir);
+      }
+
       gGapMesh.augmentWithShift(tm.positions, tm.triangles);
       if (gShowGapMesh) gGapMesh.show(lightSalmon, gShowTriangleStrokes);
     }
   }
 
   if (gShowHub) {
-    gHub.show(lightSalmon, 255);  // alpha: 130, 255
+    if (!gShowExplodedView) {
+      gHub.show(lightSalmon, 255);  // alpha: 130, 255
+    } else {
+      gHub.showBeamsExplodedView(gDeltaExplodedView, 40, false, lightSalmon, 255);
+    }
   }
 
   if (gShowBoundingSphere) {

@@ -141,6 +141,18 @@ Keys:
 - 'p': Push vertices to circles.
 - 'n': Insert a new circle when the hub center isn't contained in the crudest convex hull.
 
+#### Show exploded views
+Sometimes it may be better to show an exploded view of: 1) an inflated-hub, 2) a
+CHoCC approximation, 3) a natural tessellation, 4) a refined tessellation:
+
+<img src="./pictures/inflated_hub_exploded.png" width="200"> <img src="./pictures/CHoCC_exploded.png" width="200">
+<img src="./pictures/natural_tessellation_exploded.png" width="200"> <img src="./pictures/refined_tessellation_exploded.png" width="200">
+
+Keys:
+- 'E': Show an exploded view. `gDeltaExplodedView` controls the distance between each beam and the junction.
+
+Note that currently exploded views don't apply to Option 1 above.
+
 ### Tessellation of a lattice
 In `latticeTriangulator.pde`, specify the test number:
 ```
