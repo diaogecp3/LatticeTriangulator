@@ -833,7 +833,7 @@ void interactiveIncCHTest() {
   }
 
   if (gShowDiskSet) {
-    fill(red);
+    fill(red, 255);
     if (debugIncCH && nv > 4) gRingSet.showDisks(debugIncCHIter);
     else gRingSet.showDisks(null);
   }
@@ -1285,13 +1285,27 @@ void interactiveHubTest() {
       ConvexGap gap = new ConvexGap(innerLoop, outerLoop);  // a beam is actually a big gap
       TriangleMesh tm = gap.toTriMesh();
 
+      /* Make a copy of innerLoop as it will be changed in the exploded view. */
+      ArrayList<pt> innerLoopCopy = new ArrayList<pt>();
+      for (pt p : innerLoop) innerLoopCopy.add(P(p));
+
       if (gShowExplodedView) {
         vec dir = V(gDeltaExplodedView, gHub.tCones[i].normal);
         tm.translate(dir);
       }
 
       gGapMesh.augmentWithShift(tm.positions, tm.triangles);
-      if (gShowGapMesh) gGapMesh.show(lightSalmon, gShowTriangleStrokes);
+      if (gShowGapMesh) {
+        gGapMesh.show(lightSalmon, gShowTriangleStrokes);
+
+        /* Show caps at the two ends of a beam. */
+        noStroke();  // hide strokes because a cap will be displayed as a triangle fan
+        fill(lightSalmon);
+        showPolygon(innerLoop);
+        showPolygon(outerLoop);
+
+        if (gShowExplodedView) showPolygon(innerLoopCopy);
+      }
     }
   }
 

@@ -60,6 +60,18 @@ vec perp(vec v) {
 }
 
 /*
+ * Compute the centroid of a list of points.
+ */
+pt centroid(ArrayList<pt> ps) {
+  pt p = new pt();
+  for (pt q : ps) {
+    p.add(q);
+  }
+  p.div(ps.size());
+  return p;
+}
+
+/*
  * Compute the intersection line of two planes, defined by:
  * a0x + b0y + c0z = d0
  * a1x + b1y + c1z = d1

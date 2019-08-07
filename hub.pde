@@ -215,7 +215,8 @@ class TruncatedCone {
   }
 
   /*
-   * Show the cone as a cylinder of quads.
+   * Show the side of the cone as a cylinder of quads, and show each end of the
+   * cone as a fan of triangles.
    *
    * Parameters:
    * numSamples: the number of quads.
@@ -235,6 +236,18 @@ class TruncatedCone {
     vertex(samples[0]);
     endShape();
     if (showStroke) noStroke();
+
+    beginShape(TRIANGLE_FAN);
+    vertex(c0);
+    for (int i = 0; i < n; ++i) vertex(samples[i]);
+    vertex(samples[0]);
+    endShape();
+
+    beginShape(TRIANGLE_FAN);
+    vertex(c1);
+    for (int i = 0; i < n; ++i) vertex(samples[n + i]);
+    vertex(samples[n]);
+    endShape();
   }
 
   void showDebugInfo() {

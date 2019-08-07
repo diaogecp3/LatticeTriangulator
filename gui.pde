@@ -98,7 +98,7 @@ void keyPressed() {
 
   /* Keys: increase/decrease operators. */
   if (key == '+') {
-    if (test == 14) {
+    if (test == 14 && debugIncCH) {
       debugIncCHIter = min(debugIncCHIter + 1, int(gPoints.nv / 2) - 1);
     }
     if (test >= 14 && test <= 25)  {
@@ -109,10 +109,10 @@ void keyPressed() {
     }
   }
   if (key == '-') {
-    if (test == 14) {
+    if (test == 14 && debugIncCH) {
       debugIncCHIter = max(debugIncCHIter - 1, 3);
     }
-    if (test >= 15 && test <= 25) {
+    if (test >= 14 && test <= 25) {
       gNumPointsPerRing = max(gNumPointsPerRing - 1, 2);
     }
     if (test == 1 && gNumFaces > 0) {

@@ -423,6 +423,18 @@ void showOrientedLoop(ArrayList<pt> ps) {
 }
 
 /*
+ * Show a polygon formed by a list of coplanar points ps.
+ */
+void showPolygon(ArrayList<pt> ps) {
+  pt c = centroid(ps);
+  beginShape(TRIANGLE_FAN);
+  vertex(c);
+  for (pt p : ps) vertex(p);
+  vertex(ps.get(0));
+  endShape();
+}
+
+/*
  * Show the plane defined by (p, n). The plane is a finite square centered at p,
  * with side length being 2s.
  */
