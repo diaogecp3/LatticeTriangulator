@@ -2071,13 +2071,29 @@ class RingSet {
       }
     }
 
-    if (normalsEx != null && halfAnglesEx != null) {
-      assert normalsEx.length <= 2 && halfAnglesEx.length <= 2;
+    // if (normalsEx != null && halfAnglesEx != null) {
+    //   assert normalsEx.length <= 2 && halfAnglesEx.length <= 2;
+    //   normalsEx[0] = ns[0];
+    //   halfAnglesEx[0] = atan(ts[0]);
+    //   if (halfAnglesEx[0] < 0) halfAnglesEx[0] += PI;
+    //   if (oneSolution == false) {
+    //     normalsEx[1] = ns[1];
+    //     halfAnglesEx[1] = atan(ts[1]);
+    //     if (halfAnglesEx[1] < 0) halfAnglesEx[1] += PI;
+    //   }
+    // }
+
+    if (normalsEx != null) {
+      assert normalsEx.length <= 2;
       normalsEx[0] = ns[0];
+      if (oneSolution == false) normalsEx[1] = ns[1];
+    }
+
+    if (halfAnglesEx != null) {
+      assert halfAnglesEx.length <= 2;
       halfAnglesEx[0] = atan(ts[0]);
       if (halfAnglesEx[0] < 0) halfAnglesEx[0] += PI;
       if (oneSolution == false) {
-        normalsEx[1] = ns[1];
         halfAnglesEx[1] = atan(ts[1]);
         if (halfAnglesEx[1] < 0) halfAnglesEx[1] += PI;
       }
@@ -3335,6 +3351,51 @@ class RingSet {
       for (pt p : centers) p.add(v);
     }
   }
+
+  void planePivotInit() {
+    vec u = normals[0];
+    int i = 0;
+    float cosAngle = -1.1;
+    int jBest = -1;
+    int kBest = -1;
+    pt[] psBest = {new pt(), new pt(), new pt()};
+    for (int j = 1; j < nRings; ++j) {
+      for (int k = j + 1; k < nRings; ++k) {
+        vec[] vw = new vec[2];
+        pt[] ps = twoSupPlanesThreeCircles(i, j, k, vw, null, false);
+        float a = dot(u, vw[0]);  // cos of angle of u and v
+        float b = dot(u, vw[1]);  // cos of angle of u and w
+
+        if (a > cosAngle) {
+          cosAngle = a;
+          jBest = j;
+          kBest = k;
+          psBest[0].set(ps[0]);
+          psBest[1].set(ps[1]);
+          psBest[2].set(ps[2]);
+        }
+
+        if (b > cosAngle) {
+          cosAngle = b;
+          jBest = k;
+          kBest = j;
+          psBest[0].set(ps[3]);
+          psBest[1].set(ps[4]);
+          psBest[2].set(ps[5]);
+        }
+      }
+    }
+
+    {  // show the first triangle
+      fill(cyan);
+      showTriangle(psBest[0], psBest[1], psBest[2]);
+
+      fill(magenta);
+      showBall(centers[0], 10);
+    }
+
+  }
+
 
   void show() {
     noStroke();

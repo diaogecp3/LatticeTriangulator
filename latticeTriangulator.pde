@@ -44,6 +44,7 @@ import processing.pdf.*;
  * 26: one geodesic-distance test
  * 27: one twp-elliptic-cones test
  * 28: one stereographic-projection test
+ * 29: one plane-pivoting-init test
  * ...
  * 100: many convex-hull tests
  * 101: many ring-set-triangulation tests
@@ -258,6 +259,9 @@ void draw() {
       break;
     case 28:
       stereoProjectionTest();
+      break;
+    case 29:
+      planePivotInitTest();
       break;
 
     /* Multiple tests. */

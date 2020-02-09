@@ -41,8 +41,8 @@ void keyPressed() {
     if (gGap != null) gGap.save("data/gap_unnamed");
   }
   if (key == 'l') {
-    if (gCamera != null) {
-      gCamera.load("data/camera/cam_hub_tessellation");
+    if (gCamera != null && gCameraPath != null && !gCameraPath.isEmpty()) {
+      gCamera.load(gCameraPath);
     }
   }
   if (key == '>') showFrame = !showFrame;

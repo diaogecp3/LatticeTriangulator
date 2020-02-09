@@ -2062,3 +2062,28 @@ void steadyLatticeTest() {
   gLattice = new Lattice(balls, beams);
   latticeTest();
 }
+
+void planePivotInitTest() {
+  if (gPoints.nv < 4) {
+    println("Should use at least 4 points.");
+    return;
+  }
+
+  int nv = gPoints.nv - gPoints.nv % 2;
+  gRingSet = new RingSet(gSphereCenter, gSphereRadius, gPoints.G, nv);
+
+  if (!gRingSet.isValid()) return;
+
+  if (gShowCircleSet) {
+    if (debugIncCH && nv > 4) gRingSet.showCircles(debugIncCHIter);
+    else gRingSet.showCircles(null);
+  }
+
+  if (gShowDiskSet) {
+    fill(red, 255);
+    if (debugIncCH && nv > 4) gRingSet.showDisks(debugIncCHIter);
+    else gRingSet.showDisks(null);
+  }
+
+  gRingSet.planePivotInit();
+}
