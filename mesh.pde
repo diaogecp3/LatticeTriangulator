@@ -369,7 +369,6 @@ class TriangleMesh extends Mesh {
     }
   }
 
-
   void projectOnSphere(pt c, float r) {
     for (int i = 0; i < nv; ++i) {
       pt p = positions.get(i);
@@ -443,6 +442,22 @@ class TriangleMesh extends Mesh {
   /* Test if the triangle mesh is convex. */
   boolean isConvex() {
     return passConvexityTest(triangles, positions);
+  }
+
+  /*
+   * Compute the volume of the region bounded by this triangle mesh. p is used
+   * to form a tetrahedron with each triangle, if provided. In other words, p
+   * is the tetrahedron vertex (http://mathworld.wolfram.com/PolyhedronVertex.html).
+   */
+  float volume(pt p) {
+    float v = 0;
+    for (Triangle tri : triangles) {
+      pt a = positions.get(tri.a);
+      pt b = positions.get(tri.b);
+      pt c = positions.get(tri.c);
+      v += signedVolumeOfTetrahedron(p, a, b, c);
+    }
+    return v;
   }
 
   @Override

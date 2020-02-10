@@ -48,7 +48,7 @@ boolean gShowTriMesh = false;  // the mesh generated from exact convex hull
 
 boolean gUseSimpleCorridor = false;
 boolean gInsertInfCircle = false;
-
+boolean gComputeVolume = false;
 
 /*
  * Method for three-ring triangle generation.
@@ -489,6 +489,10 @@ class RingSet {
         samples = fillExEdgeWithPoints(stAng, delta, n, right, left);
         Collections.reverse(samples);  // reverse the list
       }
+    }
+
+    public void generateSamples() {
+      generateSamples(this.delta);
     }
 
     /*
@@ -1004,6 +1008,32 @@ class RingSet {
         triangles.add(new Triangle(tc, td, ta));
       }
       return triangles;
+    }
+
+    /*
+     * Return a strip of triangles given samples are computed.
+     */
+    ArrayList<pt[]> toTriangles() {
+      ArrayList<pt[]> tris = new ArrayList<pt[]>();
+      pt pd = vertices[3].position;
+      pt pa = vertices[0].position;
+
+      pt pc, pb;
+      for (int i = 0; i < samples.size(); i += 2) {
+        pc = samples.get(i);
+        pb = samples.get(i + 1);
+        tris.add(new pt[]{pa, pb, pc});
+        tris.add(new pt[]{pc, pd, pa});
+        pd = pc;
+        pa = pb;
+      }
+
+      // C, B, and the last two samples
+      pc = vertices[2].position;
+      pb = vertices[1].position;
+      tris.add(new pt[]{pa, pb, pc});
+      tris.add(new pt[]{pc, pd, pa});
+      return tris;
     }
   }
 
@@ -3880,5 +3910,55 @@ class RingSet {
       pointSet.G[i].set(ps[i]);
     }
     return pointSet;
+  }
+
+  /*
+   * Compute the volume of the ball chopped by the supporting plane of each
+   * circle.
+   * http://mathworld.wolfram.com/SphericalCap.html
+   */
+  float volumeOfChoppedBall() {
+    float v = 0;
+    // volume of all spherical caps
+    for (float r : radii) {
+      float h = sphereRadius - sqrt(sphereRadius * sphereRadius - r * r);
+      v += PI * h * (3 * r * r + h * h) / 6;
+    }
+    v = 4 * PI * sphereRadius * sphereRadius * sphereRadius / 3 - v;
+    return v;
+  }
+
+  /*
+   * Compute the (approximated) volume of the CHoCC assuming that the CHoCC has
+   * been computed.
+   */
+  float volumeOfCHoCC() {
+    float v = 0;
+    // Add volume of the cones, each subtended by a disk.
+    for (float r : radii) {
+      float h = sqrt(sphereRadius * sphereRadius - r * r);
+      v += PI * r * r * h / 3;
+    }
+
+    // Add volume of the tetrahedra, each subtended by a triangle.
+    for (IncTriangle tri : incTriangles) {
+      pt a = tri.vertices[0].position;
+      pt b = tri.vertices[1].position;
+      pt c = tri.vertices[2].position;
+      v += signedVolumeOfTetrahedron(sphereCenter, a, b, c);
+    }
+
+    // Add volume of the regions, each subtended by a corridor.
+    // Each such region can be approximated by an array of pyramids, where each
+    // is subtended by a quad in the quad strip approximating the corridor.
+    for (IncCorridor cor : incCorridors) {
+      if (cor.samples == null || cor.samples.size() == 0) cor.generateSamples();
+      ArrayList<pt[]> tris = cor.toTriangles();
+      for (pt[] tri : tris) {
+        v += signedVolumeOfTetrahedron(sphereCenter, tri[0], tri[1], tri[2]);
+      }
+    }
+
+    return v;
   }
 }

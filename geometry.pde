@@ -1036,3 +1036,11 @@ vec reflect(vec v, vec n) {
   float d = dot(v, n);
   return A(v, -2*d, n);
 }
+
+/*
+ * Compute the signed volume of the tetrahedron (a, b, c, d).
+ * http://mathworld.wolfram.com/Tetrahedron.html
+ */
+float signedVolumeOfTetrahedron(pt a, pt b, pt c, pt d) {
+  return dot(V(a,b), cross(V(a,c), V(a,d))) / 6;
+}

@@ -2,6 +2,7 @@
  * Test.
  ******************************************************************************/
 
+import java.util.Arrays;
 
 int gNumTests = 100000;
 int numBackup3RT = 0;
@@ -20,6 +21,12 @@ boolean showUpArrow = true;
 boolean gCreateGap = false;
 boolean gUseTriQuadMesh = true;
 boolean gProjectOnCircleAfterSub = true;
+
+float gVolume = 0;
+float gChoppedBallVolume = 0;
+float gChoccVolume = 0;
+float gCntVolume = 0;
+float gRefinedMeshVolume = 0;
 
 class DebugInfoConvexity {
   pt[] points;
@@ -1172,7 +1179,6 @@ void interactiveHubTest() {
       // println("insert a new circle!");
       gRingSet = gRingSet.insertInfinitesimalCircle();
       gRingSet.generateExactCHIncremental(null);
-
     }
   }
 
@@ -1187,6 +1193,11 @@ void interactiveHubTest() {
   if (gShowCorridorFaces) {
     fill(green);
     gRingSet.showIncCorridors();
+  }
+
+  if (gComputeVolume) {
+    gChoppedBallVolume = gRingSet.volumeOfChoppedBall();
+    gChoccVolume = gRingSet.volumeOfCHoCC();
   }
 
   if (!gUseTriQuadMesh) {  // use a triangle mesh for the convex hull
@@ -1239,6 +1250,11 @@ void interactiveHubTest() {
     gTriQuadMesh = gRingSet.generateConvexTriQuadMesh();
     gTriQuadMesh.setColors(blue, green);  // set triangle and corridor colors
 
+    if (gComputeVolume) {
+      TriangleMesh tm = gTriQuadMesh.tessellate();
+      gCntVolume = tm.volume(gHub.ball.c);
+    }
+
     /* Subdivide the triangle-quad mesh. */
     for (int i = 0; i < gSubdivisonTimes; ++i) {
       gTriQuadMesh = gTriQuadMesh.subdivide(SubdivideTypeTriangle.LOOP, SubdivideTypeQuad.DIAMOND, gProjectOnCircleAfterSub);
@@ -1269,6 +1285,16 @@ void interactiveHubTest() {
         if (gSubdivisonTimes == 0) gTriQuadMesh.setColors(blue, green);
         else gTriQuadMesh.setColors(cyan, green);
         gTriQuadMesh.show(gShowTriangleStrokes);
+
+        // Test tessellation
+        // gTriangleMesh = gTriQuadMesh.tessellate();
+        // gTriangleMesh.show(cyan, gShowTriangleStrokes);
+      }
+    }
+
+    if (gComputeVolume) {
+      if (gSubdivisonTimes > 0 && projType != null) {
+        gRefinedMeshVolume = gTriangleMesh.volume(gHub.ball.c);
       }
     }
 
@@ -2086,4 +2112,44 @@ void planePivotInitTest() {
   }
 
   gRingSet.planePivotInit();
+}
+
+void volumeOfTetrahedronTest() {
+  pt a = new pt(0, 0, 0);
+  pt b = new pt(0, 0, 100);
+  pt c = new pt(100, 0, 100);
+  pt d = new pt(0, 100, 100);
+  // pt c = new pt(0, 100, 100);
+  // pt d = new pt(100, 0, 100);
+
+  {
+    // gVolume = signedVolumeOfTetrahedron(a, b, c, d);
+    // fill(red, 200);
+    // arrow(a, V(a, b), 2);
+    // fill(green, 200);
+    // arrow(a, V(a, c), 2);
+    // fill(blue, 200);
+    // arrow(a, V(a, d), 2);
+
+    // fill(cyan);
+    // showTriangle(b, c, d);
+    // fill(magenta);
+    // showTriangleNormal(b, c, d, 20, 2);
+  }
+
+  ArrayList<pt> positions = new ArrayList<pt>(Arrays.asList(a, b, c, d));
+  ArrayList<Triangle> triangles = new ArrayList<Triangle>();
+  triangles.add(new Triangle(1, 2, 3));
+  triangles.add(new Triangle(0, 1, 3));
+  triangles.add(new Triangle(0, 2, 1));
+  triangles.add(new Triangle(0, 3, 2));
+  pt v = new pt(50, 50, 10);
+  TriangleMesh tm = new TriangleMesh(positions, triangles);
+
+  fill(black, 255);
+  showBall(v, 3);
+
+  tm.show(cyan, true);
+
+  gVolume = tm.volume(v);
 }

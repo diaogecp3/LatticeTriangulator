@@ -182,7 +182,7 @@ float d(vec U, vec V) {return U.x*V.x+U.y*V.y+U.z*V.z; }                        
 float dot(vec U, vec V) {return U.x*V.x+U.y*V.y+U.z*V.z; }                                            //U*V dot product
 float det2(vec U, vec V) {return -U.y*V.x+U.x*V.y; }                                       // U|V det product
 float det3(vec U, vec V) {return sqrt(d(U,U)*d(V,V) - sq(d(U,V))); }                                       // U|V det product
-float m(vec U, vec V, vec W) {return d(U,N(V,W)); }                                                 // (UxV)*W  mixed product, determinant
+float m(vec U, vec V, vec W) {return d(U,N(V,W)); }                                                 // U*(VxW) mixed product, determinant
 float m(pt E, pt A, pt B, pt C) {return m(V(E,A),V(E,B),V(E,C));}                                    // det (EA EB EC) is >0 when E sees (A,B,C) clockwise
 float n2(vec V) {return sq(V.x)+sq(V.y)+sq(V.z);}                                                   // V*V    norm squared
 float n(vec V) {return sqrt(n2(V));}                                                                // ||V||  norm

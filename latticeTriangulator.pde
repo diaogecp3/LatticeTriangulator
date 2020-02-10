@@ -59,6 +59,7 @@ import processing.pdf.*;
  * 202: one round-cone-distance test
  * 203: one intersection-between-two-planes test
  * 204: one intersection-between-two-spheres test
+ * 205: one tetrahedron-volume test
  */
 int test = 20;
 
@@ -89,7 +90,6 @@ Camera gCamera = new Camera(500, -0.06 * TWO_PI, -0.04 * TWO_PI);
 int gNumTriangles = -1;
 float gTimeMeshing = 0.0;  // time for generating a triangle mesh
 float gTimeSubdivision = 0.0;  // time for subdivision
-
 
 
 void setup() {
@@ -302,6 +302,9 @@ void draw() {
       break;
     case 204:
       intersectionTwoSpheresTest();
+      break;
+    case 205:
+      volumeOfTetrahedronTest();
       break;
     default:
       println("Please enter a correct test number");

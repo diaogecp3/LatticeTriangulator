@@ -29,6 +29,9 @@ void keyPressed() {
   if (key == 'k') {
     if (test == 25) gCubeCenter.k = max(gCubeCenter.k - 1, 0);
   }
+  if (key =='v') {
+    gComputeVolume = !gComputeVolume;
+  }
   if (key == 'w') {  // save data
     if (gPoints != null) gPoints.save("data/pts_unnamed");
     if (gRingSet != null) gRingSet.save("data/rs_unnamed");
@@ -366,6 +369,10 @@ void displayDebugText() {
     displayGapMethod(line++);
     scribeHeader("push vertices on circles: " + (gProjectOnCircleAfterSub ? "yes" : "no"), line++);
     displayProjectMethod(line++);
+    scribeHeader("Chopped inflated ball volume: " + gChoppedBallVolume, line++);
+    scribeHeader("CHoCC volume: " + gChoccVolume, line++);
+    scribeHeader("CNT volume: " + gCntVolume, line++);
+    scribeHeader("Refined mesh volume: " + gRefinedMeshVolume, line++);
   }
 
   if (test == 24) {
@@ -394,6 +401,10 @@ void displayDebugText() {
     scribeHeader("show beams = " + (gShowBeams ? "yes" : "no"), line++);
     displayGapMethod(line++);
     displayProjectMethod(line++);
+  }
+
+  if (test == 205) {
+    scribeHeader("volume of tetrahedron = " + gVolume, line++);
   }
 }
 

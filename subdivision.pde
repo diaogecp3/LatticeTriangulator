@@ -368,17 +368,67 @@ class BorderedTriQuadMesh extends Mesh {
     }
   }
 
-  /*
-   * Convert this triangle-quad mesh to a triangle mesh. Please make sure that
-   * no quads exist in this triangle-quad mesh. Vertices are merged if they are
-   * at the same location.
-   */
-  TriangleMesh toTriangleMesh() {
-    assert quads == null || quads.size() == 0;
+  private void tessellateAndMergeVerticesForPolygons(
+    ArrayList<pt> poss,
+    ArrayList<Triangle> tris) {
+    int n = circles.length;
+    for (int k = 0; k < n; ++k) {
+      pt pc = circles[k].c;
+      int ic = poss.size();  // vertex index of the center of the k-th circle
+      poss.add(pc);
 
-    ArrayList<pt> poss = new ArrayList<pt>();
-    ArrayList<Triangle> tris = new ArrayList<Triangle>();
+      ArrayList<Integer> vids = new ArrayList<Integer>();
+      for (pt p : borders[k]) {
+        int j = 0;
+        for (; j < poss.size(); ++j) {
+          if (samePt(p, poss.get(j))) {  // these two vertices are almost the same
+            vids.add(j);
+            break;
+          }
+        }
+        if (j == poss.size()) {  // find a new vertex
+          vids.add(j);
+          poss.add(p);
+        }
+      }
 
+      int m = borders[k].size();  // m points on the k-th border
+      for (int i = 0; i <= m - 2; ++i) {
+        tris.add(new Triangle(ic, vids.get(i), vids.get(i+1)));
+      }
+      tris.add(new Triangle(ic, vids.get(m-1), vids.get(0)));
+    }
+  }
+
+  private void tessellateAndMergeVerticesForQuads(
+    ArrayList<pt> poss,
+    ArrayList<Triangle> tris) {
+    if (quads == null || quads.size() == 0) return;
+    for (QuadSub quad : quads) {
+      int[] vids = new int[] {-1, -1, -1, -1};
+      for (int i = 0; i < 4; ++i) {
+        pt p = quad.vertices[i].position;
+        int j = 0;
+        for (; j < poss.size(); ++j) {
+          if (samePt(p, poss.get(j))) {  // these two vertices are almost the same
+            vids[i] = j;
+            break;
+          }
+        }
+        if (j == poss.size()) {  // find a new vertex
+          vids[i] = j;
+          poss.add(p);
+        }
+      }
+      assert vids[0] != -1 && vids[1] != -1 && vids[2] != -1 && vids[3] != -1;
+      tris.add(new Triangle(vids[0], vids[1], vids[2]));
+      tris.add(new Triangle(vids[0], vids[2], vids[3]));
+    }
+  }
+
+  private void mergeVerticesForTriangles(
+    ArrayList<pt> poss,
+    ArrayList<Triangle> tris) {
     for (TriangleSub tri : triangles) {
       int[] vids = new int[] {-1, -1, -1};
       for (int i = 0; i < 3; ++i) {
@@ -398,6 +448,56 @@ class BorderedTriQuadMesh extends Mesh {
       assert vids[0] != -1 && vids[1] != -1 && vids[2] != -1;
       tris.add(new Triangle(vids[0], vids[1], vids[2]));
     }
+  }
+
+  /*
+   * Convert this triangle-quad mesh to a triangle mesh. Please make sure that
+   * no quads exist in this triangle-quad mesh. Vertices are merged if they are
+   * at the same location.
+   */
+  TriangleMesh toTriangleMesh() {
+    assert quads == null || quads.size() == 0;
+
+    ArrayList<pt> poss = new ArrayList<pt>();
+    ArrayList<Triangle> tris = new ArrayList<Triangle>();
+
+    // for (TriangleSub tri : triangles) {
+    //   int[] vids = new int[] {-1, -1, -1};
+    //   for (int i = 0; i < 3; ++i) {
+    //     pt p = tri.vertices[i].position;
+    //     int j = 0;
+    //     for (; j < poss.size(); ++j) {
+    //       if (samePt(p, poss.get(j))) {  // these two vertices are almost the same
+    //         vids[i] = j;
+    //         break;
+    //       }
+    //     }
+    //     if (j == poss.size()) {  // find a new vertex
+    //       vids[i] = j;
+    //       poss.add(p);
+    //     }
+    //   }
+    //   assert vids[0] != -1 && vids[1] != -1 && vids[2] != -1;
+    //   tris.add(new Triangle(vids[0], vids[1], vids[2]));
+    // }
+
+    mergeVerticesForTriangles(poss, tris);
+    return new TriangleMesh(poss, tris);
+  }
+
+  /*
+   * Tessellate the polygon faces, each bounded by a polygonal border, and quads.
+   * Collect all triangles (including those tessellated from polygons and quads)
+   * into a TriangleMesh.
+   */
+  TriangleMesh tessellate() {
+    ArrayList<pt> poss = new ArrayList<pt>();
+    ArrayList<Triangle> tris = new ArrayList<Triangle>();
+
+    tessellateAndMergeVerticesForPolygons(poss, tris);
+    tessellateAndMergeVerticesForQuads(poss, tris);
+    mergeVerticesForTriangles(poss, tris);
+
     return new TriangleMesh(poss, tris);
   }
 
