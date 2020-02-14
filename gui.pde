@@ -182,6 +182,7 @@ void keyPressed() {
   }
   if (key == 'b') {
     if (test == 19 || test == 24 || test == 25) gShowBeams = !gShowBeams;
+    if (test == 20) gShowBeamsOutsideInflatedBall = !gShowBeamsOutsideInflatedBall;
   }
   if (key == 'f') {
     gFix3RT = !gFix3RT;

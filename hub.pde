@@ -8,6 +8,7 @@ boolean gShowBoundingSphere = false;  // the bounding sphere of a hub
 boolean gShowIntersectionCircles = false;  // the intersection circles between the bounding sphere and cones
 boolean gShowLiftedCones = false;
 boolean gShowGapMesh = true;
+boolean gShowBeamsOutsideInflatedBall = false;
 
 final float gGapWidth = 10.0;
 
@@ -835,6 +836,26 @@ class Hub {
     fill(colorBeams, alphaBeams);
     for (int i = 0; i < nNeighbors; ++i) {
       beams[i].show(numSamples, showStroke);
+    }
+  }
+
+  /*
+   * Show the beam portion that is outside of the inflated ball. The argument
+   * circle is the intersecting circle between the beam and the inflated ball.
+   */
+  private void showBeamOutsideInflatedBall(TruncatedCone beam, Circle circle, int numSamples, boolean showStroke) {
+    TruncatedCone tc = new TruncatedCone(circle.c, circle.r, beam.c1, beam.r1);
+    tc.show(numSamples, showStroke);
+  }
+
+  /*
+   * Show the beam portions that are outside of the inflated ball.
+   */
+  void showBeamsOutsideInflatedBall(color rgb, int alpha, int numSamples, boolean showStroke) {
+    if (tCones == null || circles == null) return;
+    fill(rgb, alpha);
+    for (int i = 0; i < nNeighbors; ++i) {
+      showBeamOutsideInflatedBall(tCones[i], circles[i], numSamples, showStroke);
     }
   }
 

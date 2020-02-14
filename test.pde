@@ -1257,7 +1257,10 @@ void interactiveHubTest() {
 
     /* Subdivide the triangle-quad mesh. */
     for (int i = 0; i < gSubdivisonTimes; ++i) {
-      gTriQuadMesh = gTriQuadMesh.subdivide(SubdivideTypeTriangle.LOOP, SubdivideTypeQuad.DIAMOND, gProjectOnCircleAfterSub);
+      gTriQuadMesh = gTriQuadMesh.subdivide(
+        SubdivideTypeTriangle.LOOP,
+        SubdivideTypeQuad.DIAMOND,
+        gProjectOnCircleAfterSub);
     }
 
     /* Project the mesh on the hub. */
@@ -1337,7 +1340,8 @@ void interactiveHubTest() {
 
   if (gShowHub) {
     if (!gShowExplodedView) {
-      gHub.show(lightSalmon, 255);  // alpha: 130, 255
+      if (gShowBeamsOutsideInflatedBall) gHub.showBeamsOutsideInflatedBall(lightSalmon, 255, 30, false);
+      else gHub.show(lightSalmon, 255);  // alpha: 130, 255
     } else {
       gHub.showBeamsExplodedView(gDeltaExplodedView, 40, false, lightSalmon, 255);
     }
